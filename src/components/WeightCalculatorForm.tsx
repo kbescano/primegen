@@ -57,7 +57,7 @@ function weightPerMeter(shape: Shape, density: number, dims: Record<string, numb
 }
 
 export default function WeightCalculatorForm({ products }: { products: CalcProduct[] }) {
-  const [productId, setProductId] = useState(products[0]?.id)
+  const [productId, setProductId] = useState<string | number>(products[0]?.id ?? '')
   const [dims, setDims] = useState<Record<string, number>>({})
   const [pieces, setPieces] = useState(1)
   const [sheetWidth, setSheetWidth] = useState(1000)
@@ -96,16 +96,19 @@ export default function WeightCalculatorForm({ products }: { products: CalcProdu
     setDims((prev) => ({ ...prev, [key]: parseFloat(value) || 0 }))
   }
 
+  function handleProductChange(value: string) {
+    const found = products.find((p) => String(p.id) === value)
+    setProductId(found ? found.id : products[0]?.id ?? '')
+    setDims({})
+  }
+
   return (
     <div className="calc-grid">
       <div className="facet-card calc-panel">
         <label style={labelStyle}>Product Shape</label>
         <select
           value={String(productId)}
-          onChange={(e) => {
-            setProductId(products.find((p) => String(p.id) === e.target.value)?.id)
-            setDims({})
-          }}
+          onChange={(e) => handleProductChange(e.target.value)}
           style={inputStyle}
         >
           {products.map((p) => (

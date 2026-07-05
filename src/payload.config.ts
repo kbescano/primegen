@@ -53,7 +53,6 @@ export default buildConfig({
   }),
   plugins: [
     cloudinaryStorage({
-      enabled: Boolean(process.env.CLOUDINARY_CLOUD_NAME),
       cloudConfig: {
         cloud_name: process.env.CLOUDINARY_CLOUD_NAME || '',
         api_key: process.env.CLOUDINARY_API_KEY || '',
