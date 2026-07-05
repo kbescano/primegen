@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 import { headers as getHeaders } from 'next/headers'
 import { getPayloadClient } from '@/lib/getPayloadClient'
-import DashboardShell from '../../components/DashboardShell'
+import DashboardShell from '@/components/DashboardShell'
 
 export default async function AdminDashboardLayout({ children }: { children: ReactNode }) {
   const payload = await getPayloadClient()
