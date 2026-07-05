@@ -811,7 +811,7 @@ h3 {
     left: 0;
     right: 0;
     height: 50vh;
-    background: #0d0d0d;
+    background: #143109;
     overflow-y: auto;
     animation: navFadeIn 0.3s ease;
     border-bottom-left-radius: 16px;
@@ -855,7 +855,7 @@ h3 {
 }
 
 .mnp-chevron {
-  color: var(--color-bright-green);
+  color: #b5bfa1;
   font-size: 16px;
   font-weight: 700;
 }
@@ -866,7 +866,7 @@ h3 {
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--color-bright-green);
+  color: #b5bfa1;
   margin: 0;
 }
 
@@ -888,4 +888,251 @@ h3 {
   .hamburger.mobile-nav-toggle {
     display: flex;
   }
+}
+
+/* New palette: deep green / sage / white / black */
+:root {
+  --color-ink: #143109;
+  --color-black: #000000;
+  --color-forest: #143109;
+  --color-forest-deep: #0d2306;
+  --color-bright-green: #b5bfa1;
+  --color-steel: #b5bfa1;
+  --color-steel-dark: #143109;
+  --color-border: #b5bfa1;
+  --color-paper: #ffffff;
+  --color-bg: #ffffff;
+  --color-text: #000000;
+  --color-white: #ffffff;
+  --color-brass: #b5bfa1;
+  --color-brass-deep: #9aa688;
+  --color-accent: #b5bfa1;
+}
+
+h1, h2, h3, h4 {
+  color: #143109;
+}
+
+.eyebrow {
+  color: #143109;
+}
+
+.hero-photo-layer::after {
+  background: linear-gradient(
+    100deg,
+    rgba(20, 49, 9, 0.98) 0%,
+    rgba(20, 49, 9, 0.95) 38%,
+    rgba(20, 49, 9, 0.72) 54%,
+    rgba(20, 49, 9, 0.28) 74%,
+    rgba(20, 49, 9, 0.05) 100%
+  );
+}
+
+.cine-hero-overlay-radial {
+  background: radial-gradient(circle, transparent 20%, rgba(20, 49, 9, 0.45) 100%);
+}
+
+.cine-hero-overlay-linear {
+  background: linear-gradient(to top, rgba(20, 49, 9, 0.7) 0%, transparent 45%, rgba(20, 49, 9, 0.35) 100%);
+}
+
+.hamburger span {
+  background: white;
+}
+
+.mobile-nav-backdrop.open {
+  background: rgba(20, 49, 9, 0.5);
+}
+
+/* FINAL PALETTE LOCK: #143109 (deep green), #B5BFA1 (sage), white, black only */
+:root {
+  --color-ink: #143109;
+  --color-black: #000000;
+  --color-forest: #143109;
+  --color-forest-deep: #000000;
+  --color-steel: #b5bfa1;
+  --color-steel-dark: #000000;
+  --color-paper: #ffffff;
+  --color-bg: #ffffff;
+  --color-text: #000000;
+  --color-white: #ffffff;
+  --color-border: #b5bfa1;
+  --color-brass: #ffffff;
+  --color-brass-deep: #b5bfa1;
+  --color-accent: #b5bfa1;
+  --color-bright-green: #b5bfa1;
+  --color-green-dark: #000000;
+  --color-green-light: #b5bfa1;
+}
+
+.eyebrow {
+  color: #143109;
+}
+
+.btn-primary {
+  background: #143109;
+  color: #ffffff;
+  box-shadow: 0 6px 18px rgba(20, 49, 9, 0.3);
+}
+
+.btn-primary:hover {
+  background: #000000;
+}
+
+.brand-mark {
+  background: linear-gradient(135deg, #143109 0%, #143109 46%, #b5bfa1 54%, #b5bfa1 100%);
+}
+
+.cine-eyebrow {
+  color: #b5bfa1;
+}
+
+.cine-cta:hover .cine-cta-circle {
+  border-color: #b5bfa1;
+  background: #b5bfa1;
+  color: #143109;
+}
+
+.cine-ring-progress {
+  stroke: #b5bfa1;
+}
+
+.hero-diagonal::before {
+  background: #b5bfa1;
+}
+
+.nav-link-item::after {
+  background: #b5bfa1;
+}
+
+.hero-photo-layer::after,
+.cine-hero-overlay-radial,
+.cine-hero-overlay-linear {
+  background: linear-gradient(
+    100deg,
+    rgba(20, 49, 9, 0.98) 0%,
+    rgba(20, 49, 9, 0.95) 38%,
+    rgba(20, 49, 9, 0.72) 54%,
+    rgba(20, 49, 9, 0.28) 74%,
+    rgba(20, 49, 9, 0.05) 100%
+  );
+}
+
+/* Fix: restore correct distinct overlay treatments (was accidentally merged
+   into one shared gradient, causing an odd green shadow band in the hero) */
+.cine-hero-overlay-radial {
+  background: radial-gradient(circle, transparent 20%, rgba(20, 49, 9, 0.45) 100%);
+}
+
+.cine-hero-overlay-linear {
+  background: linear-gradient(to top, rgba(20, 49, 9, 0.7) 0%, transparent 45%, rgba(20, 49, 9, 0.35) 100%);
+}
+
+/* Header restyle: white background, green text, CTA moved below the nav row */
+.hamburger span {
+  background: #143109;
+}
+
+.nav-divider {
+  background: rgba(20, 49, 9, 0.2);
+}
+
+.header-cta-row {
+  display: flex;
+  justify-content: center;
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px solid rgba(20, 49, 9, 0.1);
+}
+
+@media (min-width: 769px) {
+  .header-cta-row .btn {
+    padding: 10px 32px;
+  }
+}
+
+/* Header restyle: white background, green text, CTA moved below the nav row */
+.hamburger span {
+  background: #143109;
+}
+
+.nav-divider {
+  background: rgba(20, 49, 9, 0.2);
+}
+
+.header-cta-row {
+  display: flex;
+  justify-content: center;
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px solid rgba(20, 49, 9, 0.1);
+}
+
+@media (min-width: 769px) {
+  .header-cta-row .btn {
+    padding: 10px 32px;
+  }
+}
+
+/* Header restyle: white background, green text, CTA moved below the nav row */
+.hamburger span {
+  background: #143109;
+}
+
+.nav-divider {
+  background: rgba(20, 49, 9, 0.2);
+}
+
+.header-cta-row {
+  display: flex;
+  justify-content: center;
+  padding-top: 12px;
+  margin-top: 12px;
+  border-top: 1px solid rgba(20, 49, 9, 0.1);
+}
+
+@media (min-width: 769px) {
+  .header-cta-row .btn {
+    padding: 10px 32px;
+  }
+}
+
+/* Mobile nav panel: white background, green text, CTA as distinct button below links */
+.mobile-nav-panel.open {
+  background: #ffffff;
+}
+
+.mnp-row {
+  color: #143109;
+  border-bottom: 1px solid rgba(20, 49, 9, 0.12);
+}
+
+.mnp-row:active {
+  background: rgba(20, 49, 9, 0.05);
+}
+
+.mnp-chevron {
+  color: #143109;
+}
+
+.mnp-cta-wrap {
+  padding: 20px 24px;
+}
+
+/* Revert: desktop header back to dark green, so hamburger/divider need to be light again */
+.hamburger span {
+  background: #ffffff;
+}
+
+.nav-divider {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* Desktop header: white background, green hamburger/divider to match */
+.hamburger span {
+  background: #143109;
+}
+
+.nav-divider {
+  background: rgba(20, 49, 9, 0.2);
 }

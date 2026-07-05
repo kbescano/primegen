@@ -27,14 +27,14 @@ export default function SiteHeader() {
     <header
       className={`site-header${scrolled ? ' scrolled' : ''}`}
       style={{
-        background: 'rgba(14, 27, 20, 0.88)',
+        background: 'rgba(255, 255, 255, 0.95)',
         backdropFilter: 'blur(10px)',
         WebkitBackdropFilter: 'blur(10px)',
         padding: '14px 0',
         position: 'sticky',
         top: 0,
         zIndex: 50,
-        borderBottom: '1px solid rgba(31, 92, 52, 0.5)',
+        borderBottom: '1px solid rgba(20, 49, 9, 0.15)',
       }}
     >
       <div
@@ -49,7 +49,7 @@ export default function SiteHeader() {
             alignItems: 'center',
             gap: 10,
             fontSize: 20,
-            color: 'white',
+            color: '#143109',
             textDecoration: 'none',
           }}
           onClick={() => setOpen(false)}
@@ -75,7 +75,7 @@ export default function SiteHeader() {
               <Link
                 href={link.href}
                 className={`nav-link-item${pathname === link.href ? ' active' : ''}`}
-                style={{ color: 'rgba(255,255,255,0.85)', textDecoration: 'none', fontWeight: 500, fontSize: 15 }}
+                style={{ color: 'rgba(20, 49, 9, 0.85)', textDecoration: 'none', fontWeight: 500, fontSize: 15 }}
               >
                 {link.label}
               </Link>
@@ -90,18 +90,22 @@ export default function SiteHeader() {
         <div className={`mobile-nav-backdrop${open ? ' open' : ''}`} onClick={() => setOpen(false)} />
 
         <div className={`mobile-nav-panel${open ? ' open' : ''}`}>
-        
           {NAV_LINKS.map((link) => (
             <Link key={link.href} href={link.href} className="mnp-row" onClick={() => setOpen(false)}>
               <span>{link.label}</span>
               <span className="mnp-chevron">&gt;</span>
             </Link>
           ))}
-          <Link href="/quote" className="mnp-row" onClick={() => setOpen(false)}>
-            <span>Request a Quote</span>
-            <span className="mnp-chevron">&gt;</span>
-          </Link>
-
+          <div className="mnp-cta-wrap">
+            <Link
+              href="/quote"
+              className="btn btn-primary"
+              style={{ width: '100%', justifyContent: 'center' }}
+              onClick={() => setOpen(false)}
+            >
+              Request a Quote
+            </Link>
+          </div>
         </div>
       </div>
     </header>
