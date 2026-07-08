@@ -569,3 +569,51 @@ p {
   color: var(--color-text-muted);
   padding: 20px 0;
 }
+
+/* Product detail page: sticky info column, native accordion, related materials */
+.detail-sticky {
+  position: sticky;
+  top: 100px;
+}
+
+.detail-accordion {
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  padding: 20px 0;
+}
+
+.detail-accordion summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 16px;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.detail-accordion summary::-webkit-details-marker {
+  display: none;
+}
+
+.detail-accordion summary::after {
+  content: '+';
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--color-green);
+}
+
+.detail-accordion[open] summary::after {
+  content: '\2212';
+}
+
+.detail-accordion-body {
+  padding-top: 14px;
+  font-size: 15px;
+  color: var(--color-text-muted);
+}
+
+@media (max-width: 900px) {
+  .detail-sticky {
+    position: static;
+  }
+}
