@@ -4,11 +4,11 @@ import { useState } from 'react'
 import Link from 'next/link'
 
 const NAV_ITEMS = [
-  { href: '/admin-dashboard', label: 'Quotation' },
+  { href: '/admin-dashboard', label: 'Quotation Inbox' },
   { href: '/admin-dashboard/suppliers', label: 'Suppliers' },
 ]
 
-export default function DashboardShell({ children }: { children: React.ReactNode }) {
+export default function AdminSidebar({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -17,7 +17,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         className="dashboard-topbar"
         style={{
           display: 'none',
-          background: '#0d0d0d',
+          background: '#143109',
           color: 'white',
           padding: '14px 16px',
           alignItems: 'center',
@@ -42,11 +42,11 @@ export default function DashboardShell({ children }: { children: React.ReactNode
           className={`dashboard-sidebar${open ? ' open' : ''}`}
           style={{
             width: 220,
-            background: '#0d0d0d',
+            background: '#143109',
             color: 'white',
             padding: '28px 18px',
             flexShrink: 0,
-            borderRight: '3px solid #1f5c34',
+            borderRight: '3px solid #b5bfa1',
           }}
         >
           <h2 style={{ color: 'white', fontSize: 17, marginBottom: 36, fontWeight: 800 }}>Dashboard</h2>
@@ -57,7 +57,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
                 href={item.href}
                 onClick={() => setOpen(false)}
                 style={{
-                  color: '#c9e6d2',
+                  color: '#e4e8dc',
                   textDecoration: 'none',
                   padding: '11px 14px',
                   borderRadius: 6,

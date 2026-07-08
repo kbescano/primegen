@@ -26,3 +26,6 @@ next-env.d.ts
 
 # Payload generated types (regenerate on install, don't need to commit)
 src/payload-types.ts
+
+# Env template (per request, not tracked)
+.env.example

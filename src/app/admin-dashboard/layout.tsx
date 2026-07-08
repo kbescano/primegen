@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 import { headers as getHeaders } from 'next/headers'
 import { getPayloadClient } from '@/lib/getPayloadClient'
-import DashboardShell from '@/components/DashboardShell'
+import AdminSidebar from '@/components/AdminSidebar'
 
 export default async function AdminDashboardLayout({ children }: { children: ReactNode }) {
   const payload = await getPayloadClient()
@@ -16,7 +16,7 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
   return (
     <html lang="en">
       <body style={{ margin: 0, fontFamily: 'Inter, sans-serif', background: '#ffffff' }}>
-        <DashboardShell>{children}</DashboardShell>
+        <AdminSidebar>{children}</AdminSidebar>
       </body>
     </html>
   )
