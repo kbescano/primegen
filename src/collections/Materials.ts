@@ -1,8 +1,5 @@
 import type { CollectionConfig } from 'payload'
 
-// Materials the client (admin) can add/edit themselves:
-// name, photo, price, category, description, stock status.
-// This is the collection that powers the public Materials/Products page.
 export const Materials: CollectionConfig = {
   slug: 'materials',
   admin: {
@@ -11,21 +8,11 @@ export const Materials: CollectionConfig = {
     group: 'Content',
   },
   access: {
-    read: () => true, // public site can read materials
-    // create/update/delete default to admin-only via Users collection auth
+    read: () => true,
   },
   fields: [
-    {
-      name: 'name',
-      type: 'text',
-      required: true,
-    },
-    {
-      name: 'photo',
-      type: 'upload',
-      relationTo: 'media',
-      required: false,
-    },
+    { name: 'name', type: 'text', required: true },
+    { name: 'photo', type: 'upload', relationTo: 'media', required: false },
     {
       name: 'category',
       type: 'select',
@@ -47,10 +34,7 @@ export const Materials: CollectionConfig = {
       type: 'number',
       required: true,
       min: 0,
-      admin: {
-        description: 'Price in PHP (₱)',
-        step: 0.01,
-      },
+      admin: { description: 'Price in PHP (Php)', step: 0.01 },
     },
     {
       name: 'unit',
@@ -69,21 +53,15 @@ export const Materials: CollectionConfig = {
         { label: 'per set', value: 'set' },
       ],
     },
+    { name: 'description', type: 'textarea' },
+    { name: 'inStock', type: 'checkbox', defaultValue: true, label: 'In stock / available' },
+    { name: 'featured', type: 'checkbox', defaultValue: false, label: 'Show in homepage highlights' },
     {
-      name: 'description',
-      type: 'textarea',
-    },
-    {
-      name: 'inStock',
-      type: 'checkbox',
-      defaultValue: true,
-      label: 'In stock / available',
-    },
-    {
-      name: 'featured',
-      type: 'checkbox',
-      defaultValue: false,
-      label: 'Show in homepage highlights',
+      name: 'weightCalcProduct',
+      type: 'relationship',
+      relationTo: 'weight-calc-products',
+      required: false,
+      admin: { description: 'Optional: link a weight calculator shape/formula for this material\'s detail page' },
     },
   ],
 }
