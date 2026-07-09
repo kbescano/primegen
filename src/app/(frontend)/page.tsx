@@ -1,7 +1,7 @@
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import CinematicVideoHero, { type HeroSlide } from '@/components/CinematicVideoHero'
-import MaterialCarousel from '@/components/MaterialCarousel'
-import { Container, Section, SectionSage, MicroLabel, ValueCard, ValueNum } from '@/components/ui/styled'
+import FeaturedCarousel from '@/components/FeaturedCarousel'
+import { Container, Section, SectionSage, ValueCard, ValueNum } from '@/components/ui/styled'
 
 export const revalidate = 60
 
@@ -52,9 +52,15 @@ export default async function HomePage() {
 
       <SectionSage>
         <Container>
-          <MicroLabel style={{ marginBottom: 12 }}>Featured</MicroLabel>
-          <h2 style={{ marginBottom: 48 }}>Popular Materials</h2>
-          <MaterialCarousel materials={featured.docs as any} />
+          <h2 style={{ marginBottom: 8 }}>
+            Featured Materials.{' '}
+            <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>
+              Browse what's currently in stock.
+            </span>
+          </h2>
+          <div style={{ marginTop: 40 }}>
+            <FeaturedCarousel materials={featured.docs as any} />
+          </div>
         </Container>
       </SectionSage>
     </>

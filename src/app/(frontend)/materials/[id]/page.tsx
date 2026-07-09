@@ -1,25 +1,9 @@
 import Image from 'next/image'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import WeightCalculatorForm, { type CalcProduct } from '@/components/WeightCalculatorForm'
-import {
-  Container,
-  Section,
-  MicroLabel,
-  ButtonLink,
-  LinkCta,
-  TwoColGrid,
-  PdpInfoRow,
-  PdpInfoIcon,
-  PdpThumbStrip,
-  PdpThumb,
-  CalcEmptyNote,
-  ProductCard,
-  ProductCardTitle,
-  ProductCardImage,
-  ArrowOverlayButton,
-} from '@/components/ui/styled'
+import RelatedMaterialsCarousel from '@/components/RelatedMaterialsCarousel'
+import { Container, Section, MicroLabel, ButtonLink, TwoColGrid, PdpInfoRow, PdpInfoIcon, PdpThumbStrip, PdpThumb } from '@/components/ui/styled'
 
 export const revalidate = 60
 
@@ -58,7 +42,7 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
   const related = await payload.find({
     collection: 'materials',
     where: { and: [{ category: { equals: material.category } }, { id: { not_equals: material.id } }] },
-    limit: 3,
+    limit: 8,
   })
 
   const calcProduct: CalcProduct = material.weightCalcProduct
@@ -71,45 +55,13 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
       }
     : FALLBACK_CALC_PRODUCT
 
-  const images = [material.photo, material.hoverPhoto].filter((p) => p?.url)
+  const images = [material.photo, material.hoverPhoto].filter((p: any) => p?.url)
 
   return (
-    <Section><Container>
-      <MicroLabel style={{ marginBottom: 8 }}>{CATEGORY_LABELS[material.category] || material.category}</MicroLabel>
-
+    <Container as={Section}>
       <TwoColGrid style={{ marginBottom: 64 }}>
         <div>
-          <h1 style={{ marginBottom: 24, fontSize: 'clamp(28px, 4vw, 40px)' }}>{material.name}</h1>
-          {material.description && <p style={{ fontSize: 16 }}>{material.description}</p>}
-
-          <PdpInfoRow>
-           
-            <div>
-              <p style={{ fontWeight: 700, marginBottom: 4 }}>{material.inStock ? 'In Stock' : 'Currently Unavailable'}</p>
-               <PdpInfoIcon>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="1" y="7" width="15" height="10" rx="1" />
-                <path d="M16 10h4l3 3v4h-7" />
-                <circle cx="5.5" cy="19.5" r="1.5" />
-                <circle cx="18.5" cy="19.5" r="1.5" />
-              </svg>
-            </PdpInfoIcon><p style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>Delivery scheduled once your quote is confirmed.</p>
-            </div>
-          </PdpInfoRow>
-
-          <div style={{ marginBottom: 32 }}>
-            <Link href={`/calculator`} style={{ marginBottom: 24 }}>
-            <MicroLabel style={{ marginBottom: 12 }}>Calculate Weight</MicroLabel>
-            </Link>
-          </div>
-
-          <ButtonLink href={`/quote?material=${material.id}`} style={{ padding: '10px 22px', fontSize: 14 }}>
-            Request a Quote
-          </ButtonLink>
-        </div>
-
-        <div>
-          <div style={{ position: 'relative', width: '100%', aspectRatio: '4 / 5', background: 'var(--color-sage-tint)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
+          <div style={{ position: 'relative', width: '100%', aspectRatio: '4 / 5', background: 'var(--color-sage-tint)', borderRadius: 'var(--product-radius)', overflow: 'hidden' }}>
             {images[0]?.url && <Image src={images[0].url} alt={images[0].alt || material.name} fill style={{ objectFit: 'cover' }} />}
           </div>
 
@@ -122,33 +74,45 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
               ))}
             </PdpThumbStrip>
           )}
+
+         
+        </div>
+
+        <div>
+          <MicroLabel style={{ marginBottom: 8 }}>{CATEGORY_LABELS[material.category] || material.category}</MicroLabel>
+          <h1 style={{ marginBottom: 20, fontSize: 'clamp(28px, 4vw, 40px)' }}>{material.name}</h1>
+          {material.description && <p style={{ fontSize: 16, marginBottom: 28 }}>{material.description}</p>}
+
+          <div style={{ marginBottom: 28 }}>
+            <MicroLabel style={{ marginBottom: 12 }}>Calculate Weight</MicroLabel>
+            <WeightCalculatorForm products={[calcProduct]} />
+          </div>
+          <PdpInfoRow>
+            <PdpInfoIcon>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="1" y="7" width="15" height="10" rx="1" />
+                <path d="M16 10h4l3 3v4h-7" />
+                <circle cx="5.5" cy="19.5" r="1.5" />
+                <circle cx="18.5" cy="19.5" r="1.5" />
+              </svg>
+            </PdpInfoIcon>
+            <div>
+              <p style={{ fontWeight: 700, marginBottom: 4 }}>{material.inStock ? 'In Stock' : 'Currently Unavailable'}</p>
+              <p style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>Delivery scheduled once your quote is confirmed.</p>
+            </div>
+          </PdpInfoRow>
+          <ButtonLink href={`/quote?material=${material.id}`} style={{ width: '100%' }}>
+            Get a Quote
+          </ButtonLink>
         </div>
       </TwoColGrid>
 
       {related.docs.length > 0 && (
         <div>
-          <MicroLabel style={{ marginBottom: 12 }}>You May Also Need</MicroLabel>
-          <h2 style={{ marginBottom: 32 }}>Related Materials</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 24 }}>
-            {related.docs.map((m: any) => (
-              <ProductCard key={m.id} style={{ height: 380 }}>
-                <ProductCardTitle>{m.name}</ProductCardTitle>
-                <ProductCardImage>
-                  {m.photo?.url && <Image src={m.photo.url} alt={m.photo.alt || m.name} fill style={{ objectFit: 'cover' }} />}
-                  <ArrowOverlayButton as={Link} href={`/materials/${m.id}`} aria-label={`View ${m.name} details`}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M7 17L17 7M17 7H8M17 7V16" />
-                    </svg>
-                  </ArrowOverlayButton>
-                </ProductCardImage>
-                <LinkCta href={`/quote?material=${m.id}`} style={{ marginTop: 14 }}>
-                  Request a Quote
-                </LinkCta>
-              </ProductCard>
-            ))}
-          </div>
+          <h2 style={{ marginBottom: 40, textAlign: 'center' }}>Related Materials</h2>
+          <RelatedMaterialsCarousel materials={related.docs as any} />
         </div>
       )}
-    </Container></Section>
+    </Container>
   )
 }

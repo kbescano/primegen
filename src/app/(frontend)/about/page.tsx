@@ -1,5 +1,5 @@
 import { getPayloadClient } from '@/lib/getPayloadClient'
-import { Container, Section, MicroLabel, TwoColGrid, ProductCard } from '@/components/ui/styled'
+import { Container, SectionSage, MicroLabel, TwoColGrid, ProductCard } from '@/components/ui/styled'
 
 export const revalidate = 60
 
@@ -15,10 +15,10 @@ export default async function AboutPage() {
   const mapEmbedUrl = info?.mapEmbedUrl
 
   return (
-    <Section><Container>
+    <SectionSage><Container>
       <MicroLabel style={{ marginBottom: 8 }}>Who We Are</MicroLabel>
       <h1 style={{ marginBottom: 20 }}>{title}</h1>
-      <p style={{ maxWidth: 680, marginBottom: 48, whiteSpace: 'pre-line' }}>{description}</p>
+      <p style={{ fontSize: 16, fontWeight: 400, color: 'var(--color-text-muted)' }}>{description}</p>
 
       <TwoColGrid style={{ gridTemplateColumns: 'minmax(260px, 380px) minmax(280px, 1fr)' }}>
         <ProductCard style={{ height: 'auto', padding: 28 }}>
@@ -55,6 +55,6 @@ export default async function AboutPage() {
           )}
         </ProductCard>
       </TwoColGrid>
-    </Container></Section>
+    </Container></SectionSage>
   )
 }

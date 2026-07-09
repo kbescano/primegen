@@ -28,7 +28,7 @@ export const SectionSage = styled(Section)`
 `
 
 export const MicroLabel = styled.p<{ $onDark?: boolean }>`
-  font-size: 12.5px;
+  font-size: 30px;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
@@ -53,13 +53,14 @@ const buttonBase = `
 
 export const ButtonLink = styled(Link)<{ $variant?: 'outline' }>`
   ${buttonBase}
-  background: ${(p) => (p.$variant === 'outline' ? 'transparent' : 'var(--color-green)')};
-  color: ${(p) => (p.$variant === 'outline' ? 'var(--color-green)' : 'var(--color-white)')};
+  background: ${(p) => (p.$variant === 'outline' ? 'transparent' : 'var(--color-sage)')};
+  color: ${(p) => (p.$variant === 'outline' ? 'var(--color-green)' : 'var(--color-black)')};
   border: ${(p) => (p.$variant === 'outline' ? '1.5px solid var(--color-green)' : 'none')};
 
   &:hover {
     background: ${(p) => (p.$variant === 'outline' ? 'var(--color-sage-tint)' : 'var(--color-green-hover)')};
     transform: ${(p) => (p.$variant === 'outline' ? 'none' : 'scale(1.02)')};
+    color: ${(p) => (p.$variant === 'outline' ? 'var(--color-green)' : 'var(--color-white)')};
   }
 `
 
@@ -131,13 +132,23 @@ export const Divider = styled.hr`
 
 export const ProductCard = styled.div`
   background: var(--color-white);
+  border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: var(--product-radius);
-  padding: 32px;
+  overflow: hidden;
+  position: relative;
   display: flex;
   flex-direction: column;
   flex: 0 0 400px;
   height: 500px;
+  padding-top: 32px;
   scroll-snap-align: start;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 200ms ease, transform 200ms ease;
+
+  &:hover .hover-arrow {
+    opacity: 1;
+    transform: translate(0, 0);
+  }
 
   @media (max-width: 480px) {
     flex: 0 0 70vw;
@@ -146,19 +157,19 @@ export const ProductCard = styled.div`
 `
 
 export const ProductCardTitle = styled.h3`
-  font-size: 24px;
+  font-size: 16px;
   font-weight: 700;
-  line-height: 1.2;
-  margin-bottom: 12px;
+  line-height: 1.3;
+  margin: 20px 20px 0;
   color: var(--color-black);
 `
 
 export const ProductCardImage = styled.div`
   position: relative;
   flex: 1;
+  width: 100%;
   min-height: 200px;
-  border-radius: calc(var(--radius) - 2px);
-  overflow: hidden;
+  margin-top: 16px;
   background: var(--color-sage-tint);
 `
 
@@ -473,4 +484,186 @@ export const QvFeatureText = styled.span`
   font-size: 15px;
   font-weight: 700;
   color: var(--color-black);
+`
+
+export const FeaturedCard = styled.div<{ $dark?: boolean }>`
+  flex: 0 0 340px;
+  border-radius: var(--product-radius);
+  padding: 32px;
+  display: flex;
+  flex-direction: column;
+  min-height: 420px;
+  scroll-snap-align: start;
+  background: ${(p) => (p.$dark ? 'var(--color-green)' : 'var(--color-white)')};
+  color: ${(p) => (p.$dark ? 'white' : 'var(--color-black)')};
+  border: ${(p) => (p.$dark ? 'none' : '1px solid rgba(0,0,0,0.08)')};
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: box-shadow 200ms ease, transform 200ms ease;
+
+  @media (max-width: 480px) {
+    flex: 0 0 82vw;
+    min-height: 380px;
+  }
+`
+
+export const FeaturedCardLabel = styled.p<{ $dark?: boolean }>`
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 10px;
+  color: ${(p) => (p.$dark ? 'var(--color-sage)' : 'var(--color-green)')};
+`
+
+export const FeaturedCardTitle = styled.h3`
+  font-size: 26px;
+  font-weight: 700;
+  margin-bottom: 8px;
+`
+
+export const FeaturedCardSub = styled.p`
+  font-size: 15px;
+  margin-bottom: 24px;
+  opacity: 0.85;
+`
+
+export const FeaturedCardImage = styled.div`
+  position: relative;
+  flex: 1;
+  border-radius: calc(var(--radius) - 2px);
+  overflow: hidden;
+  min-height: 180px;
+  background: var(--color-sage-tint);
+`
+
+export const CarouselWrap = styled.div`
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+`
+
+export const ViewAllButton = styled(Link)`
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--color-green);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 200ms ease, background 200ms ease;
+
+  &:hover {
+    background: var(--color-green-hover);
+    transform: scale(1.05);
+  }
+`
+
+/* Updated tab-bar look: single rounded pill container, active tab gets inner black pill */
+export const QvTabsBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #e8e8ea;
+  border-radius: 100px;
+  padding: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  max-width: fit-content;
+  margin: 0 auto 16px;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+`
+
+export const QvTabPill = styled.button<{ $active?: boolean }>`
+  padding: 12px 22px;
+  border-radius: 100px;
+  font-size: 14px;
+  font-weight: 700;
+  white-space: nowrap;
+  border: none;
+  background: ${(p) => (p.$active ? 'var(--color-black)' : 'transparent')};
+  color: ${(p) => (p.$active ? 'white' : 'var(--color-black)')};
+  cursor: pointer;
+  transition: background 200ms ease;
+`
+
+export const QvTabsChevron = styled.span`
+  flex-shrink: 0;
+  padding: 0 12px;
+  color: var(--color-black);
+  opacity: 0.5;
+`
+
+export const HoverArrow = styled.span`
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-green);
+  opacity: 0;
+  transform: translate(-4px, 4px);
+  transition: opacity 200ms ease, transform 200ms ease;
+  pointer-events: none;
+  z-index: 2;
+`
+
+export const CalcGrid = styled.div`
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(240px, 320px);
+  gap: 20px;
+
+  @media (max-width: 720px) {
+    grid-template-columns: 1fr;
+  }
+`
+
+export const CalcPanel = styled.div`
+  background: var(--color-white);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: var(--radius);
+  padding: 24px;
+`
+
+export const CalcResultPanel = styled(CalcPanel)`
+  background: var(--color-green);
+  color: white;
+  border: none;
+`
+
+export const FloatingCarouselWrap = styled.div`
+  position: relative;
+`
+
+export const FloatingScrollButton = styled.button<{ $side: 'left' | 'right' }>`
+  position: absolute;
+  top: 50%;
+  ${(p) => (p.$side === 'left' ? 'left: -8px;' : 'right: -8px;')}
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--color-black);
+  z-index: 5;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  @media (max-width: 640px) {
+    display: none;
+  }
 `

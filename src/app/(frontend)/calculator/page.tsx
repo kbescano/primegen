@@ -1,6 +1,6 @@
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import WeightCalculatorForm, { type CalcProduct } from '@/components/WeightCalculatorForm'
-import { Container, Section, MicroLabel } from '@/components/ui/styled'
+import { Container, MicroLabel, SectionSage } from '@/components/ui/styled'
 
 export const revalidate = 60
 
@@ -23,13 +23,13 @@ export default async function CalculatorPage() {
       : FALLBACK_PRODUCTS
 
   return (
-    <Section><Container>
+    <SectionSage><Container>
       <MicroLabel style={{ marginBottom: 8 }}>Tools</MicroLabel>
       <h1 style={{ marginBottom: 10 }}>Weight Calculator</h1>
       <p style={{ marginBottom: 32, maxWidth: 560 }}>
         Estimate the weight of steel products by shape and dimension -- useful for planning orders and checking delivery loads before you request a quote.
       </p>
       <WeightCalculatorForm products={products} />
-    </Container></Section>
+    </Container></SectionSage>
   )
 }

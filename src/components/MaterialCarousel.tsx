@@ -10,15 +10,16 @@ import {
   ProductCard,
   ProductCardTitle,
   ProductCardImage,
-  ArrowOverlayButton,
+  HoverArrow,
   LinkCta,
   MicroLabel,
   ButtonLink,
   QvBackdrop,
   QvModal,
   QvClose,
-  QvTabs,
-  QvTab,
+  QvTabsBar,
+  QvTabPill,
+  QvTabsChevron,
   QvBody,
   QvImage,
   QvFeatureRow,
@@ -60,23 +61,16 @@ export default function MaterialCarousel({ materials }: { materials: Material[] 
     <div>
       <CarouselTrack ref={trackRef}>
         {materials.map((m) => (
-          <ProductCard key={m.id} style={{ opacity: m.inStock === false ? 0.5 : 1 }}>
+          <ProductCard key={m.id} style={{ opacity: m.inStock === false ? 0.5 : 1, cursor: 'pointer' }} onClick={() => setSelected(m)}>
             <ProductCardTitle>{m.name}</ProductCardTitle>
             <ProductCardImage>
               {m.photo?.url && <Image src={m.photo.url} alt={m.photo.alt || m.name} fill style={{ objectFit: 'cover' }} />}
-              <ArrowOverlayButton onClick={() => setSelected(m)} aria-label={`Quick view ${m.name}`}>
+              <HoverArrow className="hover-arrow">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M7 17L17 7M17 7H8M17 7V16" />
                 </svg>
-              </ArrowOverlayButton>
+              </HoverArrow>
             </ProductCardImage>
-            <div style={{ marginTop: 16 }}>
-              {m.inStock === false ? (
-                <p style={{ fontSize: 13, color: '#4a4a4a', margin: 0 }}>Out of stock</p>
-              ) : (
-                <LinkCta href={`/quote?material=${m.id}`}>Request a Quote</LinkCta>
-              )}
-            </div>
           </ProductCard>
         ))}
       </CarouselTrack>
@@ -96,85 +90,95 @@ export default function MaterialCarousel({ materials }: { materials: Material[] 
 
       {selected && (
         <QvBackdrop onClick={() => setSelected(null)}>
-          <QvModal onClick={(e) => e.stopPropagation()}>
-            <QvClose onClick={() => setSelected(null)} aria-label="Close">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M18 6L6 18M6 6l12 12" />
-              </svg>
-            </QvClose>
-
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ width: '100%', maxWidth: 960, display: 'flex', flexDirection: 'column', alignItems: 'center' }}
+          >
             {materials.length > 1 && (
-              <QvTabs>
+              <QvTabsBar>
                 {materials.map((m) => (
-                  <QvTab key={m.id} $active={selected.id === m.id} onClick={() => setSelected(m)}>
+                  <QvTabPill key={m.id} $active={selected.id === m.id} onClick={() => setSelected(m)}>
                     {m.name}
-                  </QvTab>
+                  </QvTabPill>
                 ))}
-              </QvTabs>
+                <QvTabsChevron>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M9 18l6-6-6-6" />
+                  </svg>
+                </QvTabsChevron>
+              </QvTabsBar>
             )}
 
-            <QvBody>
-              <QvImage>
-                {selected.photo?.url && (
-                  <Image src={selected.photo.url} alt={selected.photo.alt || selected.name} fill style={{ objectFit: 'cover' }} />
-                )}
-              </QvImage>
+            <QvModal style={{ width: '100%' }}>
+              <QvClose onClick={() => setSelected(null)} aria-label="Close">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+              </QvClose>
 
-              <div>
-                <MicroLabel style={{ marginBottom: 8 }}>
-                  {CATEGORY_LABELS[selected.category || ''] || selected.category}
-                </MicroLabel>
-                <h2 style={{ marginBottom: 20, fontSize: 28 }}>{selected.name}</h2>
+              <QvBody>
+                <QvImage>
+                  {selected.photo?.url && (
+                    <Image src={selected.photo.url} alt={selected.photo.alt || selected.name} fill style={{ objectFit: 'cover' }} />
+                  )}
+                </QvImage>
 
-                {selected.inStock === false ? (
-                  <p style={{ color: '#8a2e2e', fontWeight: 700, marginBottom: 20 }}>Out of stock</p>
-                ) : (
-                  <ButtonLink href={`/quote?material=${selected.id}`} style={{ marginBottom: 24 }}>
-                    Request a Quote
-                  </ButtonLink>
-                )}
+                <div>
+                  <MicroLabel style={{ marginBottom: 8 }}>
+                    {CATEGORY_LABELS[selected.category || ''] || selected.category}
+                  </MicroLabel>
+                  <h2 style={{ marginBottom: 20, fontSize: 28 }}>{selected.name}</h2>
 
-                {selected.description && (
+                  {selected.inStock === false ? (
+                    <p style={{ color: '#8a2e2e', fontWeight: 700, marginBottom: 20 }}>Out of stock</p>
+                  ) : (
+                    <ButtonLink href={`/quote?material=${selected.id}`} style={{ marginBottom: 24 }}>
+                      Request a Quote
+                    </ButtonLink>
+                  )}
+
+                  {selected.description && (
+                    <QvFeatureRow>
+                      <QvFeatureIcon>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M4 6h16M4 12h16M4 18h7" />
+                        </svg>
+                      </QvFeatureIcon>
+                      <QvFeatureText>{selected.description}</QvFeatureText>
+                    </QvFeatureRow>
+                  )}
+
+                  {selected.unit && (
+                    <QvFeatureRow>
+                      <QvFeatureIcon>
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <rect x="4" y="4" width="16" height="16" rx="2" />
+                        </svg>
+                      </QvFeatureIcon>
+                      <QvFeatureText>Sold {selected.unit}</QvFeatureText>
+                    </QvFeatureRow>
+                  )}
+
                   <QvFeatureRow>
                     <QvFeatureIcon>
                       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M4 6h16M4 12h16M4 18h7" />
+                        <circle cx="12" cy="12" r="9" />
+                        <path d="M9 12l2 2 4-4" />
                       </svg>
                     </QvFeatureIcon>
-                    <QvFeatureText>{selected.description}</QvFeatureText>
+                    <QvFeatureText>{selected.inStock === false ? 'Currently out of stock' : 'In stock and available'}</QvFeatureText>
                   </QvFeatureRow>
-                )}
 
-                {selected.unit && (
-                  <QvFeatureRow>
-                    <QvFeatureIcon>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="4" y="4" width="16" height="16" rx="2" />
-                      </svg>
-                    </QvFeatureIcon>
-                    <QvFeatureText>Sold {selected.unit}</QvFeatureText>
-                  </QvFeatureRow>
-                )}
-
-                <QvFeatureRow>
-                  <QvFeatureIcon>
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="12" r="9" />
-                      <path d="M9 12l2 2 4-4" />
+                  <LinkCta href={`/materials/${selected.id}`} style={{ marginTop: 20 }}>
+                    View Full Details
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M5 12h14M13 6l6 6-6 6" />
                     </svg>
-                  </QvFeatureIcon>
-                  <QvFeatureText>{selected.inStock === false ? 'Currently out of stock' : 'In stock and available'}</QvFeatureText>
-                </QvFeatureRow>
-
-                <LinkCta href={`/materials/${selected.id}`} style={{ marginTop: 20 }}>
-                  View Full Details
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M5 12h14M13 6l6 6-6 6" />
-                  </svg>
-                </LinkCta>
-              </div>
-            </QvBody>
-          </QvModal>
+                  </LinkCta>
+                </div>
+              </QvBody>
+            </QvModal>
+          </div>
         </QvBackdrop>
       )}
     </div>

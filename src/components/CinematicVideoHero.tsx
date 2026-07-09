@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import styled from 'styled-components'
-import { ButtonLink, MicroLabel, Container } from '@/components/ui/styled'
+import {  MicroLabel, Container, ViewAllButton } from '@/components/ui/styled'
+import Link from 'next/link'
 
 export type HeroSlide = {
   id: string | number
@@ -55,7 +56,7 @@ const Content = styled.div`
   inset: 0;
   z-index: 3;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   padding-bottom: 72px;
 
   @media (max-width: 480px) {
@@ -150,7 +151,14 @@ export default function CinematicVideoHero({ slides }: { slides: HeroSlide[] }) 
               {slide.label}
             </MicroLabel>
             <Title>{slide.title}</Title>
-            <ButtonLink href={slide.href}>{slide.cta}</ButtonLink>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 24 }}>
+            <p style={{ color: 'white', fontSize: '24px' }}>{slide.cta}</p>
+            <ViewAllButton href={slide.href} aria-label="View all materials">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+            </ViewAllButton>
+            </div>
           </Panel>
         ))}
       </Content>

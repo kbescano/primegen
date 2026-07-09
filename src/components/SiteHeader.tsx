@@ -32,7 +32,7 @@ const Row = styled(Container)`
 const Wordmark = styled(Link)`
   font-weight: 700;
   font-size: 19px;
-  color: #000000;
+  color: var(--color-text-muted);
   text-decoration: none;
 `
 

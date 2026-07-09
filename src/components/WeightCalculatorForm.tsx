@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { CalcGrid, CalcPanel, CalcResultPanel, MicroLabel, PillInput, PillSelect } from '@/components/ui/styled'
 
 export type Shape = 'round-bar' | 'square-bar' | 'flat-bar' | 'round-pipe' | 'angle-bar' | 'sheet-plate'
 
@@ -41,9 +42,8 @@ function weightPerMeter(shape: Shape, density: number, dims: Record<string, numb
       const side = d(dims.side || 0)
       return side * side * density
     }
-    case 'flat-bar': {
+    case 'flat-bar':
       return d(dims.thickness || 0) * d(dims.width || 0) * density
-    }
     case 'round-pipe': {
       const od = d(dims.outerDiameter || 0)
       const wall = d(dims.wallThickness || 0)
@@ -55,9 +55,8 @@ function weightPerMeter(shape: Shape, density: number, dims: Record<string, numb
       const t = d(dims.thickness || 0)
       return (a + b - t) * t * density
     }
-    case 'sheet-plate': {
+    case 'sheet-plate':
       return d(dims.thickness || 0) * density
-    }
     default:
       return 0
   }
@@ -74,7 +73,6 @@ export default function WeightCalculatorForm({ products }: { products: CalcProdu
 
   const result = useMemo(() => {
     if (!product) return null
-
     if (product.shape === 'sheet-plate') {
       const perSqm = weightPerMeter('sheet-plate', product.density, dims)
       const area = (sheetWidth / 1000) * (sheetLength / 1000)
@@ -87,7 +85,6 @@ export default function WeightCalculatorForm({ products }: { products: CalcProdu
         total: perSheet * pieces,
       }
     }
-
     const perM = weightPerMeter(product.shape, product.density, dims)
     const perPiece = perM * (product.standardLength || 6)
     return {
@@ -111,113 +108,107 @@ export default function WeightCalculatorForm({ products }: { products: CalcProdu
   }
 
   return (
-    <div className="calc-grid">
-      <div className="facet-card calc-panel">
+    <CalcGrid>
+      <CalcPanel>
         {products.length > 1 && (
-          <>
-            <label style={labelStyle}>Product Shape</label>
-            <select value={String(productId)} onChange={(e) => handleProductChange(e.target.value)} style={inputStyle}>
+          <div style={{ marginBottom: 16 }}>
+            <MicroLabel style={{ marginBottom: 8 }}>Product Shape</MicroLabel>
+            <PillSelect value={String(productId)} onChange={(e) => handleProductChange(e.target.value)}>
               {products.map((p) => (
                 <option key={p.id} value={String(p.id)}>
                   {p.name} ({SHAPE_LABELS[p.shape]})
                 </option>
               ))}
-            </select>
-          </>
+            </PillSelect>
+          </div>
         )}
 
         {product && (
-          <div style={{ marginTop: products.length > 1 ? 20 : 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 14 }}>
             {product.shape === 'round-bar' && (
               <Field label="Diameter (mm)">
-                <input type="number" min="0" step="0.1" defaultValue={dims.diameter} style={inputStyle} onChange={(e) => updateDim('diameter', e.target.value)} />
+                <PillInput type="number" min="0" step="0.1" defaultValue={dims.diameter} onChange={(e) => updateDim('diameter', e.target.value)} />
               </Field>
             )}
-
             {product.shape === 'square-bar' && (
               <Field label="Side (mm)">
-                <input type="number" min="0" step="0.1" defaultValue={dims.side} style={inputStyle} onChange={(e) => updateDim('side', e.target.value)} />
+                <PillInput type="number" min="0" step="0.1" defaultValue={dims.side} onChange={(e) => updateDim('side', e.target.value)} />
               </Field>
             )}
-
             {product.shape === 'flat-bar' && (
               <>
                 <Field label="Thickness (mm)">
-                  <input type="number" min="0" step="0.1" defaultValue={dims.thickness} style={inputStyle} onChange={(e) => updateDim('thickness', e.target.value)} />
+                  <PillInput type="number" min="0" step="0.1" defaultValue={dims.thickness} onChange={(e) => updateDim('thickness', e.target.value)} />
                 </Field>
                 <Field label="Width (mm)">
-                  <input type="number" min="0" step="0.1" defaultValue={dims.width} style={inputStyle} onChange={(e) => updateDim('width', e.target.value)} />
+                  <PillInput type="number" min="0" step="0.1" defaultValue={dims.width} onChange={(e) => updateDim('width', e.target.value)} />
                 </Field>
               </>
             )}
-
             {product.shape === 'round-pipe' && (
               <>
                 <Field label="Outer Diameter (mm)">
-                  <input type="number" min="0" step="0.1" defaultValue={dims.outerDiameter} style={inputStyle} onChange={(e) => updateDim('outerDiameter', e.target.value)} />
+                  <PillInput type="number" min="0" step="0.1" defaultValue={dims.outerDiameter} onChange={(e) => updateDim('outerDiameter', e.target.value)} />
                 </Field>
                 <Field label="Wall Thickness (mm)">
-                  <input type="number" min="0" step="0.1" defaultValue={dims.wallThickness} style={inputStyle} onChange={(e) => updateDim('wallThickness', e.target.value)} />
+                  <PillInput type="number" min="0" step="0.1" defaultValue={dims.wallThickness} onChange={(e) => updateDim('wallThickness', e.target.value)} />
                 </Field>
               </>
             )}
-
             {product.shape === 'angle-bar' && (
               <>
                 <Field label="Leg A (mm)">
-                  <input type="number" min="0" step="0.1" defaultValue={dims.legA} style={inputStyle} onChange={(e) => updateDim('legA', e.target.value)} />
+                  <PillInput type="number" min="0" step="0.1" defaultValue={dims.legA} onChange={(e) => updateDim('legA', e.target.value)} />
                 </Field>
                 <Field label="Leg B (mm)">
-                  <input type="number" min="0" step="0.1" defaultValue={dims.legB} style={inputStyle} onChange={(e) => updateDim('legB', e.target.value)} />
+                  <PillInput type="number" min="0" step="0.1" defaultValue={dims.legB} onChange={(e) => updateDim('legB', e.target.value)} />
                 </Field>
                 <Field label="Thickness (mm)">
-                  <input type="number" min="0" step="0.1" defaultValue={dims.thickness} style={inputStyle} onChange={(e) => updateDim('thickness', e.target.value)} />
+                  <PillInput type="number" min="0" step="0.1" defaultValue={dims.thickness} onChange={(e) => updateDim('thickness', e.target.value)} />
                 </Field>
               </>
             )}
-
             {product.shape === 'sheet-plate' && (
               <>
                 <Field label="Thickness (mm)">
-                  <input type="number" min="0" step="0.1" defaultValue={dims.thickness} style={inputStyle} onChange={(e) => updateDim('thickness', e.target.value)} />
+                  <PillInput type="number" min="0" step="0.1" defaultValue={dims.thickness} onChange={(e) => updateDim('thickness', e.target.value)} />
                 </Field>
                 <Field label="Width (mm)">
-                  <input type="number" min="0" step="1" defaultValue={1000} style={inputStyle} onChange={(e) => setSheetWidth(parseFloat(e.target.value) || 0)} />
+                  <PillInput type="number" min="0" step="1" defaultValue={1000} onChange={(e) => setSheetWidth(parseFloat(e.target.value) || 0)} />
                 </Field>
                 <Field label="Length (mm)">
-                  <input type="number" min="0" step="1" defaultValue={2440} style={inputStyle} onChange={(e) => setSheetLength(parseFloat(e.target.value) || 0)} />
+                  <PillInput type="number" min="0" step="1" defaultValue={2440} onChange={(e) => setSheetLength(parseFloat(e.target.value) || 0)} />
                 </Field>
               </>
             )}
-
             <Field label={product.shape === 'sheet-plate' ? 'Number of Sheets' : 'Number of Pieces'}>
-              <input type="number" min="1" step="1" defaultValue={1} style={inputStyle} onChange={(e) => setPieces(parseInt(e.target.value) || 1)} />
+              <PillInput type="number" min="1" step="1" defaultValue={1} onChange={(e) => setPieces(parseInt(e.target.value) || 1)} />
             </Field>
           </div>
         )}
-      </div>
+      </CalcPanel>
 
-      <div className="facet-card calc-panel" style={{ background: 'var(--color-ink)', color: 'white' }}>
-        <p className="eyebrow" style={{ color: 'white', opacity: 0.7, marginBottom: 16 }}>Result</p>
+      <CalcResultPanel>
+        <MicroLabel $onDark style={{ marginBottom: 14 }}>Result</MicroLabel>
         {result ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <ResultRow label={result.perUnitLabel} value={result.perUnit} />
             <ResultRow label={result.perPieceLabel} value={result.perPiece} />
-            <div style={{ borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: 16 }}>
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.2)', paddingTop: 14 }}>
               <ResultRow label={`Total (${pieces} ${product?.shape === 'sheet-plate' ? 'sheets' : 'pieces'})`} value={result.total} big />
             </div>
           </div>
         ) : (
           <p>Select a product to calculate.</p>
         )}
-      </div>
-    </div>
+      </CalcResultPanel>
+    </CalcGrid>
   )
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 13, fontWeight: 500 }}>
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 12, fontWeight: 600 }}>
       {label}
       {children}
     </label>
@@ -227,20 +218,10 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function ResultRow({ label, value, big }: { label: string; value: number; big?: boolean }) {
   return (
     <div>
-      <p style={{ fontSize: 12, opacity: 0.65, marginBottom: 4 }}>{label}</p>
-      <p style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: big ? 28 : 18, margin: 0 }}>
+      <p style={{ fontSize: 12, opacity: 0.9, marginBottom: 4, margin: 0, color: 'var(--color-white)' }}>{label}</p>
+      <p style={{ fontFamily: 'monospace', fontWeight: 600, fontSize: big ? 26 : 18, margin: '4px 0 0', color: 'var(--color-white)' }}>
         {value.toLocaleString(undefined, { maximumFractionDigits: 2 })} kg
       </p>
     </div>
   )
-}
-
-const labelStyle: React.CSSProperties = { display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8 }
-const inputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '10px 12px',
-  border: '1.5px solid var(--color-border)',
-  borderRadius: 4,
-  fontSize: 15,
-  fontFamily: 'var(--font-body)',
 }
