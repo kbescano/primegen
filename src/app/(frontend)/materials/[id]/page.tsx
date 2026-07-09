@@ -98,8 +98,9 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
           </PdpInfoRow>
 
           <div style={{ marginBottom: 32 }}>
+            <Link href={`/calculator`} style={{ marginBottom: 24 }}>
             <MicroLabel style={{ marginBottom: 12 }}>Calculate Weight</MicroLabel>
-            <WeightCalculatorForm products={[calcProduct]} />
+            </Link>
           </div>
 
           <ButtonLink href={`/quote?material=${material.id}`} style={{ padding: '10px 22px', fontSize: 14 }}>

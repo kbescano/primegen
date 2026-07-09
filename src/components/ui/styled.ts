@@ -131,12 +131,12 @@ export const Divider = styled.hr`
 
 export const ProductCard = styled.div`
   background: var(--color-white);
-  border-radius: var(--radius);
+  border-radius: var(--product-radius);
   padding: 32px;
   display: flex;
   flex-direction: column;
-  flex: 0 0 300px;
-  height: 460px;
+  flex: 0 0 400px;
+  height: 500px;
   scroll-snap-align: start;
 
   @media (max-width: 480px) {
