@@ -63,6 +63,9 @@ export default async function HomePage() {
           </div>
         </Container>
       </SectionSage>
+      <footer style={{ marginTop: 5, padding: 10, textAlign: 'center', fontSize: 8, color: 'var(--color-text-muted)' }}>
+        &copy; {new Date().getFullYear()} Primegen Trading Corporation. All rights reserved.
+      </footer>
     </>
   )
 }

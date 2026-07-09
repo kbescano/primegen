@@ -44,7 +44,7 @@ const buttonBase = `
   padding: 14px 30px;
   border-radius: var(--radius);
   font-weight: 700;
-  font-size: 15px;
+  font-size: 12px;
   border: none;
   cursor: pointer;
   text-decoration: none;

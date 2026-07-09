@@ -52,5 +52,6 @@ export default async function MaterialsPage() {
         ))}
       </Container>
     </SectionSage>
+
   )
 }

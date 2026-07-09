@@ -31,7 +31,7 @@ const Row = styled(Container)`
 
 const Wordmark = styled(Link)`
   font-weight: 700;
-  font-size: 19px;
+  font-size: 12px;
   color: var(--color-text-muted);
   text-decoration: none;
 `
@@ -85,7 +85,7 @@ const NavLinkItem = styled(Link)<{ $active?: boolean }>`
   color: rgba(20, 49, 9, 0.85);
   text-decoration: none;
   font-weight: 500;
-  font-size: 15px;
+  font-size: 12px;
   padding-bottom: 4px;
 
   &::after {
