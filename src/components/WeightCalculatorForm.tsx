@@ -21,8 +21,15 @@ const SHAPE_LABELS: Record<Shape, string> = {
   'sheet-plate': 'Sheet / Plate',
 }
 
-// Standard engineering weight formulas (density x cross-section area).
-// All dimensions in millimeters; density in kg per cubic meter.
+const DEFAULT_DIMS: Record<Shape, Record<string, number>> = {
+  'round-bar': { diameter: 12 },
+  'square-bar': { side: 10 },
+  'flat-bar': { thickness: 6, width: 50 },
+  'round-pipe': { outerDiameter: 50, wallThickness: 3 },
+  'angle-bar': { legA: 50, legB: 50, thickness: 5 },
+  'sheet-plate': { thickness: 1 },
+}
+
 function weightPerMeter(shape: Shape, density: number, dims: Record<string, number>): number {
   const d = (mm: number) => mm / 1000
   switch (shape) {
@@ -58,7 +65,7 @@ function weightPerMeter(shape: Shape, density: number, dims: Record<string, numb
 
 export default function WeightCalculatorForm({ products }: { products: CalcProduct[] }) {
   const [productId, setProductId] = useState<string | number>(products[0]?.id ?? '')
-  const [dims, setDims] = useState<Record<string, number>>({})
+  const [dims, setDims] = useState<Record<string, number>>(DEFAULT_DIMS[products[0]?.shape] || {})
   const [pieces, setPieces] = useState(1)
   const [sheetWidth, setSheetWidth] = useState(1000)
   const [sheetLength, setSheetLength] = useState(2440)
@@ -98,47 +105,48 @@ export default function WeightCalculatorForm({ products }: { products: CalcProdu
 
   function handleProductChange(value: string) {
     const found = products.find((p) => String(p.id) === value)
-    setProductId(found ? found.id : products[0]?.id ?? '')
-    setDims({})
+    const next = found || products[0]
+    setProductId(next?.id ?? '')
+    setDims(DEFAULT_DIMS[next?.shape] || {})
   }
 
   return (
     <div className="calc-grid">
       <div className="facet-card calc-panel">
-        <label style={labelStyle}>Product Shape</label>
-        <select
-          value={String(productId)}
-          onChange={(e) => handleProductChange(e.target.value)}
-          style={inputStyle}
-        >
-          {products.map((p) => (
-            <option key={p.id} value={String(p.id)}>
-              {p.name} ({SHAPE_LABELS[p.shape]})
-            </option>
-          ))}
-        </select>
+        {products.length > 1 && (
+          <>
+            <label style={labelStyle}>Product Shape</label>
+            <select value={String(productId)} onChange={(e) => handleProductChange(e.target.value)} style={inputStyle}>
+              {products.map((p) => (
+                <option key={p.id} value={String(p.id)}>
+                  {p.name} ({SHAPE_LABELS[p.shape]})
+                </option>
+              ))}
+            </select>
+          </>
+        )}
 
         {product && (
-          <div style={{ marginTop: 20, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16 }}>
+          <div style={{ marginTop: products.length > 1 ? 20 : 0, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 16 }}>
             {product.shape === 'round-bar' && (
               <Field label="Diameter (mm)">
-                <input type="number" min="0" step="0.1" style={inputStyle} onChange={(e) => updateDim('diameter', e.target.value)} />
+                <input type="number" min="0" step="0.1" defaultValue={dims.diameter} style={inputStyle} onChange={(e) => updateDim('diameter', e.target.value)} />
               </Field>
             )}
 
             {product.shape === 'square-bar' && (
               <Field label="Side (mm)">
-                <input type="number" min="0" step="0.1" style={inputStyle} onChange={(e) => updateDim('side', e.target.value)} />
+                <input type="number" min="0" step="0.1" defaultValue={dims.side} style={inputStyle} onChange={(e) => updateDim('side', e.target.value)} />
               </Field>
             )}
 
             {product.shape === 'flat-bar' && (
               <>
                 <Field label="Thickness (mm)">
-                  <input type="number" min="0" step="0.1" style={inputStyle} onChange={(e) => updateDim('thickness', e.target.value)} />
+                  <input type="number" min="0" step="0.1" defaultValue={dims.thickness} style={inputStyle} onChange={(e) => updateDim('thickness', e.target.value)} />
                 </Field>
                 <Field label="Width (mm)">
-                  <input type="number" min="0" step="0.1" style={inputStyle} onChange={(e) => updateDim('width', e.target.value)} />
+                  <input type="number" min="0" step="0.1" defaultValue={dims.width} style={inputStyle} onChange={(e) => updateDim('width', e.target.value)} />
                 </Field>
               </>
             )}
@@ -146,10 +154,10 @@ export default function WeightCalculatorForm({ products }: { products: CalcProdu
             {product.shape === 'round-pipe' && (
               <>
                 <Field label="Outer Diameter (mm)">
-                  <input type="number" min="0" step="0.1" style={inputStyle} onChange={(e) => updateDim('outerDiameter', e.target.value)} />
+                  <input type="number" min="0" step="0.1" defaultValue={dims.outerDiameter} style={inputStyle} onChange={(e) => updateDim('outerDiameter', e.target.value)} />
                 </Field>
                 <Field label="Wall Thickness (mm)">
-                  <input type="number" min="0" step="0.1" style={inputStyle} onChange={(e) => updateDim('wallThickness', e.target.value)} />
+                  <input type="number" min="0" step="0.1" defaultValue={dims.wallThickness} style={inputStyle} onChange={(e) => updateDim('wallThickness', e.target.value)} />
                 </Field>
               </>
             )}
@@ -157,13 +165,13 @@ export default function WeightCalculatorForm({ products }: { products: CalcProdu
             {product.shape === 'angle-bar' && (
               <>
                 <Field label="Leg A (mm)">
-                  <input type="number" min="0" step="0.1" style={inputStyle} onChange={(e) => updateDim('legA', e.target.value)} />
+                  <input type="number" min="0" step="0.1" defaultValue={dims.legA} style={inputStyle} onChange={(e) => updateDim('legA', e.target.value)} />
                 </Field>
                 <Field label="Leg B (mm)">
-                  <input type="number" min="0" step="0.1" style={inputStyle} onChange={(e) => updateDim('legB', e.target.value)} />
+                  <input type="number" min="0" step="0.1" defaultValue={dims.legB} style={inputStyle} onChange={(e) => updateDim('legB', e.target.value)} />
                 </Field>
                 <Field label="Thickness (mm)">
-                  <input type="number" min="0" step="0.1" style={inputStyle} onChange={(e) => updateDim('thickness', e.target.value)} />
+                  <input type="number" min="0" step="0.1" defaultValue={dims.thickness} style={inputStyle} onChange={(e) => updateDim('thickness', e.target.value)} />
                 </Field>
               </>
             )}
@@ -171,7 +179,7 @@ export default function WeightCalculatorForm({ products }: { products: CalcProdu
             {product.shape === 'sheet-plate' && (
               <>
                 <Field label="Thickness (mm)">
-                  <input type="number" min="0" step="0.1" style={inputStyle} onChange={(e) => updateDim('thickness', e.target.value)} />
+                  <input type="number" min="0" step="0.1" defaultValue={dims.thickness} style={inputStyle} onChange={(e) => updateDim('thickness', e.target.value)} />
                 </Field>
                 <Field label="Width (mm)">
                   <input type="number" min="0" step="1" defaultValue={1000} style={inputStyle} onChange={(e) => setSheetWidth(parseFloat(e.target.value) || 0)} />
@@ -220,27 +228,14 @@ function ResultRow({ label, value, big }: { label: string; value: number; big?: 
   return (
     <div>
       <p style={{ fontSize: 12, opacity: 0.65, marginBottom: 4 }}>{label}</p>
-      <p
-        style={{
-          fontFamily: 'var(--font-mono)',
-          fontWeight: 600,
-          fontSize: big ? 28 : 18,
-          margin: 0,
-        }}
-      >
+      <p style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, fontSize: big ? 28 : 18, margin: 0 }}>
         {value.toLocaleString(undefined, { maximumFractionDigits: 2 })} kg
       </p>
     </div>
   )
 }
 
-const labelStyle: React.CSSProperties = {
-  display: 'block',
-  fontSize: 13,
-  fontWeight: 600,
-  marginBottom: 8,
-}
-
+const labelStyle: React.CSSProperties = { display: 'block', fontSize: 13, fontWeight: 600, marginBottom: 8 }
 const inputStyle: React.CSSProperties = {
   width: '100%',
   padding: '10px 12px',

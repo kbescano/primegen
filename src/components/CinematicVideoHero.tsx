@@ -1,7 +1,8 @@
 'use client'
 
-import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
+import styled from 'styled-components'
+import { ButtonLink, MicroLabel, Container } from '@/components/ui/styled'
 
 export type HeroSlide = {
   id: string | number
@@ -14,15 +15,101 @@ export type HeroSlide = {
 
 const SLIDE_DURATION = 6000
 
+const Hero = styled.section`
+  position: relative;
+  height: 80vh;
+  min-height: 520px;
+  overflow: hidden;
+  background: var(--color-green);
+  color: white;
+
+  @media (max-width: 480px) {
+    height: 68vh;
+    min-height: 460px;
+  }
+`
+
+const Slide = styled.div<{ $active: boolean }>`
+  position: absolute;
+  inset: 0;
+  opacity: ${(p) => (p.$active ? 1 : 0)};
+  z-index: ${(p) => (p.$active ? 1 : 0)};
+  transition: opacity 1.2s ease;
+`
+
+const SlideVideo = styled.video`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`
+
+const Overlay = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(to top, rgba(20, 49, 9, 0.6) 0%, rgba(20, 49, 9, 0.15) 55%, transparent 100%);
+`
+
+const Content = styled.div`
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  padding-bottom: 72px;
+
+  @media (max-width: 480px) {
+    padding-bottom: 48px;
+  }
+`
+
+const Panel = styled.div<{ $active: boolean }>`
+  position: absolute;
+  max-width: 620px;
+  opacity: ${(p) => (p.$active ? 1 : 0)};
+  transform: translateY(${(p) => (p.$active ? '0' : '16px')});
+  transition: opacity 0.6s ease, transform 0.6s ease;
+  pointer-events: ${(p) => (p.$active ? 'auto' : 'none')};
+`
+
+const Title = styled.h1`
+  font-weight: 700;
+  font-size: clamp(32px, 5vw, 52px);
+  line-height: 1.1;
+  color: white;
+  margin: 0 0 28px;
+  max-width: 16ch;
+`
+
+const Pagination = styled.div`
+  position: absolute;
+  bottom: 24px;
+  left: 0;
+  width: 100%;
+  z-index: 4;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+`
+
+const Dot = styled.button<{ $active: boolean }>`
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: ${(p) => (p.$active ? 'white' : 'rgba(255,255,255,0.4)')};
+  cursor: pointer;
+  transition: background 200ms ease;
+  padding: 0;
+`
+
 export default function CinematicVideoHero({ slides }: { slides: HeroSlide[] }) {
   const [current, setCurrent] = useState(0)
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([])
 
   useEffect(() => {
     if (slides.length <= 1) return
-    const timer = setInterval(() => {
-      setCurrent((prev) => (prev + 1) % slides.length)
-    }, SLIDE_DURATION)
+    const timer = setInterval(() => setCurrent((prev) => (prev + 1) % slides.length), SLIDE_DURATION)
     return () => clearInterval(timer)
   }, [slides.length])
 
@@ -38,12 +125,11 @@ export default function CinematicVideoHero({ slides }: { slides: HeroSlide[] }) 
   if (slides.length === 0) return null
 
   return (
-    <section className="cine-hero">
-      <div className="cine-overlay" />
-
+    <Hero>
+      <Overlay />
       {slides.map((slide, index) => (
-        <div key={slide.id} className={`cine-slide${current === index ? ' cine-slide-active' : ''}`}>
-          <video
+        <Slide key={slide.id} $active={current === index}>
+          <SlideVideo
             ref={(el) => {
               videoRefs.current[index] = el
             }}
@@ -51,39 +137,31 @@ export default function CinematicVideoHero({ slides }: { slides: HeroSlide[] }) 
             loop
             muted
             playsInline
-            className="cine-slide-video"
           >
             <source src={slide.video} type="video/mp4" />
-          </video>
-        </div>
+          </SlideVideo>
+        </Slide>
       ))}
 
-      <div className="cine-content container">
+      <Content as={Container}>
         {slides.map((slide, index) => (
-          <div key={`c-${slide.id}`} className={`cine-panel${current === index ? ' cine-panel-active' : ''}`}>
-            <p className="micro-label micro-label-on-dark" style={{ marginBottom: 16 }}>
+          <Panel key={`c-${slide.id}`} $active={current === index}>
+            <MicroLabel $onDark style={{ marginBottom: 16 }}>
               {slide.label}
-            </p>
-            <h1 className="cine-title">{slide.title}</h1>
-            <Link href={slide.href} className="btn btn-primary">
-              {slide.cta}
-            </Link>
-          </div>
+            </MicroLabel>
+            <Title>{slide.title}</Title>
+            <ButtonLink href={slide.href}>{slide.cta}</ButtonLink>
+          </Panel>
         ))}
-      </div>
+      </Content>
 
       {slides.length > 1 && (
-        <div className="cine-pagination">
+        <Pagination>
           {slides.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrent(index)}
-              aria-label={`Show slide ${index + 1}`}
-              className={`cine-dot${current === index ? ' active' : ''}`}
-            />
+            <Dot key={index} $active={current === index} onClick={() => setCurrent(index)} aria-label={`Show slide ${index + 1}`} />
           ))}
-        </div>
+        </Pagination>
       )}
-    </section>
+    </Hero>
   )
 }

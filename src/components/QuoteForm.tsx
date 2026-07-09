@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { PillInput, PillSelect, PillTextarea, ButtonEl, Divider, QuoteItemRow } from '@/components/ui/styled'
 
 type Material = { id: string; name: string; unit: string }
 type LineItem = { materialId: string; quantity: number }
@@ -12,18 +13,14 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
   const preselectedMaterial = materials.find((m) => String(m.id) === String(preselected))
 
   const [status, setStatus] = useState<'idle' | 'submitting' | 'done' | 'error'>('idle')
-  const [items, setItems] = useState<LineItem[]>([
-    { materialId: preselectedMaterial?.id ?? materials[0]?.id ?? '', quantity: 1 },
-  ])
+  const [items, setItems] = useState<LineItem[]>([{ materialId: preselectedMaterial?.id ?? materials[0]?.id ?? '', quantity: 1 }])
 
   function addItem() {
     setItems((prev) => [...prev, { materialId: materials[0]?.id ?? '', quantity: 1 }])
   }
-
   function removeItem(index: number) {
     setItems((prev) => prev.filter((_, i) => i !== index))
   }
-
   function updateItem(index: number, patch: Partial<LineItem>) {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))
   }
@@ -39,11 +36,8 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
       projectType: (form.elements.namedItem('projectType') as HTMLSelectElement).value,
       message: (form.elements.namedItem('message') as HTMLTextAreaElement).value,
       source: 'website',
-      items: items
-        .filter((i) => i.materialId)
-        .map((i) => ({ material: i.materialId, quantity: i.quantity })),
+      items: items.filter((i) => i.materialId).map((i) => ({ material: i.materialId, quantity: i.quantity })),
     }
-
     try {
       const res = await fetch('/api/quotation-requests', {
         method: 'POST',
@@ -60,88 +54,67 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
 
   if (status === 'done') {
     return (
-      <div>
+      <div style={{ textAlign: 'center' }}>
         <h2 style={{ fontSize: 22, marginBottom: 12 }}>Request received.</h2>
-        <p>
-          Thanks -- your project details are with our team. We'll reach out directly by
-          phone or email with your quotation shortly.
-        </p>
+        <p>Thanks -- your project details are with our team. We'll reach out directly by phone or email with your quotation shortly.</p>
       </div>
     )
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
+    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       {preselectedMaterial && (
-        <p style={{ fontSize: 13, color: 'var(--color-forest)', margin: 0 }}>
+        <p style={{ fontSize: 13, color: 'var(--color-green)', margin: 0, textAlign: 'center' }}>
           Pre-filled: {preselectedMaterial.name}
         </p>
       )}
 
-      <Field label="Full name">
-        <input name="customerName" required style={inputStyle} />
-      </Field>
-      <Field label="Phone number">
-        <input name="phone" type="tel" required style={inputStyle} />
-      </Field>
-      <Field label="Email (optional)">
-        <input name="email" type="email" style={inputStyle} />
-      </Field>
-      <Field label="Project type">
-        <select name="projectType" style={inputStyle}>
-          <option value="residential">Residential</option>
-          <option value="commercial">Commercial</option>
-          <option value="renovation">Renovation</option>
-          <option value="other">Other</option>
-        </select>
-      </Field>
+      <PillInput name="customerName" placeholder="Full name" required aria-label="Full name" />
+      <PillInput name="phone" type="tel" placeholder="Phone number" required aria-label="Phone number" />
+      <PillInput name="email" type="email" placeholder="Email (optional)" aria-label="Email" />
+
+      <PillSelect name="projectType" aria-label="Project type">
+        <option value="residential">Residential</option>
+        <option value="commercial">Commercial</option>
+        <option value="renovation">Renovation</option>
+        <option value="other">Other</option>
+      </PillSelect>
+
+      <Divider />
 
       <div>
-        <p style={{ fontSize: 14, fontWeight: 500, marginBottom: 10 }}>Materials needed</p>
+        <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, textAlign: 'center' }}>Materials needed</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {items.map((item, index) => {
             const selected = materials.find((m) => m.id === item.materialId)
             return (
-              <div key={index} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <select
-                  value={item.materialId}
-                  onChange={(e) => updateItem(index, { materialId: e.target.value })}
-                  style={{ ...inputStyle, flex: 1 }}
-                >
+              <QuoteItemRow key={index}>
+                <PillSelect value={item.materialId} onChange={(e) => updateItem(index, { materialId: e.target.value })} style={{ flex: 1 }}>
                   {materials.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.name}
                     </option>
                   ))}
-                </select>
-                <input
+                </PillSelect>
+                <PillInput
                   type="number"
                   min={1}
                   value={item.quantity}
                   onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })}
-                  style={{ ...inputStyle, width: 80 }}
+                  style={{ width: 90 }}
                 />
-                <span style={{ fontSize: 13, color: '#718096', width: 60 }}>
-                  {selected?.unit ?? ''}
-                </span>
+                <span style={{ fontSize: 13, color: 'var(--color-text-muted)', width: 60 }}>{selected?.unit ?? ''}</span>
                 {items.length > 1 && (
                   <button
                     type="button"
                     onClick={() => removeItem(index)}
                     aria-label="Remove item"
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#c53030',
-                      cursor: 'pointer',
-                      fontSize: 18,
-                      padding: 4,
-                    }}
+                    style={{ background: 'none', border: 'none', color: '#c53030', cursor: 'pointer', fontSize: 18, padding: 4 }}
                   >
                     X
                   </button>
                 )}
-              </div>
+              </QuoteItemRow>
             )
           })}
         </div>
@@ -149,51 +122,29 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
           type="button"
           onClick={addItem}
           style={{
-            marginTop: 10,
+            marginTop: 12,
             background: 'none',
-            border: '1px dashed var(--color-border)',
-            borderRadius: 6,
-            padding: '8px 14px',
+            border: '1.5px dashed rgba(0,0,0,0.2)',
+            borderRadius: 14,
+            padding: '10px 16px',
             fontSize: 14,
             cursor: 'pointer',
-            color: 'var(--color-forest)',
+            color: 'var(--color-green)',
+            width: '100%',
           }}
         >
           + Add another material
         </button>
       </div>
 
-      <Field label="Project details">
-        <textarea
-          name="message"
-          rows={4}
-          placeholder="Project size, timeline, delivery location, etc."
-          style={{ ...inputStyle, resize: 'vertical' }}
-        />
-      </Field>
+      <Divider />
 
-      <button type="submit" className="btn btn-primary" disabled={status === 'submitting'}>
+      <PillTextarea name="message" rows={4} placeholder="Project details (size, timeline, delivery location, etc.)" />
+
+      <ButtonEl type="submit" disabled={status === 'submitting'} style={{ marginTop: 8 }}>
         {status === 'submitting' ? 'Sending...' : 'Send Request'}
-      </button>
-      {status === 'error' && <p style={{ color: '#c53030' }}>Something went wrong. Please try again.</p>}
+      </ButtonEl>
+      {status === 'error' && <p style={{ color: '#c53030', textAlign: 'center' }}>Something went wrong. Please try again.</p>}
     </form>
   )
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 6, fontSize: 14, fontWeight: 500 }}>
-      {label}
-      {children}
-    </label>
-  )
-}
-
-const inputStyle: React.CSSProperties = {
-  padding: '11px 13px',
-  border: '1px solid var(--color-border)',
-  borderRadius: 3,
-  fontSize: 15,
-  fontFamily: 'var(--font-body)',
-  background: 'white',
 }
