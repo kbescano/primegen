@@ -140,7 +140,6 @@ export const ProductCard = styled.div`
   flex-direction: column;
   flex: 0 0 400px;
   height: 500px;
-  padding-top: 32px;
   scroll-snap-align: start;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   transition: box-shadow 200ms ease, transform 200ms ease;
@@ -157,10 +156,9 @@ export const ProductCard = styled.div`
 `
 
 export const ProductCardTitle = styled.h3`
-  font-size: 16px;
   font-weight: 700;
   line-height: 1.3;
-  margin: 20px 20px 0;
+  margin: 50px 24px;
   color: var(--color-black);
 `
 
@@ -169,7 +167,6 @@ export const ProductCardImage = styled.div`
   flex: 1;
   width: 100%;
   min-height: 200px;
-  margin-top: 16px;
   background: var(--color-sage-tint);
 `
 

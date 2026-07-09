@@ -58,7 +58,7 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
   const images = [material.photo, material.hoverPhoto].filter((p: any) => p?.url)
 
   return (
-    <Container as={Section}>
+    <Section><Container>
       <TwoColGrid style={{ marginBottom: 64 }}>
         <div>
           <div style={{ position: 'relative', width: '100%', aspectRatio: '4 / 5', background: 'var(--color-sage-tint)', borderRadius: 'var(--product-radius)', overflow: 'hidden' }}>
@@ -113,6 +113,7 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
           <RelatedMaterialsCarousel materials={related.docs as any} />
         </div>
       )}
-    </Container>
+      </Container>
+    </Section>
   )
 }
