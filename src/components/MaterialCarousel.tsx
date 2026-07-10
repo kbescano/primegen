@@ -3,29 +3,6 @@
 import { useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import {
-  CarouselTrack,
-  CarouselControls,
-  ScrollButton,
-  ProductCard,
-  ProductCardTitle,
-  ProductCardImage,
-  HoverArrow,
-  LinkCta,
-  MicroLabel,
-  ButtonLink,
-  QvBackdrop,
-  QvModal,
-  QvClose,
-  QvTabsBar,
-  QvTabPill,
-  QvTabsChevron,
-  QvBody,
-  QvImage,
-  QvFeatureRow,
-  QvFeatureIcon,
-  QvFeatureText,
-} from '@/components/ui/styled'
 
 type Material = {
   id: string | number
@@ -59,127 +36,128 @@ export default function MaterialCarousel({ materials }: { materials: Material[] 
 
   return (
     <div>
-      <CarouselTrack ref={trackRef}>
+      <div ref={trackRef} className="flex gap-5 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {materials.map((m) => (
-          <ProductCard key={m.id} style={{ opacity: m.inStock === false ? 0.5 : 1, cursor: 'pointer' }} onClick={() => setSelected(m)}>
-            <ProductCardTitle>{m.name}</ProductCardTitle>
-            <ProductCardImage>
-              {m.photo?.url && <Image src={m.photo.url} alt={m.photo.alt || m.name} fill style={{ objectFit: 'cover' }} />}
-              <HoverArrow className="hover-arrow">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <path d="M7 17L17 7M17 7H8M17 7V16" />
-                </svg>
-              </HoverArrow>
-            </ProductCardImage>
-          </ProductCard>
-        ))}
-      </CarouselTrack>
+          <div
+          key={m.id}
+          className="relative flex flex-col flex-none w-[420px] h-[500px] snap-start bg-white border border-black/10 rounded-2xl shadow-sm hover:shadow-lg transition-shadow duration-200 overflow-hidden max-[480px]:w-[70vw] max-[480px]:h-[440px]"
+          style={{ opacity: m.inStock === false ? 0.5 : 1 }}
+        >
+          <button
+            onClick={() => setSelected(m)}
+            aria-label={`Quick view ${m.name}`}
+            className="absolute top-5 right-6 z-10 w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-green hover:bg-green hover:text-white transition-colors"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M7 17L17 7M17 7H8M17 7V16" />
+            </svg>
+          </button>
 
-      <CarouselControls>
-        <ScrollButton onClick={() => scroll('left')} aria-label="Scroll left">
+          <div className="pt-12 pl-6">
+            <h3 className="text-xl font-bold leading-snug mb-2">{m.name}</h3>
+            {m.description && <p className="text-sm text-gray-500 line-clamp-2">{m.description}</p>}
+          </div>
+
+          {/* FIX: Replaced 'self-end' with 'mt-auto w-full' to push it to the bottom */}
+          <div className="relative m-auto w-[90%] min-h-[342px]">
+            {m.photo?.url && (
+              <Image 
+                src={m.photo.url} 
+                alt={m.photo.alt || m.name} 
+                fill 
+                className="object-cover" 
+              />
+            )}
+          </div>
+        </div>
+      ))}
+      </div>
+
+      <div className="flex justify-end gap-2 mt-4">
+        <button onClick={() => scroll('left')} aria-label="Scroll left" className="w-11 h-11 rounded-full bg-white border border-black/10 shadow-sm flex items-center justify-center text-black hover:bg-gray-50">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <path d="M15 18l-6-6 6-6" />
           </svg>
-        </ScrollButton>
-        <ScrollButton onClick={() => scroll('right')} aria-label="Scroll right">
+        </button>
+        <button onClick={() => scroll('right')} aria-label="Scroll right" className="w-11 h-11 rounded-full bg-white border border-black/10 shadow-sm flex items-center justify-center text-black hover:bg-gray-50">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <path d="M9 18l6-6-6-6" />
           </svg>
-        </ScrollButton>
-      </CarouselControls>
+        </button>
+      </div>
 
       {selected && (
-        <QvBackdrop onClick={() => setSelected(null)}>
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{ width: '100%', maxWidth: 960, display: 'flex', flexDirection: 'column', alignItems: 'center' }}
-          >
+        <div className="fixed inset-0 bg-black/55 z-[100] flex items-center justify-center p-6" onClick={() => setSelected(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-3xl flex flex-col items-center">
             {materials.length > 1 && (
-              <QvTabsBar>
+              <div className="flex items-center gap-1 bg-gray-200 rounded-full p-1.5 mb-4 overflow-x-auto max-w-fit [scrollbar-width:none]">
                 {materials.map((m) => (
-                  <QvTabPill key={m.id} $active={selected.id === m.id} onClick={() => setSelected(m)}>
+                  <button
+                    key={m.id}
+                    onClick={() => setSelected(m)}
+                    className={`px-5 py-3 rounded-full text-sm font-bold whitespace-nowrap ${selected.id === m.id ? 'bg-black text-white' : 'bg-transparent text-black'}`}
+                  >
                     {m.name}
-                  </QvTabPill>
+                  </button>
                 ))}
-                <QvTabsChevron>
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <path d="M9 18l6-6-6-6" />
-                  </svg>
-                </QvTabsChevron>
-              </QvTabsBar>
+              </div>
             )}
 
-            <QvModal style={{ width: '100%' }}>
-              <QvClose onClick={() => setSelected(null)} aria-label="Close">
+            <div className="bg-white rounded-2xl w-full max-h-[90vh] overflow-y-auto relative">
+              <button
+                onClick={() => setSelected(null)}
+                aria-label="Close"
+                className="absolute top-5 right-5 w-9 h-9 rounded-full bg-black/5 flex items-center justify-center z-10"
+              >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M18 6L6 18M6 6l12 12" />
                 </svg>
-              </QvClose>
+              </button>
 
-              <QvBody>
-                <QvImage>
+              <div className="grid md:grid-cols-2 gap-10 p-6">
+                <div className="relative w-full aspect-[4/5] bg-sage-tint rounded">
                   {selected.photo?.url && (
-                    <Image src={selected.photo.url} alt={selected.photo.alt || selected.name} fill style={{ objectFit: 'cover' }} />
+                    <Image src={selected.photo.url} alt={selected.photo.alt || selected.name} fill className="object-cover" />
                   )}
-                </QvImage>
+                </div>
 
                 <div>
-                  <MicroLabel style={{ marginBottom: 8 }}>
+                  <p className="text-xs font-bold uppercase tracking-wider text-green mb-2">
                     {CATEGORY_LABELS[selected.category || ''] || selected.category}
-                  </MicroLabel>
-                  <h2 style={{ marginBottom: 20, fontSize: 28 }}>{selected.name}</h2>
+                  </p>
+                  <h2 className="text-2xl font-bold mb-5">{selected.name}</h2>
 
                   {selected.inStock === false ? (
-                    <p style={{ color: '#8a2e2e', fontWeight: 700, marginBottom: 20 }}>Out of stock</p>
+                    <p className="text-red-700 font-bold mb-5">Out of stock</p>
                   ) : (
-                    <ButtonLink href={`/quote?material=${selected.id}`} style={{ marginBottom: 24 }}>
+                    <Link href={`/quote?material=${selected.id}`} className="inline-flex items-center justify-center px-8 py-3.5 rounded bg-green text-white font-bold mb-6 hover:bg-green-hover">
                       Request a Quote
-                    </ButtonLink>
+                    </Link>
                   )}
 
                   {selected.description && (
-                    <QvFeatureRow>
-                      <QvFeatureIcon>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M4 6h16M4 12h16M4 18h7" />
-                        </svg>
-                      </QvFeatureIcon>
-                      <QvFeatureText>{selected.description}</QvFeatureText>
-                    </QvFeatureRow>
+                    <div className="flex gap-3 py-4 border-t border-black/10">
+                      <p className="text-sm font-bold text-black">{selected.description}</p>
+                    </div>
                   )}
 
                   {selected.unit && (
-                    <QvFeatureRow>
-                      <QvFeatureIcon>
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <rect x="4" y="4" width="16" height="16" rx="2" />
-                        </svg>
-                      </QvFeatureIcon>
-                      <QvFeatureText>Sold {selected.unit}</QvFeatureText>
-                    </QvFeatureRow>
+                    <div className="flex gap-3 py-4 border-t border-black/10">
+                      <p className="text-sm font-bold text-black">Sold {selected.unit}</p>
+                    </div>
                   )}
 
-                  <QvFeatureRow>
-                    <QvFeatureIcon>
-                      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="9" />
-                        <path d="M9 12l2 2 4-4" />
-                      </svg>
-                    </QvFeatureIcon>
-                    <QvFeatureText>{selected.inStock === false ? 'Currently out of stock' : 'In stock and available'}</QvFeatureText>
-                  </QvFeatureRow>
-
-                  <LinkCta href={`/materials/${selected.id}`} style={{ marginTop: 20 }}>
+                  <Link href={`/materials/${selected.id}`} className="inline-flex items-center gap-2 text-green font-bold text-sm mt-5 hover:underline">
                     View Full Details
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <path d="M5 12h14M13 6l6 6-6 6" />
                     </svg>
-                  </LinkCta>
+                  </Link>
                 </div>
-              </QvBody>
-            </QvModal>
+              </div>
+            </div>
           </div>
-        </QvBackdrop>
+        </div>
       )}
     </div>
   )

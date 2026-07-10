@@ -2,17 +2,6 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import {
-  CarouselWrap,
-  CarouselTrack,
-  FeaturedCard,
-  FeaturedCardLabel,
-  FeaturedCardTitle,
-  FeaturedCardSub,
-  FeaturedCardImage,
-  ViewAllButton,
-  LinkCta,
-} from '@/components/ui/styled'
 
 type Material = {
   id: string | number
@@ -26,31 +15,45 @@ export default function FeaturedCarousel({ materials }: { materials: Material[] 
   if (materials.length === 0) return null
 
   return (
-    <CarouselWrap>
-      <CarouselTrack style={{ flex: 1 }}>
+    <div className="relative flex items-center gap-3">
+      <div className="flex-1 flex gap-4 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {materials.map((m, index) => (
-          <FeaturedCard key={m.id} $dark={index === 0}>
-            <FeaturedCardLabel $dark={index === 0}>{m.category?.replace('-', ' ') || 'Featured'}</FeaturedCardLabel>
-            <FeaturedCardTitle>{m.name}</FeaturedCardTitle>
-            {m.description && <FeaturedCardSub>{m.description.slice(0, 80)}</FeaturedCardSub>}
-            <FeaturedCardImage>
-              {m.photo?.url && <Image src={m.photo.url} alt={m.photo.alt || m.name} fill style={{ objectFit: 'cover' }} />}
-            </FeaturedCardImage>
-            <LinkCta href={`/quote?material=${m.id}`} style={{ marginTop: 20, color: index === 0 ? 'white' : undefined }}>
+          <div
+            key={m.id}
+            className={`flex-none w-[340px] min-h-[420px] rounded p-8 flex flex-col snap-start max-[480px]:w-[82vw] max-[480px]:min-h-[380px] ${
+              index === 0 ? 'bg-green text-white' : 'bg-white text-black border border-black/10'
+            }`}
+          >
+            <p className={`text-xs font-bold uppercase tracking-wider mb-2.5 ${index === 0 ? 'text-sage' : 'text-green'}`}>
+              {m.category?.replace('-', ' ') || 'Featured'}
+            </p>
+            <h3 className="text-2xl font-bold mb-2">{m.name}</h3>
+            {m.description && <p className="text-sm mb-6 opacity-85">{m.description.slice(0, 80)}</p>}
+            <div className="relative flex-1 rounded overflow-hidden min-h-[180px] bg-sage-tint">
+              {m.photo?.url && <Image src={m.photo.url} alt={m.photo.alt || m.name} fill className="object-cover" />}
+            </div>
+            <Link
+              href={`/quote?material=${m.id}`}
+              className={`inline-flex items-center gap-2 font-bold text-sm mt-5 hover:underline ${index === 0 ? 'text-white' : 'text-green'}`}
+            >
               Request a Quote
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M5 12h14M13 6l6 6-6 6" />
               </svg>
-            </LinkCta>
-          </FeaturedCard>
+            </Link>
+          </div>
         ))}
-      </CarouselTrack>
+      </div>
 
-      <ViewAllButton href="/materials" aria-label="View all materials">
+      <Link
+        href="/materials"
+        aria-label="View all materials"
+        className="flex-shrink-0 w-11 h-11 rounded-full bg-green text-white flex items-center justify-center hover:bg-green-hover transition-colors"
+      >
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
           <path d="M9 18l6-6-6-6" />
         </svg>
-      </ViewAllButton>
-    </CarouselWrap>
+      </Link>
+    </div>
   )
 }

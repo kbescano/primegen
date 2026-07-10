@@ -1,7 +1,6 @@
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import CinematicVideoHero, { type HeroSlide } from '@/components/CinematicVideoHero'
 import FeaturedCarousel from '@/components/FeaturedCarousel'
-import { Container, Section, SectionSage, ValueCard, ValueNum } from '@/components/ui/styled'
 
 export const revalidate = 60
 
@@ -34,38 +33,33 @@ export default async function HomePage() {
     <>
       <CinematicVideoHero slides={slides} />
 
-      <Section>
-        <Container>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 24 }}>
+      <section className="py-28">
+        <div className="max-w-[1360px] mx-auto px-6 lg:px-20">
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {VALUE_PROPS.map((v) => (
-              <ValueCard key={v.num}>
-                <ValueNum>{v.num}</ValueNum>
+              <div key={v.num} className="flex gap-4 items-start bg-white border-l-4 border-sage p-6">
+                <span className="text-sm font-bold text-green">{v.num}</span>
                 <div>
-                  <h3 style={{ fontSize: 16, marginBottom: 6 }}>{v.title}</h3>
-                  <p style={{ fontSize: 14, margin: 0 }}>{v.body}</p>
+                  <h3 className="text-base font-bold mb-1.5">{v.title}</h3>
+                  <p className="text-sm m-0">{v.body}</p>
                 </div>
-              </ValueCard>
+              </div>
             ))}
           </div>
-        </Container>
-      </Section>
+        </div>
+      </section>
 
-      <SectionSage>
-        <Container>
-          <h2 style={{ marginBottom: 8 }}>
+      <section className="py-28 bg-sage-tint">
+        <div className="max-w-[1360px] mx-auto px-6 lg:px-20">
+          <h2 className="mb-2 normal-case">
             Featured Materials.{' '}
-            <span style={{ fontWeight: 400, color: 'var(--color-text-muted)' }}>
-              Browse what's currently in stock.
-            </span>
+            <span className="font-normal text-gray-500">Browse what&apos;s currently in stock.</span>
           </h2>
-          <div style={{ marginTop: 40 }}>
+          <div className="mt-10">
             <FeaturedCarousel materials={featured.docs as any} />
           </div>
-        </Container>
-      </SectionSage>
-      <footer style={{ marginTop: 5, padding: 10, textAlign: 'center', fontSize: 8, color: 'var(--color-text-muted)' }}>
-        &copy; {new Date().getFullYear()} Primegen Trading Corporation. All rights reserved.
-      </footer>
+        </div>
+      </section>
     </>
   )
 }

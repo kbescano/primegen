@@ -3,7 +3,6 @@ import { notFound } from 'next/navigation'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import WeightCalculatorForm, { type CalcProduct } from '@/components/WeightCalculatorForm'
 import RelatedMaterialsCarousel from '@/components/RelatedMaterialsCarousel'
-import { Container, Section, MicroLabel, ButtonLink, TwoColGrid, PdpInfoRow, PdpInfoIcon, PdpThumbStrip, PdpThumb } from '@/components/ui/styled'
 
 export const revalidate = 60
 
@@ -58,62 +57,63 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
   const images = [material.photo, material.hoverPhoto].filter((p: any) => p?.url)
 
   return (
-    <Section><Container>
-      <TwoColGrid style={{ marginBottom: 64 }}>
-        <div>
-          <div style={{ position: 'relative', width: '100%', aspectRatio: '4 / 5', background: 'var(--color-sage-tint)', borderRadius: 'var(--product-radius)', overflow: 'hidden' }}>
-            {images[0]?.url && <Image src={images[0].url} alt={images[0].alt || material.name} fill style={{ objectFit: 'cover' }} />}
-          </div>
-
-          {images.length > 1 && (
-            <PdpThumbStrip>
-              {images.map((img: any, i: number) => (
-                <PdpThumb key={i} $active={i === 0}>
-                  <Image src={img.url} alt={img.alt || material.name} fill style={{ objectFit: 'cover' }} />
-                </PdpThumb>
-              ))}
-            </PdpThumbStrip>
-          )}
-
-         
-        </div>
-
-        <div>
-          <MicroLabel style={{ marginBottom: 8 }}>{CATEGORY_LABELS[material.category] || material.category}</MicroLabel>
-          <h1 style={{ marginBottom: 20, fontSize: 'clamp(28px, 4vw, 40px)' }}>{material.name}</h1>
-          {material.description && <p style={{ fontSize: 16, marginBottom: 28 }}>{material.description}</p>}
-
-          <div style={{ marginBottom: 28 }}>
-            <MicroLabel style={{ marginBottom: 12 }}>Calculate Weight</MicroLabel>
-            <WeightCalculatorForm products={[calcProduct]} />
-          </div>
-          <PdpInfoRow>
-            <PdpInfoIcon>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="1" y="7" width="15" height="10" rx="1" />
-                <path d="M16 10h4l3 3v4h-7" />
-                <circle cx="5.5" cy="19.5" r="1.5" />
-                <circle cx="18.5" cy="19.5" r="1.5" />
-              </svg>
-            </PdpInfoIcon>
-            <div>
-              <p style={{ fontWeight: 700, marginBottom: 4 }}>{material.inStock ? 'In Stock' : 'Currently Unavailable'}</p>
-              <p style={{ fontSize: 14, color: 'var(--color-text-muted)' }}>Delivery scheduled once your quote is confirmed.</p>
+    <section className="py-28">
+      <div className="max-w-[1360px] mx-auto px-6 lg:px-20">
+        <div className="grid gap-14 [grid-template-columns:minmax(280px,1fr)_minmax(320px,1fr)] max-[800px]:grid-cols-1 mb-16">
+          <div>
+            <div className="relative w-full aspect-[4/5] bg-sage-tint rounded-2xl overflow-hidden">
+              {images[0]?.url && <Image src={images[0].url} alt={images[0].alt || material.name} fill className="object-cover" />}
             </div>
-          </PdpInfoRow>
-          <ButtonLink href={`/quote?material=${material.id}`} style={{ width: '100%' }}>
-            Get a Quote
-          </ButtonLink>
-        </div>
-      </TwoColGrid>
 
-      {related.docs.length > 0 && (
-        <div>
-          <h2 style={{ marginBottom: 40, textAlign: 'center' }}>Related Materials</h2>
-          <RelatedMaterialsCarousel materials={related.docs as any} />
+            {images.length > 1 && (
+              <div className="flex gap-2.5 mt-4">
+                {images.map((img: any, i: number) => (
+                  <div key={i} className={`relative w-16 h-16 rounded overflow-hidden cursor-pointer border-2 ${i === 0 ? 'border-green' : 'border-transparent'}`}>
+                    <Image src={img.url} alt={img.alt || material.name} fill className="object-cover" />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex gap-3.5 items-start py-5 border-t border-b border-black/[0.08] my-6">
+              <span className="flex-shrink-0 text-green mt-0.5">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="1" y="7" width="15" height="10" rx="1" />
+                  <path d="M16 10h4l3 3v4h-7" />
+                  <circle cx="5.5" cy="19.5" r="1.5" />
+                  <circle cx="18.5" cy="19.5" r="1.5" />
+                </svg>
+              </span>
+              <div>
+                <p className="font-bold mb-1">{material.inStock ? 'In Stock' : 'Currently Unavailable'}</p>
+                <p className="text-sm text-gray-500">Delivery scheduled once your quote is confirmed.</p>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-green mb-2">{CATEGORY_LABELS[material.category] || material.category}</p>
+            <h1 className="mb-5 text-[clamp(28px,4vw,40px)]">{material.name}</h1>
+            {material.description && <p className="text-base mb-7">{material.description}</p>}
+
+            <div className="mb-7">
+              <p className="text-xs font-bold uppercase tracking-wider text-green mb-3">Calculate Weight</p>
+              <WeightCalculatorForm products={[calcProduct]} />
+            </div>
+
+            <a href={`/quote?material=${material.id}`} className="inline-block w-full text-center px-8 py-3.5 rounded bg-green text-white font-bold hover:bg-green-hover">
+              Request a Quote
+            </a>
+          </div>
         </div>
-      )}
-      </Container>
-    </Section>
+
+        {related.docs.length > 0 && (
+          <div>
+            <h2 className="mb-10 text-center">Related Materials</h2>
+            <RelatedMaterialsCarousel materials={related.docs as any} />
+          </div>
+        )}
+      </div>
+    </section>
   )
 }

@@ -1,6 +1,5 @@
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import MaterialCarousel from '@/components/MaterialCarousel'
-import { Container, SectionSage, MicroLabel, CategoryTabsWrap, CategoryTab } from '@/components/ui/styled'
 
 export const revalidate = 60
 
@@ -29,29 +28,28 @@ export default async function MaterialsPage() {
   const categories = Object.keys(grouped)
 
   return (
-    <SectionSage>
-      <Container>
-        <MicroLabel style={{ marginBottom: 8 }}>Full Catalog</MicroLabel>
-        <h1 style={{ marginBottom: 32 }}>Materials</h1>
+    <section className="py-28 bg-sage-tint">
+      <div className="max-w-[1360px] mx-auto px-6 lg:px-20">
+        <p className="text-xs font-bold uppercase tracking-wider text-green mb-2">Full Catalog</p>
+        <h1 className="mb-8">Materials</h1>
 
         {categories.length > 1 && (
-          <CategoryTabsWrap>
+          <div className="flex gap-7 overflow-x-auto border-b border-black/10 pb-4 mb-14 [scrollbar-width:none]">
             {categories.map((cat) => (
-              <CategoryTab key={cat} href={`#${cat}`}>
+              <a key={cat} href={`#${cat}`} className="text-sm text-gray-500 no-underline whitespace-nowrap pb-1.5 border-b-2 border-transparent hover:text-black">
                 {CATEGORY_LABELS[cat] || cat}
-              </CategoryTab>
+              </a>
             ))}
-          </CategoryTabsWrap>
+          </div>
         )}
 
         {categories.map((cat) => (
-          <div key={cat} id={cat} style={{ marginBottom: 96, scrollMarginTop: 100 }}>
-            <h2 style={{ marginBottom: 32 }}>{CATEGORY_LABELS[cat] || cat}</h2>
+          <div key={cat} id={cat} className="mb-24 scroll-mt-[100px]">
+            <h2 className="mb-8">{CATEGORY_LABELS[cat] || cat}</h2>
             <MaterialCarousel materials={grouped[cat]} />
           </div>
         ))}
-      </Container>
-    </SectionSage>
-
+      </div>
+    </section>
   )
 }

@@ -1,7 +1,6 @@
 import { Suspense } from 'react'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import QuoteForm from '@/components/QuoteForm'
-import { Container, Section } from '@/components/ui/styled'
 
 export const revalidate = 300
 
@@ -17,16 +16,14 @@ export default async function QuotePage() {
   const materials = docs.map((m: any) => ({ id: m.id, name: m.name, unit: m.unit }))
 
   return (
-    <Section><Container style={{ display: 'flex', justifyContent: 'center' }}>
-      <div style={{ maxWidth: 520, width: '100%' }}>
-        <h1 style={{ marginBottom: 12, textAlign: 'center' }}>Request a Quote</h1>
-        <p style={{ marginBottom: 32, textAlign: 'center' }}>
-          Select the materials and quantities you need. Our team will follow up with pricing directly.
-        </p>
-        <Suspense fallback={<p style={{ textAlign: 'center' }}>Loading form...</p>}>
+    <section className="py-28 flex justify-center px-6 lg:px-20">
+      <div className="max-w-[520px] w-full">
+        <h1 className="mb-3 text-center">Request a Quote</h1>
+        <p className="mb-8 text-center">Select the materials and quantities you need. Our team will follow up with pricing directly.</p>
+        <Suspense fallback={<p className="text-center">Loading form...</p>}>
           <QuoteForm materials={materials} />
         </Suspense>
       </div>
-    </Container></Section>
+    </section>
   )
 }

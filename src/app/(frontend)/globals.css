@@ -1,71 +1,40 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
 
-:root {
-  --color-green: #143109;
-  --color-green-hover: #0e2306;
-  --color-sage: #b5bfa1;
-  --color-sage-tint: rgba(181, 191, 161, 0.15);
-  --color-white: #ffffff;
-  --color-black: #000000;
-  --color-text: #000000;
-  --color-text-muted: #4a4a4a;
-  --color-border: #b5bfa1;
+@layer base {
+  html,
+  body {
+    @apply m-0 p-0 bg-white text-black font-sans;
+    line-height: 1.55;
+  }
 
-  --font-family: 'Inter', sans-serif;
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-bold text-black m-0;
+    letter-spacing: -0.01em;
+  }
 
-  --radius: 8px;
-  --product-radius: 18px;
-  --space-unit: 8px;
-  --space-section: 112px;
-  --space-related: 28px;
+  h1 {
+    font-size: clamp(38px, 6vw, 64px);
+    line-height: 1.05;
+  }
 
-  --max-width: 1360px;
-  --gutter-mobile: 24px;
-  --gutter-desktop: 80px;
-}
+  h2 {
+    font-size: clamp(28px, 4vw, 38px);
+  }
 
-* {
-  box-sizing: border-box;
-}
+  a {
+    color: inherit;
+  }
 
-html,
-body {
-  margin: 0;
-  padding: 0;
-  background: var(--color-white);
-  color: var(--color-text);
-  font-family: var(--font-family);
-  font-weight: 400;
-  line-height: 1.55;
-}
-
-h1,
-h2,
-h3,
-h4 {
-  font-family: var(--font-family);
-  font-weight: 700;
-  color: var(--color-black);
-  margin: 0;
-  letter-spacing: -0.01em;
-}
-
-h1 {
-  font-size: clamp(38px, 6vw, 64px);
-  line-height: 1.05;
-}
-
-h2 {
-  font-size: clamp(28px, 4vw, 38px);
-}
-
-a {
-  color: inherit;
-}
-
-p {
-  font-size: 16px;
-  color: var(--color-text-muted);
+  p {
+    @apply text-base text-gray-600;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -76,6 +45,6 @@ p {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-green);
+  outline: 2px solid #143109;
   outline-offset: 2px;
 }

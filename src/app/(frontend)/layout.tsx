@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import SiteHeader from '@/components/SiteHeader'
-import StyledComponentsRegistry from '@/components/StyledComponentsRegistry'
 import './globals.css'
 
 export const metadata = {
@@ -12,10 +11,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <body>
-        <StyledComponentsRegistry>
-          <SiteHeader />
-          <main>{children}</main>
-        </StyledComponentsRegistry>
+        <SiteHeader />
+        <main>{children}</main>
       </body>
     </html>
   )

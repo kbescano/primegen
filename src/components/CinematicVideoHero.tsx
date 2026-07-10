@@ -1,8 +1,6 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import styled from 'styled-components'
-import {  MicroLabel, Container, ViewAllButton } from '@/components/ui/styled'
 import Link from 'next/link'
 
 export type HeroSlide = {
@@ -15,94 +13,6 @@ export type HeroSlide = {
 }
 
 const SLIDE_DURATION = 6000
-
-const Hero = styled.section`
-  position: relative;
-  height: 80vh;
-  min-height: 520px;
-  overflow: hidden;
-  background: var(--color-green);
-  color: white;
-
-  @media (max-width: 480px) {
-    height: 68vh;
-    min-height: 460px;
-  }
-`
-
-const Slide = styled.div<{ $active: boolean }>`
-  position: absolute;
-  inset: 0;
-  opacity: ${(p) => (p.$active ? 1 : 0)};
-  z-index: ${(p) => (p.$active ? 1 : 0)};
-  transition: opacity 1.2s ease;
-`
-
-const SlideVideo = styled.video`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-`
-
-const Overlay = styled.div`
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  background: linear-gradient(to top, rgba(20, 49, 9, 0.6) 0%, rgba(20, 49, 9, 0.15) 55%, transparent 100%);
-`
-
-const Content = styled.div`
-  position: absolute;
-  inset: 0;
-  z-index: 3;
-  display: flex;
-  align-items: center;
-  padding-bottom: 72px;
-
-  @media (max-width: 480px) {
-    padding-bottom: 48px;
-  }
-`
-
-const Panel = styled.div<{ $active: boolean }>`
-  position: absolute;
-  max-width: 620px;
-  opacity: ${(p) => (p.$active ? 1 : 0)};
-  transform: translateY(${(p) => (p.$active ? '0' : '16px')});
-  transition: opacity 0.6s ease, transform 0.6s ease;
-  pointer-events: ${(p) => (p.$active ? 'auto' : 'none')};
-`
-
-const Title = styled.h1`
-  font-weight: 700;
-  font-size: clamp(32px, 5vw, 52px);
-  line-height: 1.1;
-  color: white;
-  margin: 0 0 28px;
-  max-width: 16ch;
-`
-
-const Pagination = styled.div`
-  position: absolute;
-  bottom: 24px;
-  left: 0;
-  width: 100%;
-  z-index: 4;
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-`
-
-const Dot = styled.button<{ $active: boolean }>`
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  border: none;
-  background: ${(p) => (p.$active ? 'white' : 'rgba(255,255,255,0.4)')};
-  cursor: pointer;
-  transition: background 200ms ease;
-  padding: 0;
-`
 
 export default function CinematicVideoHero({ slides }: { slides: HeroSlide[] }) {
   const [current, setCurrent] = useState(0)
@@ -126,11 +36,12 @@ export default function CinematicVideoHero({ slides }: { slides: HeroSlide[] }) 
   if (slides.length === 0) return null
 
   return (
-    <Hero>
-      <Overlay />
+    <section className="relative h-[80vh] min-h-[520px] overflow-hidden bg-green text-white max-[480px]:h-[68vh] max-[480px]:min-h-[460px]">
+      <div className="absolute inset-0 z-[2] bg-gradient-to-t from-green/60 via-green/15 to-transparent" />
+
       {slides.map((slide, index) => (
-        <Slide key={slide.id} $active={current === index}>
-          <SlideVideo
+        <div key={slide.id} className={`absolute inset-0 transition-opacity duration-[1200ms] ${current === index ? 'opacity-100 z-[1]' : 'opacity-0 z-0'}`}>
+          <video
             ref={(el) => {
               videoRefs.current[index] = el
             }}
@@ -138,38 +49,47 @@ export default function CinematicVideoHero({ slides }: { slides: HeroSlide[] }) 
             loop
             muted
             playsInline
+            className="w-full h-full object-cover"
           >
             <source src={slide.video} type="video/mp4" />
-          </SlideVideo>
-        </Slide>
+          </video>
+        </div>
       ))}
 
-      <Content as={Container}>
+      <div className="absolute inset-0 z-[3] flex items-center justify-center text-center px-6">
         {slides.map((slide, index) => (
-          <Panel key={`c-${slide.id}`} $active={current === index}>
-            <MicroLabel $onDark style={{ marginBottom: 16 }}>
-              {slide.label}
-            </MicroLabel>
-            <Title>{slide.title}</Title>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 24 }}>
-            <p style={{ color: 'white', fontSize: '24px' }}>{slide.cta}</p>
-            <ViewAllButton href={slide.href} aria-label="View all materials">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M9 18l6-6-6-6" />
-                    </svg>
-            </ViewAllButton>
-            </div>
-          </Panel>
+          <div
+            key={`c-${slide.id}`}
+            className={`absolute max-w-[780px] flex flex-col items-center transition-all duration-[600ms] ${
+              current === index ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none'
+            }`}
+          >
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-sage mb-4">{slide.label}</p>
+            <h1 className="font-bold uppercase leading-[0.95] text-white mb-8 text-[clamp(40px,7vw,88px)]">{slide.title}</h1>
+            <Link href={slide.href} className="inline-flex items-center gap-4 text-white group">
+              <span className="text-xs font-bold uppercase tracking-[0.2em]">{slide.cta}</span>
+              <span className="w-10 h-10 rounded-full border border-white/50 flex items-center justify-center transition-colors group-hover:bg-white group-hover:text-green group-hover:border-white">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M9 18l6-6-6-6" />
+                </svg>
+              </span>
+            </Link>
+          </div>
         ))}
-      </Content>
+      </div>
 
       {slides.length > 1 && (
-        <Pagination>
+        <div className="absolute bottom-6 left-0 w-full z-[4] flex justify-center gap-2">
           {slides.map((_, index) => (
-            <Dot key={index} $active={current === index} onClick={() => setCurrent(index)} aria-label={`Show slide ${index + 1}`} />
+            <button
+              key={index}
+              onClick={() => setCurrent(index)}
+              aria-label={`Show slide ${index + 1}`}
+              className={`w-2 h-2 rounded-full border-none p-0 transition-colors ${current === index ? 'bg-white' : 'bg-white/40'}`}
+            />
           ))}
-        </Pagination>
+        </div>
       )}
-    </Hero>
+    </section>
   )
 }

@@ -1,10 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import styled from 'styled-components'
-import { Container, ButtonLink } from '@/components/ui/styled'
 
 const NAV_LINKS = [
   { href: '/materials', label: 'Materials' },
@@ -12,190 +10,62 @@ const NAV_LINKS = [
   { href: '/about', label: 'About' },
 ]
 
-const Header = styled.header`
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  padding: 14px 0;
-  position: sticky;
-  top: 0;
-  z-index: 50;
-  border-bottom: 1px solid rgba(20, 49, 9, 0.15);
-`
-
-const Row = styled(Container)`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  position: relative;
-`
-
-const Wordmark = styled(Link)`
-  font-weight: 700;
-  font-size: 12px;
-  color: var(--color-text-muted);
-  text-decoration: none;
-`
-
-const Hamburger = styled.button`
-  display: none;
-  flex-direction: column;
-  gap: 5px;
-  width: 24px;
-  height: 17px;
-  background: none;
-  border: none;
-  cursor: pointer;
-
-  span {
-    display: block;
-    height: 2px;
-    width: 100%;
-    background: #000000;
-    border-radius: 2px;
-    transition: transform 0.3s ease, opacity 0.3s ease;
-  }
-
-  &.open span:nth-child(1) {
-    transform: translateY(7.5px) rotate(45deg);
-  }
-  &.open span:nth-child(2) {
-    opacity: 0;
-  }
-  &.open span:nth-child(3) {
-    transform: translateY(-7.5px) rotate(-45deg);
-  }
-
-  @media (max-width: 768px) {
-    display: flex;
-  }
-`
-
-const DesktopNav = styled.nav`
-  display: flex;
-  align-items: center;
-  gap: 26px;
-
-  @media (max-width: 768px) {
-    display: none;
-  }
-`
-
-const NavLinkItem = styled(Link)<{ $active?: boolean }>`
-  position: relative;
-  color: rgba(20, 49, 9, 0.85);
-  text-decoration: none;
-  font-weight: 500;
-  font-size: 12px;
-  padding-bottom: 4px;
-
-  &::after {
-    content: '';
-    position: absolute;
-    left: 0;
-    bottom: 0;
-    width: ${(p) => (p.$active ? '100%' : '0')};
-    height: 2px;
-    background: var(--color-sage);
-    transition: width 200ms ease;
-  }
-  &:hover::after {
-    width: 100%;
-  }
-`
-
-const MobilePanel = styled.div`
-  display: none;
-
-  @media (max-width: 768px) {
-    &.open {
-      display: flex;
-      flex-direction: column;
-      position: fixed;
-      inset: 0;
-      background: #ffffff;
-      z-index: 999;
-      padding: 28px 32px;
-      overflow-y: auto;
-    }
-  }
-`
-
-const MnpClose = styled.button`
-  align-self: flex-end;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #000000;
-  padding: 8px;
-  margin-bottom: 24px;
-`
-
-const MnpRow = styled(Link)<{ $accent?: boolean }>`
-  display: block;
-  padding: 14px 0;
-  font-size: 22px;
-  font-weight: 700;
-  color: ${(p) => (p.$accent ? 'var(--color-green)' : '#000000')};
-  text-decoration: none;
-`
-
 export default function SiteHeader() {
   const [open, setOpen] = useState(false)
   const pathname = usePathname()
 
-  useEffect(() => {
-    if (open) document.body.style.overflow = 'hidden'
-    else document.body.style.overflow = ''
-    return () => {
-      document.body.style.overflow = ''
-    }
-  }, [open])
-
   return (
-    <Header>
-      <Row>
-        <Wordmark href="/" onClick={() => setOpen(false)}>
+    <header className="bg-white/95 backdrop-blur-md py-3.5 sticky top-0 z-50 border-b border-green/15">
+      <div className="max-w-[1360px] mx-auto px-6 lg:px-20 flex items-center justify-between relative">
+        <Link href="/" className="font-bold text-sm text-green" onClick={() => setOpen(false)}>
           Primegen Trading Corporation
-        </Wordmark>
+        </Link>
 
-        <Hamburger
-          className={open ? 'open' : ''}
+        <button
+          className="flex md:hidden flex-col gap-1.5 w-6 h-[17px] bg-transparent border-none cursor-pointer"
           aria-label={open ? 'Close menu' : 'Open menu'}
           onClick={() => setOpen((v) => !v)}
         >
-          <span />
-          <span />
-          <span />
-        </Hamburger>
+          <span className={`block h-0.5 w-full bg-black rounded transition-transform ${open ? 'translate-y-[7.5px] rotate-45' : ''}`} />
+          <span className={`block h-0.5 w-full bg-black rounded transition-opacity ${open ? 'opacity-0' : ''}`} />
+          <span className={`block h-0.5 w-full bg-black rounded transition-transform ${open ? '-translate-y-[7.5px] -rotate-45' : ''}`} />
+        </button>
 
-        <DesktopNav>
+        <nav className="hidden md:flex items-center gap-7">
           {NAV_LINKS.map((link, i) => (
-            <span key={link.href} style={{ display: 'flex', alignItems: 'center', gap: 26 }}>
-              <NavLinkItem href={link.href} $active={pathname === link.href}>
+            <span key={link.href} className="flex items-center gap-7">
+              <Link
+                href={link.href}
+                className={`relative text-xs font-medium text-green/85 pb-1 border-b-2 ${pathname === link.href ? 'border-sage' : 'border-transparent hover:border-sage'} transition-colors`}
+              >
                 {link.label}
-              </NavLinkItem>
+              </Link>
             </span>
           ))}
-          <ButtonLink href="/quote">Request a Quote</ButtonLink>
-        </DesktopNav>
-
-        <MobilePanel className={open ? 'open' : ''}>
-          <MnpClose onClick={() => setOpen(false)} aria-label="Close menu">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </MnpClose>
-
-          {NAV_LINKS.map((link) => (
-            <MnpRow key={link.href} href={link.href} onClick={() => setOpen(false)}>
-              {link.label}
-            </MnpRow>
-          ))}
-          <MnpRow href="/quote" $accent onClick={() => setOpen(false)}>
+          <Link href="/quote" className="inline-flex items-center justify-center px-7 py-3.5 rounded bg-sage text-white font-bold text-xs hover:bg-green-hover transition-colors">
             Request a Quote
-          </MnpRow>
-        </MobilePanel>
-      </Row>
-    </Header>
+          </Link>
+        </nav>
+
+        {open && (
+          <div className="md:hidden fixed inset-0 bg-white z-[999] p-7 overflow-y-auto flex flex-col">
+            <button onClick={() => setOpen(false)} aria-label="Close menu" className="self-end p-2 mb-6">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+            {NAV_LINKS.map((link) => (
+              <Link key={link.href} href={link.href} className="block py-3.5 text-xl font-bold text-black" onClick={() => setOpen(false)}>
+                {link.label}
+              </Link>
+            ))}
+            <Link href="/quote" className="block py-3.5 text-xl font-bold text-green" onClick={() => setOpen(false)}>
+              Request a Quote
+            </Link>
+          </div>
+        )}
+
+      </div>
+    </header>
   )
 }

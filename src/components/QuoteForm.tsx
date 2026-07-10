@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { PillInput, PillSelect, PillTextarea, ButtonEl, Divider, QuoteItemRow } from '@/components/ui/styled'
 
 type Material = { id: string; name: string; unit: string }
 type LineItem = { materialId: string; quantity: number }
+
+const pillClass = "w-full px-5 py-4 border border-black/15 rounded-2xl text-base bg-white text-black focus:outline-none focus:border-green"
 
 export default function QuoteForm({ materials }: { materials: Material[] }) {
   const searchParams = useSearchParams()
@@ -54,97 +55,82 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
 
   if (status === 'done') {
     return (
-      <div style={{ textAlign: 'center' }}>
-        <h2 style={{ fontSize: 22, marginBottom: 12 }}>Request received.</h2>
-        <p>Thanks -- your project details are with our team. We'll reach out directly by phone or email with your quotation shortly.</p>
+      <div className="text-center">
+        <h2 className="text-xl font-bold mb-3">Request received.</h2>
+        <p>Thanks -- your project details are with our team. We&apos;ll reach out directly by phone or email with your quotation shortly.</p>
       </div>
     )
   }
 
   return (
-    <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {preselectedMaterial && (
-        <p style={{ fontSize: 13, color: 'var(--color-green)', margin: 0, textAlign: 'center' }}>
-          Pre-filled: {preselectedMaterial.name}
-        </p>
+        <p className="text-sm text-green m-0 text-center">Pre-filled: {preselectedMaterial.name}</p>
       )}
 
-      <PillInput name="customerName" placeholder="Full name" required aria-label="Full name" />
-      <PillInput name="phone" type="tel" placeholder="Phone number" required aria-label="Phone number" />
-      <PillInput name="email" type="email" placeholder="Email (optional)" aria-label="Email" />
+      <input name="customerName" placeholder="Full name" required className={pillClass} aria-label="Full name" />
+      <input name="phone" type="tel" placeholder="Phone number" required className={pillClass} aria-label="Phone number" />
+      <input name="email" type="email" placeholder="Email (optional)" className={pillClass} aria-label="Email" />
 
-      <PillSelect name="projectType" aria-label="Project type">
+      <select name="projectType" className={pillClass} aria-label="Project type">
         <option value="residential">Residential</option>
         <option value="commercial">Commercial</option>
         <option value="renovation">Renovation</option>
         <option value="other">Other</option>
-      </PillSelect>
+      </select>
 
-      <Divider />
+      <hr className="border-t border-black/10 my-6" />
 
       <div>
-        <p style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, textAlign: 'center' }}>Materials needed</p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+        <p className="text-sm font-bold mb-3 text-center">Materials needed</p>
+        <div className="flex flex-col gap-2.5">
           {items.map((item, index) => {
             const selected = materials.find((m) => m.id === item.materialId)
             return (
-              <QuoteItemRow key={index}>
-                <PillSelect value={item.materialId} onChange={(e) => updateItem(index, { materialId: e.target.value })} style={{ flex: 1 }}>
+              <div key={index} className="flex gap-2 items-center flex-wrap max-[420px]:[&>select]:flex-[1_1_100%]">
+                <select value={item.materialId} onChange={(e) => updateItem(index, { materialId: e.target.value })} className={`${pillClass} flex-1`}>
                   {materials.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
+                    <option key={m.id} value={m.id}>{m.name}</option>
                   ))}
-                </PillSelect>
-                <PillInput
+                </select>
+                <input
                   type="number"
                   min={1}
                   value={item.quantity}
                   onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })}
-                  style={{ width: 90 }}
+                  className={`${pillClass} w-[90px]`}
                 />
-                <span style={{ fontSize: 13, color: 'var(--color-text-muted)', width: 60 }}>{selected?.unit ?? ''}</span>
+                <span className="text-sm text-gray-500 w-[60px]">{selected?.unit ?? ''}</span>
                 {items.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => removeItem(index)}
-                    aria-label="Remove item"
-                    style={{ background: 'none', border: 'none', color: '#c53030', cursor: 'pointer', fontSize: 18, padding: 4 }}
-                  >
+                  <button type="button" onClick={() => removeItem(index)} aria-label="Remove item" className="bg-transparent border-none text-red-700 cursor-pointer text-lg p-1">
                     X
                   </button>
                 )}
-              </QuoteItemRow>
+              </div>
             )
           })}
         </div>
         <button
           type="button"
           onClick={addItem}
-          style={{
-            marginTop: 12,
-            background: 'none',
-            border: '1.5px dashed rgba(0,0,0,0.2)',
-            borderRadius: 14,
-            padding: '10px 16px',
-            fontSize: 14,
-            cursor: 'pointer',
-            color: 'var(--color-green)',
-            width: '100%',
-          }}
+          className="mt-3 w-full bg-transparent border border-dashed border-black/20 rounded-2xl px-4 py-2.5 text-sm cursor-pointer text-green"
         >
           + Add another material
         </button>
       </div>
 
-      <Divider />
+      <hr className="border-t border-black/10 my-6" />
 
-      <PillTextarea name="message" rows={4} placeholder="Project details (size, timeline, delivery location, etc.)" />
+      <textarea name="message" rows={4} placeholder="Project details (size, timeline, delivery location, etc.)" className={`${pillClass} resize-y`} />
 
-      <ButtonEl type="submit" disabled={status === 'submitting'} style={{ marginTop: 8 }}>
+      <button
+        type="submit"
+        disabled={status === 'submitting'}
+        className="mt-2 w-full px-8 py-3.5 rounded bg-green text-white font-bold hover:bg-green-hover disabled:opacity-60"
+      >
         {status === 'submitting' ? 'Sending...' : 'Send Request'}
-      </ButtonEl>
-      {status === 'error' && <p style={{ color: '#c53030', textAlign: 'center' }}>Something went wrong. Please try again.</p>}
+      </button>
+      {status === 'error' && <p className="text-red-700 text-center">Something went wrong. Please try again.</p>}
     </form>
   )
 }
