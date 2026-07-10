@@ -60,6 +60,13 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
+      <footer className="py-2 bg-gray-800 text-white">
+        <div className="max-w-[1360px] mx-auto px-2">
+          <p className="text-center text-sm text-gray-400">
+            &copy; {new Date().getFullYear()} Primegen Trading Corporation. All rights reserved.
+          </p>
+        </div>
+      </footer>
     </>
   )
 }

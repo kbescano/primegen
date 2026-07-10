@@ -87,7 +87,7 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
           {items.map((item, index) => {
             const selected = materials.find((m) => m.id === item.materialId)
             return (
-              <div key={index} className="flex gap-2 items-center flex-wrap max-[420px]:[&>select]:flex-[1_1_100%]">
+              <div key={index} className="flex gap-2 flex-wrap items-center max-[420px]:[&>select]:flex-[1_1_100%]">
                 <select value={item.materialId} onChange={(e) => updateItem(index, { materialId: e.target.value })} className={`${pillClass} flex-1`}>
                   {materials.map((m) => (
                     <option key={m.id} value={m.id}>{m.name}</option>
@@ -113,7 +113,7 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
         <button
           type="button"
           onClick={addItem}
-          className="mt-3 w-full bg-transparent border border-dashed border-black/20 rounded-2xl px-4 py-2.5 text-sm cursor-pointer text-green"
+          className="mt-3 w-[200px] bg-transparent border border-dashed border-black/20 rounded-2xl px-4 py-2.5 text-sm cursor-pointer text-green"
         >
           + Add another material
         </button>
