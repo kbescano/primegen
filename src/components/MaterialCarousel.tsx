@@ -165,12 +165,18 @@ export default function MaterialCarousel({ materials }: { materials: Material[] 
                 {/* Primary Image */}
                 <div className="relative w-full max-w-[340px] h-[500px] aspect-square flex items-center justify-center mb-8">
                   {selected.photo?.url ? (
-                    <Image 
-                      src={selected.photo.url} 
-                      alt={selected.photo.alt || selected.name} 
-                      fill 
-                      className="object-cover rounded-2xl border border-gray-200 shadow-sm" 
-                    />
+                    <>
+                <div className="absolute inset-0 z-0 transition-transform duration-700 ease-out group-hover:scale-105">
+                  <Image 
+                    src={selected.photo.url} 
+                    alt={selected.photo.alt || selected.name} 
+                    fill 
+                    className="object-cover" 
+                  />
+                </div>
+                {/* Visual Scrim: Protects contrast for text on top of varying images */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/25 to-black/75 z-0" />
+              </>
                   ) : (
                     <div className="w-full h-full bg-gray-50 rounded-2xl border border-gray-100 flex items-center justify-center text-gray-400">
                       No Image Available
