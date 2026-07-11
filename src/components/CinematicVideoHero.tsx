@@ -64,12 +64,12 @@ export default function CinematicVideoHero({ slides }: { slides: HeroSlide[] }) 
               current === index ? 'opacity-100 translate-y-0 pointer-events-auto' : 'opacity-0 translate-y-4 pointer-events-none'
             }`}
           >
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-sage mb-4">{slide.label}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#149911] mb-4">{slide.label}</p>
             <h1 className="font-bold uppercase leading-[0.95] text-white mb-8 text-[clamp(40px,7vw,88px)]">{slide.title}</h1>
             <Link href={slide.href} className="inline-flex items-center gap-4 text-white group">
-              <span className="text-xs font-bold uppercase tracking-[0.2em]">{slide.cta}</span>
-              <span className="w-10 h-10 rounded-full border border-white/50 flex items-center justify-center transition-colors group-hover:bg-white group-hover:text-green group-hover:border-white">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <span className="text-xs text-[#fdfffc] font-bold uppercase tracking-[0.2em]">{slide.cta}</span>
+              <span className="w-10 h-10 rounded-full border border-[#149911] flex items-center justify-center transition-colors group-hover:bg-white group-hover:text-green group-hover:border-white">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#149911" strokeWidth="2.5">
                   <path d="M9 18l6-6-6-6" />
                 </svg>
               </span>

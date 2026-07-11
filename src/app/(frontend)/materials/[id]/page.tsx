@@ -166,7 +166,7 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
             {/* Apple Primary CTA Button */}
             <a 
               href={`/quote?material=${material.id}`} 
-              className="bg-[#B5BFA1] hover:bg-[#143109] text-white text-center w-full py-4 rounded-[14px] text-[17px] font-semibold transition-colors shadow-sm"
+              className="bg-[#01172f] hover:bg-[#143109] text-white text-center w-full py-4 rounded-[14px] text-[17px] font-semibold transition-colors shadow-sm"
             >
               Request a Quote
             </a>

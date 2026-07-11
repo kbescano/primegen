@@ -37,8 +37,8 @@ export default async function HomePage() {
         <div className="max-w-[1360px] mx-auto px-6 lg:px-20">
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {VALUE_PROPS.map((v) => (
-              <div key={v.num} className="flex gap-4 items-start bg-white border-l-4 border-sage p-6">
-                <span className="text-sm font-bold text-green">{v.num}</span>
+              <div key={v.num} className="flex gap-4 items-start bg-white border-l-4 border-[#149911] p-6">
+                <span className="text-sm font-bold text-[#103900]">{v.num}</span>
                 <div>
                   <h3 className="text-base font-bold mb-1.5">{v.title}</h3>
                   <p className="text-sm m-0">{v.body}</p>
@@ -51,7 +51,7 @@ export default async function HomePage() {
 
       <section className="py-28 bg-sage-tint">
         <div className="max-w-[1360px] mx-auto px-6 lg:px-20">
-          <h2 className="mb-2 normal-case">
+          <h2 className="mb-2 normal-case text-[#01172f]">
             Featured Materials.{' '}
             <span className="font-normal text-gray-500">Browse what&apos;s currently in stock.</span>
           </h2>

@@ -35,7 +35,7 @@ export default function MaterialCarousel({ materials }: { materials: Material[] 
   }
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 py-8">
+    <div className="w-full max-w-7xl mx-auto py-8">
       {/* Carousel Track Container */}
       <div 
         ref={trackRef} 
@@ -44,7 +44,7 @@ export default function MaterialCarousel({ materials }: { materials: Material[] 
         {materials.map((m) => (
           <div
             key={m.id}
-            className="group relative flex flex-col justify-between flex-none w-[360px] h-[520px] snap-start bg-gray-900 rounded-[28px] shadow-[0_4px_30px_rgba(0,0,0,0.1)] hover:shadow-[0_12px_45px_rgba(0,0,0,0.2)] transition-all duration-300 overflow-hidden p-8 max-[480px]:w-[85vw] max-[480px]:h-[480px]"
+            className="group relative flex flex-col justify-between flex-none w-[360px] h-[520px] snap-start bg-gray-900 rounded-[28px] shadow-[0_4px_30px_rgba(0,0,0,0.1)] hover:shadow-[0_12px_45px_rgba(0,0,0,0.2)] transition-all duration-300 overflow-hidden p-8 max-[480px]:w-[80vw] max-[480px]:h-[500px]"
             style={{ opacity: m.inStock === false ? 0.5 : 1 }}
           >
             {/* Full Card Cover Image Layer */}
@@ -130,13 +130,13 @@ export default function MaterialCarousel({ materials }: { materials: Material[] 
             className="w-full max-w-3xl flex flex-col items-center animate-in fade-in zoom-in-95 duration-200"
           >
             {materials.length > 1 && (
-              <div className="flex items-center gap-1 bg-white/80 backdrop-blur border border-gray-100 rounded-full p-1.5 mb-4 overflow-x-auto max-w-fit shadow-md [scrollbar-width:none]">
+              <div className="flex items-center gap-1 bg-white/80 backdrop-blur border border-gray-100 rounded-full p-1.5 mb-4 overflow-x-auto max-w-full md:max-w-fit shadow-md [scrollbar-width:none]">
                 {materials.map((m) => (
                   <button
                     key={m.id}
                     onClick={() => setSelected(m)}
                     className={`px-5 py-2.5 rounded-full text-xs font-bold tracking-tight whitespace-nowrap transition-all ${
-                      selected.id === m.id ? 'bg-[#143109] text-white' : 'bg-transparent text-gray-600 hover:text-black'
+                      selected.id === m.id ? 'bg-[#01172f] text-white' : 'bg-transparent text-gray-600 hover:text-black'
                     }`}
                   >
                     {m.name}
@@ -149,7 +149,7 @@ export default function MaterialCarousel({ materials }: { materials: Material[] 
               <button
                 onClick={() => setSelected(null)}
                 aria-label="Close"
-                className="absolute top-6 right-6 w-9 h-9 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 flex items-center justify-center z-10 transition-colors"
+                className="absolute top-4 right-4 md:top-6 md:right-6 w-9 h-9 rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 flex items-center justify-center z-10 transition-colors"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M18 6L6 18M6 6l12 12" />
@@ -157,13 +157,13 @@ export default function MaterialCarousel({ materials }: { materials: Material[] 
               </button>
 
               {/* Main Content Grid */}
-            <div className="grid md:grid-cols-[1fr_1.1fr] gap-x-12 p-10 lg:p-12">
+            <div className="grid md:grid-cols-[1fr_1.1fr] gap-x-12 p-5 md:p-10 lg:p-12">
               
               {/* Left Column: Media Gallery */}
               <div className="flex flex-col items-center pt-2">
 
                 {/* Primary Image */}
-                <div className="relative w-full max-w-[340px] h-[500px] aspect-square flex items-center justify-center mb-8">
+                <div className="relative w-full max-w-[340px] h-[280px] md:h-[500px] aspect-square flex items-center justify-center mb-5 md:mb-8">
                   {selected.photo?.url ? (
                     <>
                 <div className="absolute inset-0 z-0 transition-transform duration-700 ease-out group-hover:scale-105">
@@ -188,8 +188,8 @@ export default function MaterialCarousel({ materials }: { materials: Material[] 
               </div>
 
               {/* Right Column: Specs & Actions */}
-              <div className="flex flex-col pt-12 lg:pr-4">
-                
+              <div className="flex flex-col pt-2 md:pt-12 lg:pr-4">
+
                 {/* Title */}
                 <h2 className="text-[32px] font-semibold tracking-tight text-gray-900 leading-tight mb-2">
                   {selected.name}
@@ -202,7 +202,7 @@ export default function MaterialCarousel({ materials }: { materials: Material[] 
                   </span>
                   <Link 
                     href={`/quote?material=${selected.id}`} 
-                    className="bg-[#B5BFA1] hover:bg-[#143109] hover:text-white text-white px-5 py-1.5 rounded-full text-sm font-medium transition-colors"
+                    className="bg-[#01172f] hover:bg-[#143109] hover:text-white text-white px-5 py-1.5 rounded-full text-sm font-medium transition-colors"
                   >
                     Get
                   </Link>

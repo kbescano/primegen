@@ -19,15 +19,15 @@ export default function FeaturedDarkCarousel({ materials }: { materials: Materia
   if (materials.length === 0) return null
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 py-6">
-      {/* Horizontal Carousel Track */}
-      <div className="flex gap-5 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {materials.map((m) => (
-             <Link key={m.id} href={"/materials"} className="flex items-center justify-center w-full h-full">
+    <div className="w-full max-w-7xl py-6">
+  <div className="flex items-center gap-4">
+    {/* Horizontal Carousel Track */}
+    <div className="flex-1 flex gap-5 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {materials.map((m) => (
+        <Link key={m.id} href={"/materials"} className="flex h-full">
           <div
-            key={m.id}
             onClick={() => setSelected(m)}
-            className="relative flex-none w-[310px] h-[430px] rounded-[24px] overflow-hidden snap-start group cursor-pointer shadow-lg bg-neutral-900 max-[480px]:w-[80vw] max-[480px]:h-[400px]"
+            className="relative flex-none w-[310px] h-[430px] rounded-[24px] overflow-hidden snap-start group cursor-pointer shadow-lg bg-neutral-900 max-[480px]:w-[80vw] max-[480px]:h-[500px]"
           >
             {/* Full-Bleed Background Image with subtle scale hover effect */}
             {m.photo?.url && (
@@ -39,7 +39,7 @@ export default function FeaturedDarkCarousel({ materials }: { materials: Materia
               />
             )}
 
-            {/* Premium Gradient Overlay (Darkens bottom heavily for text legibility, softens top) */}
+            {/* Premium Gradient Overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/10" />
 
             {/* Translucent Floating Action Arrow (Top Right) */}
@@ -47,11 +47,9 @@ export default function FeaturedDarkCarousel({ materials }: { materials: Materia
               aria-label={`View details for ${m.name}`}
               className="absolute top-5 right-5 w-10 h-10 rounded-full bg-white/15 backdrop-blur-md text-white flex items-center justify-center transition-all duration-300 hover:bg-white/25 group-hover:scale-105 border border-white/10"
             >
-           
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M7 17L17 7M17 7H8M17 7V16" />
               </svg>
-         
             </button>
 
             {/* Left-Aligned Bottom Information Layer */}
@@ -59,15 +57,26 @@ export default function FeaturedDarkCarousel({ materials }: { materials: Materia
               <h3 className="text-2xl font-bold tracking-tight leading-tight text-white">
                 {m.name}
               </h3>
-              
               <p className="text-sm text-gray-300 font-medium tracking-wide opacity-95">
                 In Stock
               </p>
             </div>
           </div>
-             </Link>
-        ))}
-      </div>
+        </Link>
+      ))}
     </div>
+
+    {/* View-all arrow, beside the carousel */}
+    <Link
+      href="/materials"
+      aria-label="View all materials"
+      className="flex-shrink-0 w-12 h-12 rounded-full bg-[#fdfffc] text-white shadow-lg flex items-center justify-center hover:bg-[#fdfffc]-hover hover:scale-105 transition-all max-[640px]:hidden"
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#149911" strokeWidth="2.5">
+        <path d="M9 18l6-6-6-6" />
+      </svg>
+    </Link>
+  </div>
+</div>
   )
 }
