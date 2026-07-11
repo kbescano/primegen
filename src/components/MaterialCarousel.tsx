@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -33,6 +33,17 @@ export default function MaterialCarousel({ materials }: { materials: Material[] 
   function scroll(direction: 'left' | 'right') {
     trackRef.current?.scrollBy({ left: direction === 'right' ? 360 : -360, behavior: 'smooth' })
   }
+
+  useEffect(() => {
+    if (selected) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => {
+      document.body.style.overflow = ''
+    }
+  }, [selected])
 
   return (
     <div className="w-full max-w-7xl mx-auto py-8">
@@ -122,12 +133,12 @@ export default function MaterialCarousel({ materials }: { materials: Material[] 
       {/* Quick View Modal Overlay */}
       {selected && (
         <div 
-          className="fixed inset-0 bg-black/40 backdrop-blur-md z-[100] flex items-center justify-center p-4 transition-opacity duration-300" 
+          className="fixed inset-0 bg-black/40 backdrop-blur-md z-[100] flex justify-center overflow-y-auto p-4 transition-opacity duration-300" 
           onClick={() => setSelected(null)}
         >
           <div 
             onClick={(e) => e.stopPropagation()} 
-            className="w-full max-w-3xl flex flex-col items-center animate-in fade-in zoom-in-95 duration-200"
+            className="w-full max-w-3xl my-auto flex flex-col items-center animate-in fade-in zoom-in-95 duration-200"
           >
             {materials.length > 1 && (
               <div className="flex items-center gap-1 bg-white/80 backdrop-blur border border-gray-100 rounded-full p-1.5 mb-4 overflow-x-auto max-w-full md:max-w-fit shadow-md [scrollbar-width:none]">

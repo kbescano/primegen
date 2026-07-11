@@ -40,7 +40,7 @@ export default function FeaturedDarkCarousel({ materials }: { materials: Materia
             )}
 
             {/* Premium Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/25 to-black/75 z-0" />
 
             {/* Translucent Floating Action Arrow (Top Right) */}
             <button
