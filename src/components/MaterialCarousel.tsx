@@ -91,7 +91,7 @@ export default function MaterialCarousel({ materials }: { materials: Material[] 
                 {m.name}
               </h3>
               <p className="text-[15px] text-white/80 font-medium leading-relaxed line-clamp-4 drop-shadow-sm">
-                {m.description ? m.description : (m.unit ? `Available per ${m.unit}.` : 'In Stock.')}
+                {m.description ? m.description : 'In Stock.'}
               </p>
             </div>
 

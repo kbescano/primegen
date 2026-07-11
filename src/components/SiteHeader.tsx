@@ -18,7 +18,7 @@ export default function SiteHeader() {
     <>
       <header className="bg-white/95 backdrop-blur-md py-3.5 sticky top-0 z-50 border-b border-green/15">
         <div className="max-w-[1360px] mx-auto px-6 lg:px-20 flex items-center justify-between relative">
-          <Link href="/" className="font-bold text-sm text-[#103900]" onClick={() => setOpen(false)}>
+          <Link href="/" className="font-bold bg-gradient-to-tr from-[#051d00] via-[#103900] to-[#52b788] bg-clip-text text-transparent" onClick={() => setOpen(false)}>
             Primegen Trading Corporation
           </Link>
 
