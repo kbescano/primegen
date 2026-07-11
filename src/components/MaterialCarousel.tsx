@@ -44,7 +44,7 @@ export default function MaterialCarousel({ materials }: { materials: Material[] 
         {materials.map((m) => (
           <div
             key={m.id}
-            className="group relative flex flex-col justify-between flex-none w-[360px] h-[520px] snap-start bg-gray-900 rounded-[28px] shadow-[0_4px_30px_rgba(0,0,0,0.1)] hover:shadow-[0_12px_45px_rgba(0,0,0,0.2)] transition-all duration-300 overflow-hidden p-8 max-[480px]:w-[80vw] max-[480px]:h-[500px]"
+            className="group relative flex flex-col justify-between flex-none w-[360px] h-[520px] snap-start bg-gray-900 rounded-[28px] transition-all duration-300 overflow-hidden p-8 max-[480px]:w-[80vw] max-[480px]:h-[500px]"
             style={{ opacity: m.inStock === false ? 0.5 : 1 }}
           >
             {/* Full Card Cover Image Layer */}

@@ -27,7 +27,7 @@ export default function FeaturedDarkCarousel({ materials }: { materials: Materia
         <Link key={m.id} href={"/materials"} className="flex h-full">
           <div
             onClick={() => setSelected(m)}
-            className="relative flex-none w-[310px] h-[430px] rounded-[24px] overflow-hidden snap-start group cursor-pointer shadow-lg bg-neutral-900 max-[480px]:w-[80vw] max-[480px]:h-[500px]"
+            className="relative flex-none w-[310px] h-[430px] rounded-[24px] overflow-hidden snap-start group cursor-pointer bg-neutral-900 max-[480px]:w-[80vw] max-[480px]:h-[500px]"
           >
             {/* Full-Bleed Background Image with subtle scale hover effect */}
             {m.photo?.url && (
@@ -40,7 +40,7 @@ export default function FeaturedDarkCarousel({ materials }: { materials: Materia
             )}
 
             {/* Premium Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/40 to-black/10" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
             {/* Translucent Floating Action Arrow (Top Right) */}
             <button
@@ -70,7 +70,7 @@ export default function FeaturedDarkCarousel({ materials }: { materials: Materia
     <Link
       href="/materials"
       aria-label="View all materials"
-      className="flex-shrink-0 w-12 h-12 rounded-full bg-[#fdfffc] text-white shadow-lg flex items-center justify-center hover:bg-[#fdfffc]-hover hover:scale-105 transition-all max-[640px]:hidden"
+      className="flex-shrink-0 w-12 h-12 rounded-full bg-[#fdfffc] text-white  flex items-center justify-center hover:bg-[#fdfffc] hover:scale-105 transition-all max-[640px]:hidden"
     >
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#149911" strokeWidth="2.5">
         <path d="M9 18l6-6-6-6" />

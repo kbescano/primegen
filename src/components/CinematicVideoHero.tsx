@@ -36,7 +36,7 @@ export default function CinematicVideoHero({ slides }: { slides: HeroSlide[] }) 
   if (slides.length === 0) return null
 
   return (
-    <section className="relative h-[80vh] min-h-[520px] overflow-hidden bg-green text-white max-[480px]:h-[68vh] max-[480px]:min-h-[460px]">
+    <section className="relative h-[90vh] min-h-[520px] overflow-hidden bg-green text-white max-[480px]:h-[95svh] max-[480px]:min-h-0">
       <div className="absolute inset-0 z-[2] bg-gradient-to-t from-green/60 via-green/15 to-transparent" />
 
       {slides.map((slide, index) => (
