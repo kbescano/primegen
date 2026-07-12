@@ -64,7 +64,7 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
         <div className="border-b border-gray-300/70 pb-6 mb-10 flex flex-col md:flex-row md:justify-between md:items-end gap-4">
           <div>
             <h1 className="text-[40px] md:text-[48px] font-semibold tracking-tight text-gray-900 leading-none">
-              Buy {material.name}
+              {material.name}
             </h1>
             <p className="text-[15px] text-gray-500 mt-3 font-medium">
               {CATEGORY_LABELS[material.category] || material.category}
@@ -80,17 +80,21 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
           
           {/* Left Column: Media Gallery */}
           <div className="flex flex-col">
-            <div className="bg-[#f5f5f7] rounded-[24px] p-8 md:p-14 w-full flex flex-col items-center relative overflow-hidden">
+            <div className="bg-[#fdfffc] rounded-[24px] p-8 md:p-14 w-full flex flex-col items-center relative overflow-hidden">
               
               {/* Primary Image */}
-              <div className="relative w-full max-w-[440px] aspect-[4/3] mb-8">
+              <div className="relative w-full  aspect-[4/3] mb-8">
                 {images[0]?.url ? (
+                  <>
                   <Image 
                     src={images[0].url} 
                     alt={images[0].alt || material.name} 
                     fill 
                     className="object-contain drop-shadow-sm transition-transform duration-700 hover:scale-105" 
                   />
+                  {/* Visual Scrim: Protects contrast for text on top of varying images */}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/25 to-black/75 z-0" />
+                </>
                 ) : (
                   <div className="w-full h-full bg-gray-200/50 rounded-2xl flex items-center justify-center text-gray-400 font-medium">
                     No Image Available
