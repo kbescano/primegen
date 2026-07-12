@@ -126,7 +126,7 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
       <button
         type="submit"
         disabled={status === 'submitting'}
-        className="mt-2 w-full px-8 py-3.5 rounded bg-green text-white font-bold hover:bg-green-hover disabled:opacity-60"
+        className="mt-2 w-full px-8 py-3.5 rounded bg-[#01172f] text-white font-bold hover:bg-green-hover disabled:opacity-60"
       >
         {status === 'submitting' ? 'Sending...' : 'Send Request'}
       </button>

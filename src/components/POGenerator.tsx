@@ -9,12 +9,19 @@ type LineItem = {
   unitPrice: number
 }
 
+export type POInitial = {
+  partyName?: string
+  project?: string
+  items?: LineItem[]
+}
+
 type POGeneratorProps = {
   title: string
   partyLabel: string // "Client" or "Supplier"
   apiPath: string // e.g. /api/supplier-purchase-orders
   partyFieldPrefix: 'client' | 'supplier'
   numberPlaceholder: string
+  initial?: POInitial
 }
 
 const DEFAULT_TERMS = {
@@ -27,17 +34,19 @@ const DEFAULT_TERMS = {
 const peso = (n: number) =>
   n.toLocaleString('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 })
 
-export default function POGenerator({ title, partyLabel, apiPath, partyFieldPrefix, numberPlaceholder }: POGeneratorProps) {
+export default function POGenerator({ title, partyLabel, apiPath, partyFieldPrefix, numberPlaceholder, initial }: POGeneratorProps) {
   const [meta, setMeta] = useState({
     poNumber: '',
     poDate: new Date().toISOString().slice(0, 10),
-    project: '',
+    project: initial?.project ?? '',
     deliveryDate: '',
     companyName: 'Primegen Trading Corporation',
-    partyName: '',
+    partyName: initial?.partyName ?? '',
     partyAddress: '',
   })
-  const [items, setItems] = useState<LineItem[]>([{ description: '', qty: 1, uom: 'pcs', unitPrice: 0 }])
+  const [items, setItems] = useState<LineItem[]>(
+    initial?.items && initial.items.length > 0 ? initial.items : [{ description: '', qty: 1, uom: 'pcs', unitPrice: 0 }]
+  )
   const [vatRate, setVatRate] = useState(12)
   const [paymentTerms, setPaymentTerms] = useState('Net 30')
   const [terms, setTerms] = useState(DEFAULT_TERMS)

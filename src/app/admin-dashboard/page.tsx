@@ -49,7 +49,7 @@ export default async function QuotationInboxPage({
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         {docs.map((q: any) => (
-          <div key={q.id} className="facet-card" style={{ padding: 20 }}>
+          <div key={q.id} className="facet-card" style={{ padding: 20, background: 'white', border: '1px solid #e5e5e5', borderRadius: 8 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
               <div>
                 <h3 style={{ fontSize: 16, color: '#0d0d0d' }}>{q.customerName}</h3>
@@ -67,15 +67,11 @@ export default async function QuotationInboxPage({
                     <tr style={{ color: '#0d0d0d', opacity: 0.6, textAlign: 'left' }}>
                       <th style={{ padding: '4px 8px 4px 0' }}>Material</th>
                       <th style={{ padding: '4px 8px' }}>Qty</th>
-                      <th style={{ padding: '4px 8px' }}>Unit Price</th>
-                      <th style={{ padding: '4px 8px' }}>Est. Total</th>
                     </tr>
                   </thead>
                   <tbody>
                     {q.items.map((item: any, i: number) => {
                       const material = item.material
-                      const price = typeof material === 'object' ? material?.price : undefined
-                      const total = price ? price * item.quantity : undefined
                       return (
                         <tr key={i}>
                           <td style={{ padding: '4px 8px 4px 0' }}>
@@ -83,12 +79,6 @@ export default async function QuotationInboxPage({
                           </td>
                           <td style={{ padding: '4px 8px' }}>
                             {item.quantity} {typeof material === 'object' ? material?.unit : ''}
-                          </td>
-                          <td style={{ padding: '4px 8px' }} className="price">
-                            {price ? `Php ${Number(price).toLocaleString()}` : '-'}
-                          </td>
-                          <td style={{ padding: '4px 8px' }} className="price">
-                            {total ? `Php ${Number(total).toLocaleString()}` : '-'}
                           </td>
                         </tr>
                       )
@@ -99,6 +89,22 @@ export default async function QuotationInboxPage({
             )}
 
             {q.message && <p style={{ marginTop: 12, fontSize: 14 }}>{q.message}</p>}
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
+              <Link
+                href={`/admin-dashboard/client-po?from=${q.id}`}
+                style={{ fontSize: 13, fontWeight: 600, padding: '7px 14px', borderRadius: 6, textDecoration: 'none', background: '#103900', color: 'white' }}
+              >
+                Create Client PO
+              </Link>
+              <Link
+                href={`/admin-dashboard/supplier-po?from=${q.id}`}
+                style={{ fontSize: 13, fontWeight: 600, padding: '7px 14px', borderRadius: 6, textDecoration: 'none', border: '1.5px solid #103900', color: '#103900' }}
+              >
+                Create Supplier PO
+              </Link>
+            </div>
+
             <p style={{ marginTop: 12, fontSize: 12, color: '#0d0d0d', opacity: 0.4 }}>
               Submitted {new Date(q.createdAt).toLocaleString()} via {q.source}
             </p>
