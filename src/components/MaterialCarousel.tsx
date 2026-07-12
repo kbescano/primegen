@@ -9,6 +9,8 @@ type Material = {
   name: string
   category?: string
   description?: string
+  material?: string
+  usage?: string
   unit?: string
   inStock?: boolean
   photo?: { url?: string; alt?: string }
@@ -244,7 +246,7 @@ export default function MaterialCarousel({ materials }: { materials: Material[] 
                       </svg>
                     </div>
                     <p className="text-[14px] text-gray-900 leading-snug">
-                      {selected.inStock === false ? 'Currently out of stock. Contact support for estimated lead times.' : 'In stock and available for immediate local delivery or warehouse pickup.'}
+                      {selected.material  ?  selected.material : 'In stock and available for immediate local delivery or warehouse pickup.'}
                     </p>
                   </div>
 
@@ -258,7 +260,13 @@ export default function MaterialCarousel({ materials }: { materials: Material[] 
                       </svg>
                     </div>
                     <p className="text-[14px] text-gray-900 leading-snug">
-                      Classified under <span className="font-semibold">{selected.category ? CATEGORY_LABELS[selected.category] || selected.category : 'General Materials'}</span> for structural integrity and building compliance.
+                  {selected.usage ? (
+  selected.usage
+) : (
+  <>
+    General material for various construction applications. Classified under <span className="font-semibold">{selected.category ? CATEGORY_LABELS[selected.category] || selected.category : 'General Materials'}</span> for structural integrity and building compliance.
+  </>
+)}
                     </p>
                   </div>
                 </div>
