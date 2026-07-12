@@ -15,6 +15,8 @@ import { AdSnapshots } from './collections/AdSnapshots'
 import { HeroSlides } from './collections/HeroSlides'
 import { WeightCalcProducts } from './collections/WeightCalcProducts'
 import { Suppliers } from './collections/Suppliers'
+import { ClientPurchaseOrders } from './collections/ClientPurchaseOrders'
+import { SupplierPurchaseOrders } from './collections/SupplierPurchaseOrders'
 import { AboutPage } from './globals/AboutPage'
 
 const filename = fileURLToPath(import.meta.url)
@@ -39,6 +41,8 @@ export default buildConfig({
     HeroSlides,
     WeightCalcProducts,
     Suppliers,
+    ClientPurchaseOrders,
+    SupplierPurchaseOrders,
   ],
   globals: [AboutPage],
   editor: lexicalEditor(),
