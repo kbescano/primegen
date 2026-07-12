@@ -6,6 +6,33 @@ import RelatedMaterialsCarousel from '@/components/RelatedMaterialsCarousel'
 
 export const revalidate = 60
 
+// Defined here because Next.js Server Components cannot import 
+// raw variables/arrays from files marked with 'use client'
+const APPLICABLE_PRODUCTS: CalcProduct[] = [
+  { id: 'deformed-bar', name: 'Deformed Bar', shape: 'round-bar', density: 7850, standardLength: 6 },
+  { id: 'angle-bar', name: 'Angle Bar', shape: 'angle-bar', density: 7850, standardLength: 6 },
+  { id: 'channel-bar', name: 'Channel Bar', shape: 'c-channel', density: 7850, standardLength: 6 },
+  { id: 'square-bar', name: 'Square Bar', shape: 'square-bar', density: 7850, standardLength: 6 },
+  { id: 'plain-round-bar', name: 'Plain Round Bar', shape: 'round-bar', density: 7850, standardLength: 6 },
+  { id: 'rectangular-bar', name: 'Rectangular Bar', shape: 'flat-bar', density: 7930, standardLength: 6 },
+  { id: 'flat-bar', name: 'Flat Bar', shape: 'flat-bar', density: 7850, standardLength: 6 },
+  { id: 'tubular', name: 'Tubular Pipe', shape: 'round-pipe', density: 7850, standardLength: 6 },
+  { id: 'square-tube', name: 'Square Tube', shape: 'square-tube', density: 7850, standardLength: 6 },
+  { id: 'c-purlins', name: 'C-Purlins', shape: 'c-channel', density: 7850, standardLength: 6 },
+  { id: 'i-beam', name: 'I Beam', shape: 'i-beam', density: 7850, standardLength: 6 },
+  { id: 'h-beam', name: 'H Beam', shape: 'i-beam', density: 7850, standardLength: 6 },
+  { id: 'bi-pipe', name: 'B.I. Pipe', shape: 'round-pipe', density: 7850, standardLength: 6 },
+  { id: 'gi-pipe', name: 'G.I. Pipe', shape: 'round-pipe', density: 7850, standardLength: 6 },
+  { id: 'copper-pipe', name: 'Copper Pipe', shape: 'round-pipe', density: 8960, standardLength: 6 },
+  { id: 'stainless-pipe', name: 'Stainless Pipe', shape: 'round-pipe', density: 7930, standardLength: 6 },
+  { id: 'base-plate', name: 'Base Plate', shape: 'sheet-plate', density: 7850, standardLength: 1 },
+  { id: 'mild-steel-plate', name: 'Mild Steel Plate', shape: 'sheet-plate', density: 7850, standardLength: 1 },
+  { id: 'chequered-plate', name: 'Chequered Plate', shape: 'sheet-plate', density: 7850, standardLength: 1 },
+  { id: 'gi-sheet', name: 'G.I. Sheet', shape: 'sheet-plate', density: 7850, standardLength: 1 },
+  { id: 'copper-sheet', name: 'Copper Sheet', shape: 'sheet-plate', density: 8960, standardLength: 1 },
+  { id: 'stainless-sheet', name: 'Stainless Sheet', shape: 'sheet-plate', density: 7930, standardLength: 1 },
+]
+
 const CATEGORY_LABELS: Record<string, string> = {
   'cement-concrete': 'Cement & Concrete',
   'steel-rebar': 'Steel & Rebar',
@@ -16,14 +43,6 @@ const CATEGORY_LABELS: Record<string, string> = {
   electrical: 'Electrical Supplies',
   'tools-hardware': 'Tools & Hardware',
   other: 'Other',
-}
-
-const FALLBACK_CALC_PRODUCT: CalcProduct = {
-  id: 'default',
-  name: 'Round Bar',
-  shape: 'round-bar',
-  density: 7850,
-  standardLength: 6,
 }
 
 export default async function MaterialDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -44,15 +63,11 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
     limit: 8,
   })
 
-  const calcProduct: CalcProduct = material.weightCalcProduct
-    ? {
-        id: material.weightCalcProduct.id,
-        name: material.weightCalcProduct.name,
-        shape: material.weightCalcProduct.shape,
-        density: material.weightCalcProduct.density,
-        standardLength: material.weightCalcProduct.standardLength,
-      }
-    : FALLBACK_CALC_PRODUCT
+  // Match the calculator product by comparing the material's name against the applicable products list
+  const materialNameLower = material.name?.toLowerCase() || ''
+  const calcProduct: CalcProduct | null = APPLICABLE_PRODUCTS.find(
+    (p) => materialNameLower === p.name.toLowerCase() || materialNameLower.includes(p.name.toLowerCase())
+  ) || null
 
   const images = [material.photo, material.hoverPhoto].filter((p: any) => p?.url)
 
@@ -60,7 +75,7 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
     <section className="py-12 md:py-20 bg-white min-h-screen">
       <div className="max-w-[1200px] mx-auto px-6 lg:px-8">
         
-        {/* Top Header Row (Apple "Buy" page style) */}
+        {/* Top Header Row */}
         <div className="border-b border-gray-300/70 pb-6 mb-10 flex flex-col md:flex-row md:justify-between md:items-end gap-4">
           <div>
             <h1 className="text-[40px] md:text-[48px] font-semibold tracking-tight text-gray-900 leading-none">
@@ -83,7 +98,7 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
             <div className="bg-[#fdfffc] rounded-[24px] p-8 md:p-14 w-full flex flex-col items-center relative overflow-hidden">
               
               {/* Primary Image */}
-              <div className="relative w-full  aspect-[4/3] mb-8">
+              <div className="relative w-full aspect-[4/3] mb-8">
                 {images[0]?.url ? (
                   <>
                   <Image 
@@ -92,9 +107,9 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
                     fill 
                     className="object-contain drop-shadow-sm transition-transform duration-700 hover:scale-105" 
                   />
-                  {/* Visual Scrim: Protects contrast for text on top of varying images */}
-                <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/25 to-black/75 z-0" />
-                </>
+                  {/* Visual Scrim */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-black/25 to-black/75 z-0 pointer-events-none" />
+                  </>
                 ) : (
                   <div className="w-full h-full bg-gray-200/50 rounded-2xl flex items-center justify-center text-gray-400 font-medium">
                     No Image Available
@@ -102,7 +117,7 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
                 )}
               </div>
 
-              {/* Apple-style thumbnail pill/dots */}
+              {/* Thumbnail dots */}
               {images.length > 1 && (
                 <div className="flex gap-3 justify-center items-center mt-4">
                   {images.map((img: any, i: number) => (
@@ -157,17 +172,19 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
               </div>
             </div>
 
-            {/* Weight Calculator Box */}
-            <div className="mb-10">
-              <h3 className="text-[17px] font-semibold text-gray-900 mb-3">
-                Calculate Requirements. 
-              </h3>
-              <div className="bg-white border border-gray-300/80 rounded-[18px] p-6 shadow-[0_2px_16px_rgba(0,0,0,0.04)] transition-all hover:border-gray-400/60">
-                <WeightCalculatorForm products={[calcProduct]} />
+            {/* Conditionally Rendered Weight Calculator Box */}
+            {calcProduct && (
+              <div className="mb-10">
+                <h3 className="text-[17px] font-semibold text-gray-900 mb-3">
+                  Calculate Requirements
+                </h3>
+                <div className="bg-white border border-gray-300/80 rounded-[18px] p-6 shadow-[0_2px_16px_rgba(0,0,0,0.04)] transition-all hover:border-gray-400/60">
+                  <WeightCalculatorForm products={[calcProduct]} />
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Apple Primary CTA Button */}
+            {/* Primary CTA Button */}
             <a 
               href={`/quote?material=${material.id}`} 
               className="bg-[#01172f] hover:bg-[#143109] text-white text-center w-full py-4 rounded-[14px] text-[17px] font-semibold transition-colors shadow-sm"

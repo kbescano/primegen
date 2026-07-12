@@ -2,7 +2,16 @@
 
 import { useMemo, useState } from 'react'
 
-export type Shape = 'round-bar' | 'square-bar' | 'flat-bar' | 'round-pipe' | 'angle-bar' | 'sheet-plate'
+export type Shape = 
+  | 'round-bar' 
+  | 'square-bar' 
+  | 'flat-bar' 
+  | 'round-pipe' 
+  | 'angle-bar' 
+  | 'sheet-plate'
+  | 'square-tube'
+  | 'c-channel'
+  | 'i-beam'
 
 export type CalcProduct = {
   id: string | number
@@ -12,13 +21,42 @@ export type CalcProduct = {
   standardLength: number
 }
 
+// Filtered and mapped product list based on applicable structural materials
+export const APPLICABLE_PRODUCTS: CalcProduct[] = [
+  { id: 'deformed-bar', name: 'Deformed Bar', shape: 'round-bar', density: 7850, standardLength: 6 },
+  { id: 'angle-bar', name: 'Angle Bar', shape: 'angle-bar', density: 7850, standardLength: 6 },
+  { id: 'channel-bar', name: 'Channel Bar', shape: 'c-channel', density: 7850, standardLength: 6 },
+  { id: 'square-bar', name: 'Square Bar', shape: 'square-bar', density: 7850, standardLength: 6 },
+  { id: 'plain-round-bar', name: 'Plain Round Bar', shape: 'round-bar', density: 7850, standardLength: 6 },
+  { id: 'rectangular-bar', name: 'Rectangular Bar (Stainless/Carbon)', shape: 'flat-bar', density: 7930, standardLength: 6 },
+  { id: 'flat-bar', name: 'Flat Bar', shape: 'flat-bar', density: 7850, standardLength: 6 },
+  { id: 'tubular', name: 'Tubular Pipe', shape: 'round-pipe', density: 7850, standardLength: 6 },
+  { id: 'square-tube', name: 'Square Tube', shape: 'square-tube', density: 7850, standardLength: 6 },
+  { id: 'c-purlins', name: 'C-Purlins', shape: 'c-channel', density: 7850, standardLength: 6 },
+  { id: 'i-beam', name: 'I Beam', shape: 'i-beam', density: 7850, standardLength: 6 },
+  { id: 'h-beam', name: 'H Beam', shape: 'i-beam', density: 7850, standardLength: 6 },
+  { id: 'bi-pipe', name: 'B.I. Pipe', shape: 'round-pipe', density: 7850, standardLength: 6 },
+  { id: 'gi-pipe', name: 'G.I. Pipe', shape: 'round-pipe', density: 7850, standardLength: 6 },
+  { id: 'copper-pipe', name: 'Copper Pipe', shape: 'round-pipe', density: 8960, standardLength: 6 },
+  { id: 'stainless-pipe', name: 'Stainless Pipe', shape: 'round-pipe', density: 7930, standardLength: 6 },
+  { id: 'base-plate', name: 'Base Plate', shape: 'sheet-plate', density: 7850, standardLength: 1 },
+  { id: 'mild-steel-plate', name: 'Mild Steel Plate', shape: 'sheet-plate', density: 7850, standardLength: 1 },
+  { id: 'chequered-plate', name: 'Chequered Plate', shape: 'sheet-plate', density: 7850, standardLength: 1 },
+  { id: 'gi-sheet', name: 'G.I. Sheet', shape: 'sheet-plate', density: 7850, standardLength: 1 },
+  { id: 'copper-sheet', name: 'Copper Sheet', shape: 'sheet-plate', density: 8960, standardLength: 1 },
+  { id: 'stainless-sheet', name: 'Stainless Sheet', shape: 'sheet-plate', density: 7930, standardLength: 1 },
+]
+
 const SHAPE_LABELS: Record<Shape, string> = {
   'round-bar': 'Round Bar',
-  'square-bar': 'Square Bar',
-  'flat-bar': 'Flat Bar',
+  'square-bar': 'Solid Square Bar',
+  'flat-bar': 'Flat / Rectangular Bar',
   'round-pipe': 'Round Pipe / Tube',
   'angle-bar': 'Angle Bar',
   'sheet-plate': 'Sheet / Plate',
+  'square-tube': 'Hollow Square Tube',
+  'c-channel': 'C-Channel / Purlin',
+  'i-beam': 'I-Beam / H-Beam'
 }
 
 const DEFAULT_DIMS: Record<Shape, Record<string, number>> = {
@@ -28,6 +66,9 @@ const DEFAULT_DIMS: Record<Shape, Record<string, number>> = {
   'round-pipe': { outerDiameter: 50, wallThickness: 3 },
   'angle-bar': { legA: 50, legB: 50, thickness: 5 },
   'sheet-plate': { thickness: 1 },
+  'square-tube': { outerSide: 50, wallThickness: 3 },
+  'c-channel': { flangeWidth: 50, depth: 100, thickness: 5 },
+  'i-beam': { flangeWidth: 100, depth: 200, webThickness: 5, flangeThickness: 8 }
 }
 
 function weightPerMeter(shape: Shape, density: number, dims: Record<string, number>): number {
@@ -56,6 +97,24 @@ function weightPerMeter(shape: Shape, density: number, dims: Record<string, numb
     }
     case 'sheet-plate':
       return d(dims.thickness || 0) * density
+    case 'square-tube': {
+      const side = d(dims.outerSide || 0)
+      const wall = d(dims.wallThickness || 0)
+      return (side * side - (side - 2 * wall) * (side - 2 * wall)) * density
+    }
+    case 'c-channel': {
+      const fw = d(dims.flangeWidth || 0)
+      const depth = d(dims.depth || 0)
+      const t = d(dims.thickness || 0)
+      return ((2 * fw * t) + ((depth - 2 * t) * t)) * density
+    }
+    case 'i-beam': {
+      const fw = d(dims.flangeWidth || 0)
+      const depth = d(dims.depth || 0)
+      const wt = d(dims.webThickness || 0)
+      const ft = d(dims.flangeThickness || 0)
+      return ((2 * fw * ft) + ((depth - 2 * ft) * wt)) * density
+    }
     default:
       return 0
   }
@@ -63,7 +122,7 @@ function weightPerMeter(shape: Shape, density: number, dims: Record<string, numb
 
 const inputClass = "w-full px-3.5 py-2.5 border border-sage rounded text-sm bg-white text-black focus:outline-none focus:border-green"
 
-export default function WeightCalculatorForm({ products }: { products: CalcProduct[] }) {
+export default function WeightCalculatorForm({ products = APPLICABLE_PRODUCTS }: { products?: CalcProduct[] }) {
   const [productId, setProductId] = useState<string | number>(products[0]?.id ?? '')
   const [dims, setDims] = useState<Record<string, number>>(DEFAULT_DIMS[products[0]?.shape] || {})
   const [pieces, setPieces] = useState(1)
@@ -113,7 +172,7 @@ export default function WeightCalculatorForm({ products }: { products: CalcProdu
       <div className="bg-white border border-black/10 rounded p-6">
         {products.length > 1 && (
           <div className="mb-4">
-            <p className="text-xs font-bold uppercase tracking-wide text-green mb-2">Product Shape</p>
+            <p className="text-xs font-bold uppercase tracking-wide text-green mb-2">Select Product</p>
             <select value={String(productId)} onChange={(e) => handleProductChange(e.target.value)} className={inputClass}>
               {products.map((p) => (
                 <option key={p.id} value={String(p.id)}>
@@ -156,6 +215,16 @@ export default function WeightCalculatorForm({ products }: { products: CalcProdu
                 </Field>
               </>
             )}
+            {product.shape === 'square-tube' && (
+              <>
+                <Field label="Outer Side (mm)">
+                  <input type="number" min="0" step="0.1" defaultValue={dims.outerSide} onChange={(e) => updateDim('outerSide', e.target.value)} className={inputClass} />
+                </Field>
+                <Field label="Wall Thickness (mm)">
+                  <input type="number" min="0" step="0.1" defaultValue={dims.wallThickness} onChange={(e) => updateDim('wallThickness', e.target.value)} className={inputClass} />
+                </Field>
+              </>
+            )}
             {product.shape === 'angle-bar' && (
               <>
                 <Field label="Leg A (mm)">
@@ -166,6 +235,35 @@ export default function WeightCalculatorForm({ products }: { products: CalcProdu
                 </Field>
                 <Field label="Thickness (mm)">
                   <input type="number" min="0" step="0.1" defaultValue={dims.thickness} onChange={(e) => updateDim('thickness', e.target.value)} className={inputClass} />
+                </Field>
+              </>
+            )}
+            {product.shape === 'c-channel' && (
+              <>
+                <Field label="Flange Width (mm)">
+                  <input type="number" min="0" step="0.1" defaultValue={dims.flangeWidth} onChange={(e) => updateDim('flangeWidth', e.target.value)} className={inputClass} />
+                </Field>
+                <Field label="Depth (mm)">
+                  <input type="number" min="0" step="0.1" defaultValue={dims.depth} onChange={(e) => updateDim('depth', e.target.value)} className={inputClass} />
+                </Field>
+                <Field label="Thickness (mm)">
+                  <input type="number" min="0" step="0.1" defaultValue={dims.thickness} onChange={(e) => updateDim('thickness', e.target.value)} className={inputClass} />
+                </Field>
+              </>
+            )}
+            {product.shape === 'i-beam' && (
+              <>
+                <Field label="Flange Width (mm)">
+                  <input type="number" min="0" step="0.1" defaultValue={dims.flangeWidth} onChange={(e) => updateDim('flangeWidth', e.target.value)} className={inputClass} />
+                </Field>
+                <Field label="Depth (mm)">
+                  <input type="number" min="0" step="0.1" defaultValue={dims.depth} onChange={(e) => updateDim('depth', e.target.value)} className={inputClass} />
+                </Field>
+                <Field label="Web Thickness (mm)">
+                  <input type="number" min="0" step="0.1" defaultValue={dims.webThickness} onChange={(e) => updateDim('webThickness', e.target.value)} className={inputClass} />
+                </Field>
+                <Field label="Flange Thickness (mm)">
+                  <input type="number" min="0" step="0.1" defaultValue={dims.flangeThickness} onChange={(e) => updateDim('flangeThickness', e.target.value)} className={inputClass} />
                 </Field>
               </>
             )}
@@ -189,7 +287,7 @@ export default function WeightCalculatorForm({ products }: { products: CalcProdu
         )}
       </div>
 
-      <div className="bg-green text-white rounded p-6">
+      <div className="bg-green-600 text-white rounded p-6">
         <p className="text-xs font-bold uppercase tracking-wide text-white mb-3.5">Result</p>
         {result ? (
           <div className="flex flex-col gap-3.5">
