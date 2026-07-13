@@ -251,12 +251,22 @@ export default async function MaterialsPage({ searchParams }: Props) {
                           </p>
                         </div>
 
-                        <span className="hidden md:flex shrink-0 items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-[#103900] opacity-0 -translate-x-1 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0">
-                          View Details
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M5 12h14M12 5l7 7-7 7"/>
-                          </svg>
-                        </span>
+                        <span className="flex items-center gap-1.5 text-[11px] font-semibold capitalize tracking-[0.15em] text-[#103900]">
+                Details
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="transition-transform duration-300 group-hover:translate-x-1"
+                >
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </span>
                       </div>
                     </Link>
                   )
