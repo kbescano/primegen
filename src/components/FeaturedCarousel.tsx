@@ -19,7 +19,7 @@ export default function FeaturedMaterialsGrid({ materials }: { materials: Materi
   if (materials.length === 0) return null
 
   return (
-    <div className="w-full max-w-[1360px] mx-auto py-16 px-4 md:px-6 lg:px-8">
+    <div className="w-full max-w-[1360px] mx-auto py-16">
       {/* Editorial Section Header */}
 
       {/* Grid Layout (Airbnb/Petra Card Style) */}
