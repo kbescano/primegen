@@ -13,71 +13,97 @@ type Material = {
   photo?: { url?: string; alt?: string }
 }
 
-export default function FeaturedDarkCarousel({ materials }: { materials: Material[] }) {
+export default function FeaturedMaterialsGrid({ materials }: { materials: Material[] }) {
   const [selected, setSelected] = useState<Material | null>(null)
 
   if (materials.length === 0) return null
 
   return (
-    <div className="w-full max-w-7xl py-6">
-      <div className="flex items-center gap-4">
-        {/* Horizontal Carousel Track */}
-        <div className="flex-1 flex gap-4 md:gap-5 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {materials.map((m) => (
-            <Link key={m.id} href={"/materials"} className="flex h-full group outline-none">
-              <div
-                onClick={() => setSelected(m)}
-                className="relative flex-none w-[310px] h-[430px] rounded-xl overflow-hidden snap-start cursor-pointer bg-[#01172f] ring-1 ring-inset ring-white/10 max-[480px]:w-[80vw] max-[480px]:h-[500px]"
-              >
-                {/* Full-Bleed Background Image with subtle scale hover effect */}
-                {m.photo?.url && (
-                  <>
+    <div className="w-full max-w-[1360px] mx-auto py-16 px-4 md:px-6 lg:px-8">
+      {/* Editorial Section Header */}
+
+      {/* Grid Layout (Airbnb/Petra Card Style) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        {materials.map((m) => (
+          <Link 
+            key={m.id} 
+            href="/materials" 
+            className="group flex flex-col bg-white rounded-[32px] p-3 shadow-[0_2px_12px_rgba(0,0,0,0.03)] hover:shadow-[0_20px_40px_rgba(0,0,0,0.08)] ring-1 ring-gray-100 hover:ring-gray-200 transition-all duration-500 ease-out hover:-translate-y-1 outline-none"
+            onClick={() => setSelected(m)}
+          >
+            {/* Image Container with Top Tags and Bottom Dots */}
+            <div className="relative w-full aspect-[4/3] rounded-[24px] overflow-hidden mb-5 bg-[#f5f5f7]">
+              {m.photo?.url ? (
+                <>
                   <Image
                     src={m.photo.url}
                     alt={m.photo.alt || m.name}
                     fill
-                    className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+                    className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.05]"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                   />
-                   <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-white/25 to-black/85 z-0" />
-                   </>
+                  {/* Subtle vignette for text legibility */}
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/30 pointer-events-none" />
+                </>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm font-medium">
+                  Image Unavailable
+                </div>
+              )}
+
+              {/* Top Left Glassy Tags */}
+              <div className="absolute top-4 left-4 flex gap-2 z-10">
+                {m.category && (
+                  <span className="px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-md text-[#01172f] text-[12px] font-medium tracking-wide ring-1 ring-white/30 shadow-sm capitalize transition-colors duration-300 group-hover:bg-white/30">
+                    {m.category.replace('-', ' ')}
+                  </span>
                 )}
-
-                {/* Bottom scrim -- legibility only, photo stays clean */}
-                <div className="absolute inset-x-0 bottom-0 h-[55%] bg-gradient-to-t from-[#01172f]/85 via-[#01172f]/35 to-transparent" />
-
-                {/* Arrow -- reveals on hover, matching catalog cards */}
-                <span className="absolute top-5 right-5 flex items-center justify-center w-9 h-9 rounded-full bg-[#fdfffc] text-[#103900] opacity-0 -translate-y-1 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M7 17L17 7M17 7H8M17 7V16" />
-                  </svg>
+                <span className="px-3 py-1.5 rounded-full bg-white/20 backdrop-blur-md text-[#01172f] text-[12px] font-medium tracking-wide ring-1 ring-white/30 shadow-sm transition-colors duration-300 group-hover:bg-white/30">
+                  Premium
                 </span>
+              </div>
+            </div>
 
-                {/* Left-Aligned Bottom Information Layer */}
-                <div className="absolute bottom-0 inset-x-0 p-6 flex flex-col gap-2.5 text-white">
-                  <h3 className="text-[21px] font-bold tracking-tight leading-snug text-[#fdfffc]">
-                    {m.name}
-                  </h3>
+            {/* Content & Typography Layer */}
+            <div className="px-2 pb-2 flex flex-col flex-1">
+              {/* Header Row */}
+              <div className="flex justify-between items-start mb-1.5 gap-4">
+                <h3 className="text-[22px] font-semibold tracking-tight text-gray-900 leading-snug truncate">
+                  {m.name}
+                </h3>
+              </div>
 
-                  <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.15em] text-white/75">
-                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#149911]"></span>
-                    In Stock
-                  </p>
+              {/* Subtitle */}
+              <p className="text-[14px] text-gray-500 font-medium mb-2.5">
+                Ready to Ship • {m.unit || 'Bulk Available'}
+              </p>
+
+              {/* Description */}
+              <p className="text-[14px] text-gray-500 leading-relaxed line-clamp-2 font-light mb-6">
+                {m.description || 'High-grade building material optimized for structural integrity and long-lasting durability in demanding conditions.'}
+              </p>
+
+              {/* Footer Row (Price & Action) */}
+              <div className="mt-auto flex items-center justify-between pt-2">
+                <div className="flex flex-col">
+                  <span className="text-[16px] font-semibold text-gray-900 tracking-tight">
+                    In Stock <span className="font-normal text-gray-500 text-[14px]">/ Verified</span>
+                  </span>
+                </div>
+
+                {/* Animated Pill Button */}
+                <div className="flex items-center gap-3 pl-5 pr-1.5 py-1.5 rounded-full bg-[#01172f] text-white transition-colors duration-300 group-hover:bg-[#103900]">
+                  <span className="text-[13px] font-semibold tracking-wide">View Details</span>
+                  <div className="w-7 h-7 rounded-full bg-white text-[#01172f] flex items-center justify-center transition-transform duration-300 group-hover:rotate-45">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M5 12h14M12 5l7 7-7 7"/>
+                    </svg>
+                  </div>
                 </div>
               </div>
-            </Link>
-          ))}
-        </div>
-
-        {/* View-all arrow, beside the carousel */}
-        <Link
-          href="/materials"
-          aria-label="View all materials"
-          className="flex-shrink-0 w-12 h-12 rounded-full bg-transparent ring-1 ring-[#01172f]/15 text-[#103900] flex items-center justify-center transition-colors hover:bg-[#103900] hover:text-[#fdfffc] hover:ring-[#103900] max-[640px]:hidden"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 18l6-6-6-6" />
-          </svg>
-        </Link>
+            </div>
+          </Link>
+        ))}
       </div>
     </div>
   )
