@@ -138,7 +138,7 @@ export default async function MaterialsPage({ searchParams }: Props) {
             Changed to aspect-square and added flex-shrink-0.
             This locks the container into a perfect, uniform box regardless of screen size.
           */}
-          <div className="relative w-full aspect-square bg-[#ffffff] rounded-lg overflow-hidden mb-4 ring-1 ring-inset ring-[#01172f]/5 transition-shadow duration-300 group-hover:ring-[#01172f]/15 flex-shrink-0">
+          <div className="relative w-full aspect-square bg-[#ffffff] rounded-[32px]  overflow-hidden mb-4 ring-1 ring-inset ring-[#103900]/20 transition-shadow duration-300 group-hover:ring-[#01172f]/15 flex-shrink-0">
             {firstProductImage ? (
               <Image
                 src={firstProductImage}
@@ -215,7 +215,7 @@ export default async function MaterialsPage({ searchParams }: Props) {
                       href={`/materials/${material.id}`}
                       className="group flex flex-col cursor-pointer outline-none"
                     >
-                      <div className="relative w-full aspect-[4/3] bg-[#f4f6f2] rounded-lg overflow-hidden mb-4 ring-1 ring-inset ring-[#01172f]/5 transition-shadow duration-300 group-hover:ring-[#01172f]/15">
+                      <div className="relative w-full aspect-[4/3] bg-[#f4f6f2] rounded-[32px] overflow-hidden mb-4 ring-1 ring-inset ring-[#01172f]/5 transition-shadow duration-300 group-hover:ring-[#01172f]/15">
                         {imgUrl ? (
                           <Image
                             src={imgUrl}
