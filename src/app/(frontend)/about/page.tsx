@@ -21,7 +21,7 @@ export default async function AboutPage() {
         <p className="text-[13px] font-semibold uppercase tracking-widest text-gray-500 mb-3">
           Who We Are
         </p>
-        <h1 className="text-[40px] md:text-[56px] font-semibold tracking-tight text-gray-900 leading-tight mb-6">
+        <h1 className="text-[40px] md:text-[56px] font-semibold tracking-tight text-[#01172f] leading-tight mb-6">
           {title}
         </h1>
         <p className="max-w-[720px] text-[17px] md:text-[19px] leading-relaxed text-gray-500 whitespace-pre-line font-medium">
@@ -47,7 +47,7 @@ export default async function AboutPage() {
               <div className="border-b border-gray-300/60 pb-6">
                 <p className="text-[12px] font-semibold uppercase tracking-wider text-gray-500 mb-2">Phone</p>
                 <p className="m-0">
-                  <a href={`tel:${phone}`} className="text-[#0071e3] hover:text-[#0077ED] font-medium text-[15px] transition-colors">
+                  <a href={`tel:${phone}`} className="text-[#149911] hover:text-[#0077ED] font-medium text-[15px] transition-colors">
                     {phone}
                   </a>
                 </p>

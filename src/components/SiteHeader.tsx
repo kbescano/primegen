@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -12,12 +12,22 @@ const NAV_LINKS = [
 
 export default function SiteHeader() {
   const [open, setOpen] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
   const pathname = usePathname()
+
+  // Triggers exactly once on first load
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   return (
     <>
-      <header className="bg-white/95 backdrop-blur-md py-3.5 sticky top-0 z-50 border-b border-green/15">
-        <div className="max-w-[1360px] mx-auto px-6 lg:px-20 flex items-center justify-between relative">
+      <header className="bg-white/95 backdrop-blur-md py-3.5 sticky top-0 z-50 border-b border-green/15 overflow-hidden">
+        <div 
+          className={`max-w-[1360px] mx-auto px-6 lg:px-20 flex items-center justify-between relative transition-all duration-700 ease-out
+            ${isMounted ? 'translate-x-0 opacity-100' : '-translate-x-8 opacity-0'}
+          `}
+        >
           <Link href="/" className="font-bold bg-gradient-to-tr from-[#051d00] via-[#103900] to-[#52b788] bg-clip-text text-transparent" onClick={() => setOpen(false)}>
             Primegen Trading Corporation
           </Link>
