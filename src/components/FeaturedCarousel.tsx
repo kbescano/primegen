@@ -31,12 +31,15 @@ export default function FeaturedDarkCarousel({ materials }: { materials: Materia
               >
                 {/* Full-Bleed Background Image with subtle scale hover effect */}
                 {m.photo?.url && (
+                  <>
                   <Image
                     src={m.photo.url}
                     alt={m.photo.alt || m.name}
                     fill
                     className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                   />
+                   <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-white/25 to-black/85 z-0" />
+                   </>
                 )}
 
                 {/* Bottom scrim -- legibility only, photo stays clean */}
