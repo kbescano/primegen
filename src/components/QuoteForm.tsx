@@ -122,7 +122,35 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
       <hr className="border-t border-black/10 my-6" />
 
       <textarea name="message" rows={4} placeholder="Project details (size, timeline, delivery location, etc.)" className={`${pillClass} resize-y`} />
+      {/* Quote summary / preview */}
+<div className="rounded-2xl border border-black/10 bg-[#fdfffc] p-5">
+  <p className="text-xs font-bold uppercase tracking-wider text-[#103900] mb-3">
+    Quote Summary
+  </p>
 
+  <ul className="flex flex-col gap-2 m-0 p-0 list-none">
+  {items.map((item, index) => {
+    const mat =
+      materials.find((m) => String(m.id) === String(item.materialId)) ?? materials[0]
+    if (!mat) return null
+    return (
+      <li key={index} className="flex justify-between items-baseline gap-4 text-sm">
+        <span className="text-black">{mat.name}</span>
+        <span className="font-mono text-gray-600 whitespace-nowrap">
+          {item.quantity} {mat.unit ?? ''}
+        </span>
+      </li>
+    )
+  })}
+</ul>
+
+  <div className="border-t border-black/10 mt-3 pt-3 flex justify-between text-sm">
+   <span className="font-bold text-black">
+  {items.length} {items.length === 1 ? 'material' : 'materials'} requested
+</span>
+    <span className="text-gray-500">Pricing follows by phone/email</span>
+  </div>
+</div>
       <button
         type="submit"
         disabled={status === 'submitting'}
