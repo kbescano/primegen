@@ -123,65 +123,70 @@ export default async function MaterialsPage({ searchParams }: Props) {
         )}
 
         {/* Categories Grid (Top Section) - only shows when NOT searching */}
-        {categories.length > 0 && !q && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10 mb-24 lg:mb-32">
-            {categories.map((cat) => {
-              const firstProductImage = grouped[cat][0]?.photo?.url || null
+       {categories.length > 0 && !q && (
+  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10 mb-24 lg:mb-32">
+    {categories.map((cat) => {
+      const firstProductImage = grouped[cat][0]?.photo?.url || null
 
-              return (
-                <a
-                  key={`nav-${cat}`}
-                  href={`#${cat}`}
-                  className="group flex flex-col outline-none"
-                >
-                  <div className="relative w-full aspect-[4/5] bg-[#f4f6f2] rounded-lg overflow-hidden mb-4 ring-1 ring-inset ring-[#01172f]/5 transition-shadow duration-300 group-hover:ring-[#01172f]/15">
-                    {firstProductImage ? (
-                      <Image
-                        src={firstProductImage}
-                        alt={CATEGORIES[cat]?.label || cat}
-                        fill
-                        className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-gray-400 text-[12px] font-medium uppercase tracking-wider">
-                        No Image
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <h3 className="text-[15px] md:text-[17px] font-semibold tracking-tight text-[#01172f] capitalize truncate">
-                      {CATEGORIES[cat]?.label || cat}
-                    </h3>
-
-                    <div className="flex justify-between items-center border-t border-[#01172f]/10 pt-2.5">
-                      <span className="text-[12px] md:text-[13px] text-gray-500">
-                        View Details
-                      </span>
-                      <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-[#103900]">
-                        More
-                        <svg
-                          width="13"
-                          height="13"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="transition-transform duration-300 group-hover:translate-x-1"
-                        >
-                          <path d="M5 12h14M12 5l7 7-7 7"/>
-                        </svg>
-                      </span>
-                    </div>
-                  </div>
-                </a>
-              )
-            })}
+      return (
+        <a
+          key={`nav-${cat}`}
+          href={`#${cat}`}
+          className="group flex flex-col h-full outline-none"
+        >
+          {/* 
+            Changed to aspect-square and added flex-shrink-0.
+            This locks the container into a perfect, uniform box regardless of screen size.
+          */}
+          <div className="relative w-full aspect-square bg-[#ffffff] rounded-lg overflow-hidden mb-4 ring-1 ring-inset ring-[#01172f]/5 transition-shadow duration-300 group-hover:ring-[#01172f]/15 flex-shrink-0">
+            {firstProductImage ? (
+              <Image
+                src={firstProductImage}
+                alt={CATEGORIES[cat]?.label || cat}
+                fill
+                className="object-contain p-4 md:p-6 transition-transform duration-700 ease-out group-hover:scale-[1.03]"
+                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-400 text-[12px] font-medium uppercase tracking-wider">
+                No Image
+              </div>
+            )}
           </div>
-        )}
+
+          {/* flex-1 ensures this bottom section stretches, keeping heights uniform if text wraps */}
+          <div className="flex flex-col flex-1 justify-between gap-3">
+            <h3 className="text-[15px] md:text-[17px] font-semibold tracking-tight text-[#01172f] capitalize line-clamp-2">
+              {CATEGORIES[cat]?.label || cat}
+            </h3>
+
+            <div className="flex justify-between items-center border-t border-[#01172f]/10 pt-2.5 mt-auto">
+              <span className="text-[12px] md:text-[13px] text-gray-500">
+                View Details
+              </span>
+              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-[#103900]">
+                More
+                <svg
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="transition-transform duration-300 group-hover:translate-x-1"
+                >
+                  <path d="M5 12h14M12 5l7 7-7 7"/>
+                </svg>
+              </span>
+            </div>
+          </div>
+        </a>
+      )
+    })}
+  </div>
+)}
 
         {/* All Products Listed by Category (Bottom Section) */}
         <div className="flex flex-col gap-24 md:gap-32">

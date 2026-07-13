@@ -22,12 +22,12 @@ export default function FeaturedDarkCarousel({ materials }: { materials: Materia
     <div className="w-full max-w-7xl py-6">
       <div className="flex items-center gap-4">
         {/* Horizontal Carousel Track */}
-        <div className="flex-1 flex gap-5 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex-1 flex gap-4 md:gap-5 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {materials.map((m) => (
-            <Link key={m.id} href={"/materials"} className="flex h-full">
+            <Link key={m.id} href={"/materials"} className="flex h-full group outline-none">
               <div
                 onClick={() => setSelected(m)}
-                className="relative flex-none w-[310px] h-[430px] rounded-[24px] overflow-hidden snap-start group cursor-pointer bg-neutral-900 max-[480px]:w-[80vw] max-[480px]:h-[500px]"
+                className="relative flex-none w-[310px] h-[430px] rounded-xl overflow-hidden snap-start cursor-pointer bg-[#01172f] ring-1 ring-inset ring-white/10 max-[480px]:w-[80vw] max-[480px]:h-[500px]"
               >
                 {/* Full-Bleed Background Image with subtle scale hover effect */}
                 {m.photo?.url && (
@@ -35,40 +35,30 @@ export default function FeaturedDarkCarousel({ materials }: { materials: Materia
                     src={m.photo.url}
                     alt={m.photo.alt || m.name}
                     fill
-                    className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                    className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                   />
                 )}
 
-                {/* Premium Gradient Overlay */}
-                <div className="absolute inset-0 bg-gradient-to-b from-[#103900]/65 via-[#fdfffc]/25 to-[#01172f]/60 z-0" />
+                {/* Bottom scrim -- legibility only, photo stays clean */}
+                <div className="absolute inset-x-0 bottom-0 h-[55%] bg-gradient-to-t from-[#01172f]/85 via-[#01172f]/35 to-transparent" />
 
-                {/* Translucent Floating Action Arrow (Top Right) */}
-                <button
-                  aria-label={`View details for ${m.name}`}
-                  className="absolute top-5 right-5 w-10 h-10 rounded-full bg-white/15 backdrop-blur-md text-white flex items-center justify-center transition-all duration-300 hover:bg-white/25 group-hover:scale-105 border border-white/10"
-                >
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                {/* Arrow -- reveals on hover, matching catalog cards */}
+                <span className="absolute top-5 right-5 flex items-center justify-center w-9 h-9 rounded-full bg-[#fdfffc] text-[#103900] opacity-0 -translate-y-1 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M7 17L17 7M17 7H8M17 7V16" />
                   </svg>
-                </button>
+                </span>
 
                 {/* Left-Aligned Bottom Information Layer */}
-                <div className="absolute bottom-0 inset-x-0 p-6 flex flex-col gap-2 text-white">
-                  <h3 className="text-2xl font-bold tracking-tight leading-tight text-white">
+                <div className="absolute bottom-0 inset-x-0 p-6 flex flex-col gap-2.5 text-white">
+                  <h3 className="text-[21px] font-bold tracking-tight leading-snug text-[#fdfffc]">
                     {m.name}
                   </h3>
-                  
-                  {/* Notification Badge UI */}
-                  <div className="inline-flex w-fit items-center gap-2 rounded-full bg-white/10 px-2.5 py-1 backdrop-blur-md border border-white/10 shadow-sm">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#149911] opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[#149911]"></span>
-                    </span>
-                    <p className="text-xs text-white font-medium tracking-wider uppercase">
-                      In Stock
-                    </p>
-                  </div>
-                  
+
+                  <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-[0.15em] text-white/75">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#149911]"></span>
+                    In Stock
+                  </p>
                 </div>
               </div>
             </Link>
@@ -79,9 +69,9 @@ export default function FeaturedDarkCarousel({ materials }: { materials: Materia
         <Link
           href="/materials"
           aria-label="View all materials"
-          className="flex-shrink-0 w-14 h-14 rounded-full bg-[#e8e8ed] text-[#424245] flex items-center justify-center hover:bg-[#d2d2d7] transition-colors max-[640px]:hidden"
+          className="flex-shrink-0 w-12 h-12 rounded-full bg-transparent ring-1 ring-[#01172f]/15 text-[#103900] flex items-center justify-center transition-colors hover:bg-[#103900] hover:text-[#fdfffc] hover:ring-[#103900] max-[640px]:hidden"
         >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#149911" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 18l6-6-6-6" />
           </svg>
         </Link>
