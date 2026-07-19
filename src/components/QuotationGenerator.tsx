@@ -82,7 +82,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
           company,
           address,
           contactNumber,
-          items: items.map(({ imageDataUrl, ...rest }) => rest), // strip client-only image before saving
+          items: items.map(({ imageDataUrl, ...rest }) => rest),
           vatRate,
           status: 'draft',
         }),
@@ -102,12 +102,34 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-6 bg-[#fdfffc]">
+      <style>{`
+        @media print {
+    @page {
+      size: A4;
+      margin: 8mm;
+    }
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+    .quotation-print-doc {
+      zoom: 0.8;
+    }
+  }
+      `}</style>
+
       {/* ===== FORM (hidden when printing) ===== */}
       <div className="print:hidden">
         <h1 className="text-2xl font-bold mb-1 text-[#01172f]">Client Quotation Generator</h1>
         <p className="text-sm text-gray-500 mb-8">
           Fill in the details below. Save to auto-generate the quotation number, then use Print /
           Save as PDF to send to the client.
+        </p>
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-8">
+          Before printing: in the print dialog, open &quot;More settings&quot; and uncheck
+          &quot;Headers and footers&quot; -- that removes the browser&apos;s own URL/date/page-number
+          strip, which can&apos;t be controlled from the page itself.
         </p>
 
         <div className="grid md:grid-cols-2 gap-4 mb-6">
@@ -293,194 +315,196 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
         <p className="text-xs uppercase tracking-wide font-bold text-gray-400 mb-6">Preview</p>
       </div>
 
-      {/* ===== FORMAL QUOTATION DOCUMENT ===== */}
-      <div className="bg-white border border-gray-200 rounded p-5 md:p-10 print:border-0 print:p-0 print:rounded-none text-[#01172f]">
-        {/* Header: logo + company block, title + date/number */}
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-6 mb-8">
-          <div className="flex gap-3 items-start">
-            <div className="relative w-16 h-16 flex-shrink-0">
-              <Image
-                src="/branding/primegen-logo.jpg"
-                alt="Primegen Trading Corporation"
-                fill
-                className="object-contain"
-              />
+      {/* ===== FORMAL QUOTATION DOCUMENT -- True WYSIWYG Print Preview ===== */}
+      <div className="w-full overflow-x-auto pb-4">
+        <div className="quotation-print-doc bg-white border border-gray-200 rounded p-8 print:border-0 print:p-0 print:rounded-none text-[#01172f] min-w-[794px]">
+          {/* Header: logo + company block, title + date/number */}
+          <div className="flex flex-row justify-between items-start gap-3 mb-4">
+            <div className="flex gap-3 items-start">
+              <div className="relative w-12 h-12 flex-shrink-0">
+                <Image
+                  src="/branding/primegen-logo.jpg"
+                  alt="Primegen Trading Corporation"
+                  fill
+                  className="object-contain"
+                />
+              </div>
+              <div>
+                <h2 className="text-base font-bold leading-tight text-[#103900]">PRIMEGEN</h2>
+                <p className="text-[10px] font-semibold tracking-widest text-gray-600 mb-1">
+                  TRADING CORPORATION
+                </p>
+                <p className="text-[9px] text-gray-500 leading-snug max-w-[220px]">
+                  SOUTHERN CITY HOMES, YG BUILDING, CEBU ST, 4 TANZANG LUMA, IMUS, 4103 CAVITE,
+                  PHILIPPINES
+                </p>
+                <p className="text-[9px] text-gray-500">
+                  0917-185-9127 / 0917-133-9515 / 046-8860853
+                </p>
+                <p className="text-[9px] text-gray-500">SALES@PRIMEGENTRADINGCORP.COM</p>
+              </div>
             </div>
-            <div>
-              <h2 className="text-lg font-bold leading-tight text-[#103900]">PRIMEGEN</h2>
-              <p className="text-[10px] font-semibold tracking-widest text-gray-600 mb-1">
-                TRADING CORPORATION
-              </p>
-              <p className="text-[9px] text-gray-500 leading-snug max-w-[220px]">
-                SOUTHERN CITY HOMES, YG BUILDING, CEBU ST, 4 TANZANG LUMA, IMUS, 4103 CAVITE,
-                PHILIPPINES
-              </p>
-              <p className="text-[9px] text-gray-500">
-                0917-185-9127 / 0917-133-9515 / 046-8860853
-              </p>
-              <p className="text-[9px] text-gray-500">SALES@PRIMEGENTRADINGCORP.COM</p>
+
+            <div className="text-right w-auto">
+              <h3 className="text-xl font-bold text-[#103900] mb-1">
+                FORMAL QUOTATION
+              </h3>
+              <table className="text-xs ml-auto mt-0">
+                <tbody>
+                  <tr>
+                    <td className="border border-gray-300 px-2 py-0.5 font-bold bg-gray-50">DATE</td>
+                    <td className="border border-gray-300 px-3 py-0.5">{quotationDate || '________'}</td>
+                  </tr>
+                  <tr>
+                    <td className="border border-gray-300 px-2 py-0.5 font-bold bg-gray-50">
+                      QUOTATION #
+                    </td>
+                    <td className="border border-gray-300 px-3 py-0.5 font-mono">
+                      {quotationNumber || '________'}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
 
-          <div className="text-left sm:text-right w-full sm:w-auto">
-            <h3 className="text-2xl md:text-3xl font-bold text-[#103900] mb-2">
-              FORMAL QUOTATION
-            </h3>
-            <table className="text-sm ml-0 sm:ml-auto mt-2 sm:mt-0">
+          {/* Customer block */}
+          <div className="mb-3">
+            <div className="bg-[#103900] text-white text-xs font-bold uppercase tracking-wide px-3 py-1">
+              Customer
+            </div>
+            <div className="text-xs py-1 flex flex-col gap-0.5">
+              <p>
+                <span className="font-bold">Name: </span>
+                {customerName || '________'}
+              </p>
+              <p>
+                <span className="font-bold">Company: </span>
+                {company || '________'}
+              </p>
+              <p>
+                <span className="font-bold">Address: </span>
+                {address || '________'}
+              </p>
+              <p>
+                <span className="font-bold">Contact Number: </span>
+                {contactNumber || '________'}
+              </p>
+            </div>
+          </div>
+
+          {/* Line items table */}
+          <div>
+            <table className="w-full text-xs mb-2 border-collapse">
+              <thead>
+                <tr className="bg-[#103900] text-white text-xs uppercase tracking-wide">
+                  <th className="py-1.5 px-2 text-left w-[70px]">Qty</th>
+                  <th className="py-1.5 px-2 text-left w-[90px]">Unit</th>
+                  <th className="py-1.5 px-2 text-left">Description</th>
+                  <th className="py-1.5 px-2 text-right w-[120px]">Unit Price</th>
+                  <th className="py-1.5 px-2 text-right w-[120px]">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item, i) => (
+                  <tr key={i} className={i % 2 === 1 ? 'bg-gray-50' : ''}>
+                    <td className="py-1.5 px-2 border-b border-gray-100">{item.qty}</td>
+                    <td className="py-1.5 px-2 border-b border-gray-100">{item.unit}</td>
+                    <td className="py-1.5 px-2 border-b border-gray-100">
+                      <div className="flex items-center gap-3">
+                        <span>{item.description || '--'}</span>
+                        {item.imageDataUrl && (
+                          <img
+                            src={item.imageDataUrl}
+                            alt=""
+                            className="h-8 w-auto object-contain flex-shrink-0"
+                          />
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-1.5 px-2 border-b border-gray-100 text-right font-mono">
+                      {peso(item.unitPrice)}
+                    </td>
+                    <td className="py-1.5 px-2 border-b border-gray-100 text-right font-mono">
+                      {peso(item.qty * item.unitPrice)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Totals */}
+          <div className="flex justify-end mt-10 mb-4">
+            <table className="text-xs w-full max-w-[280px]">
               <tbody>
                 <tr>
-                  <td className="border border-gray-300 px-2 py-1 font-bold bg-gray-50">DATE</td>
-                  <td className="border border-gray-300 px-3 py-1">{quotationDate || '________'}</td>
+                  <td className="py-1 px-2 bg-[#e8f0e5]">Subtotal</td>
+                  <td className="py-1 px-2 bg-[#e8f0e5] text-right font-mono">{peso(subtotal)}</td>
                 </tr>
                 <tr>
-                  <td className="border border-gray-300 px-2 py-1 font-bold bg-gray-50">
-                    QUOTATION #
-                  </td>
-                  <td className="border border-gray-300 px-3 py-1 font-mono">
-                    {quotationNumber || '________'}
+                  <td className="py-1 px-2">VAT</td>
+                  <td className="py-1 px-2 text-right font-mono">{peso(vat)}</td>
+                </tr>
+                <tr className="border-t-2 border-[#103900]">
+                  <td className="py-1.5 px-2 font-bold text-sm bg-[#e8f0e5]">TOTAL</td>
+                  <td className="py-1.5 px-2 font-bold text-sm text-right font-mono bg-[#e8f0e5]">
+                    ₱{peso(total)}
                   </td>
                 </tr>
               </tbody>
             </table>
           </div>
-        </div>
 
-        {/* Customer block */}
-        <div className="mb-6">
-          <div className="bg-[#103900] text-white text-xs font-bold uppercase tracking-wide px-3 py-1.5">
-            Customer
-          </div>
-          <div className="text-sm py-2 flex flex-col gap-0.5">
-            <p>
-              <span className="font-bold">Name: </span>
-              {customerName || '________'}
-            </p>
-            <p>
-              <span className="font-bold">Company: </span>
-              {company || '________'}
-            </p>
-            <p>
-              <span className="font-bold">Address: </span>
-              {address || '________'}
-            </p>
-            <p>
-              <span className="font-bold">Contact Number: </span>
-              {contactNumber || '________'}
-            </p>
-          </div>
-        </div>
-
-        {/* Line items table */}
-        <div className="overflow-x-auto print:overflow-visible">
-          <table className="w-full text-sm mb-2 border-collapse min-w-[600px] md:min-w-full">
-            <thead>
-              <tr className="bg-[#103900] text-white text-xs uppercase tracking-wide">
-                <th className="py-3.5 px-4 text-left w-[70px]">Qty</th>
-                <th className="py-3.5 px-4 text-left w-[90px]">Unit</th>
-                <th className="py-3.5 px-4 text-left">Description</th>
-                <th className="py-3.5 px-4 text-right w-[120px]">Unit Price</th>
-                <th className="py-3.5 px-4 text-right w-[120px]">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item, i) => (
-                <tr key={i} className={i % 2 === 1 ? 'bg-gray-50' : ''}>
-                  <td className="py-3.5 px-4 border-b border-gray-100">{item.qty}</td>
-                  <td className="py-3.5 px-4 border-b border-gray-100">{item.unit}</td>
-                  <td className="py-3.5 px-4 border-b border-gray-100">
-                    <div className="flex items-center gap-3">
-                      <span>{item.description || '--'}</span>
-                      {item.imageDataUrl && (
-                        <img
-                          src={item.imageDataUrl}
-                          alt=""
-                          className="h-12 w-auto object-contain flex-shrink-0"
-                        />
-                      )}
-                    </div>
-                  </td>
-                  <td className="py-3.5 px-4 border-b border-gray-100 text-right font-mono">
-                    {peso(item.unitPrice)}
-                  </td>
-                  <td className="py-3.5 px-4 border-b border-gray-100 text-right font-mono">
-                    {peso(item.qty * item.unitPrice)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Totals */}
-        <div className="flex justify-end mt-20 mb-10">
-          <table className="text-sm w-full max-w-[280px]">
-            <tbody>
-              <tr>
-                <td className="py-2.5 px-4 bg-[#e8f0e5]">Subtotal</td>
-                <td className="py-2.5 px-4 bg-[#e8f0e5] text-right font-mono">{peso(subtotal)}</td>
-              </tr>
-              <tr>
-                <td className="py-2.5 px-4">VAT</td>
-                <td className="py-2.5 px-4 text-right font-mono">{peso(vat)}</td>
-              </tr>
-              <tr className="border-t-2 border-[#103900]">
-                <td className="py-3.5 px-4 font-bold text-base bg-[#e8f0e5]">TOTAL</td>
-                <td className="py-3.5 px-4 font-bold text-base text-right font-mono bg-[#e8f0e5]">
-                  ₱{peso(total)}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-
-        {/* Terms & signature */}
-        <div className="grid md:grid-cols-[1fr_260px] gap-8 mb-10 text-[11px] leading-relaxed">
-          <div>
-            <p className="font-bold text-xs uppercase tracking-wide mb-2">Terms &amp; Condition</p>
-            <ol className="list-decimal pl-4 flex flex-col gap-1.5 text-gray-700">
-              {TERMS.map((t, i) => (
-                <li key={i}>{t}</li>
-              ))}
-            </ol>
-          </div>
-          <div>
-            <p className="font-bold text-xs uppercase tracking-wide mb-8">Customer Conforme:</p>
-            <div className="border-t border-black w-full mb-4" />
-            <p className="text-gray-600">
-              This is to certify that all details in this quotation are correct (name, address,
-              items, specifications, quantity, price)
-            </p>
-          </div>
-        </div>
-
-        {/* Bank details */}
-        <div className="border-t border-black pt-4">
-          <p className="text-center font-bold text-xs uppercase tracking-wide mb-4">
-            Bank Transfer Details
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 text-[10px]">
+          {/* Terms & signature */}
+          <div className="grid grid-cols-[1fr_260px] gap-4 mt-10 mb-2 text-[9px] leading-snug break-inside-avoid">
             <div>
-              <p className="font-bold">BANK:</p>
-              <p>ASIA UNITED BANK</p>
-              <p className="mt-1">ACCOUNT NAME:</p>
-              <p>PRIMEGEN TRADING CORPORATION</p>
-              <p className="mt-1">ACCOUNT NUMBER:</p>
-              <p>102-01-000648-3</p>
+              <p className="font-bold text-[10px] uppercase tracking-wide mb-1">Terms &amp; Condition</p>
+              <ol className="list-decimal pl-4 flex flex-col gap-0.5 text-gray-700">
+                {TERMS.map((t, i) => (
+                  <li key={i}>{t}</li>
+                ))}
+              </ol>
             </div>
             <div>
-              <p className="font-bold">G-CASH / MAYA</p>
-              <p className="mt-1">LEAH R. SAYNES</p>
-              <p>09617812908</p>
+              <p className="font-bold text-[10px] uppercase tracking-wide mb-4">Customer Conforme:</p>
+              <div className="border-t border-black w-full mb-2" />
+              <p className="text-gray-600">
+                This is to certify that all details in this quotation are correct (name, address,
+                items, specifications, quantity, price)
+              </p>
             </div>
-            <div>
-              <p className="font-bold">PNB</p>
-              <p className="mt-1">MICHAEL P. SAYNES</p>
-              <p>50110044450</p>
-            </div>
-            <div>
-              <p className="font-bold">BANCO DE ORO (SM AURA BRANCH)</p>
-              <p className="mt-1">MICHAEL P. SAYNES</p>
-              <p>008010019955</p>
+          </div>
+
+          {/* Bank details */}
+          <div className="border-t border-black pt-1 break-inside-avoid mt-10">
+            <p className="text-center font-bold text-[10px] uppercase tracking-wide mb-2">
+              Bank Transfer Details
+            </p>
+            <div className="grid grid-cols-4 gap-3 gap-x-4 text-[8px]">
+              <div>
+                <p className="font-bold">BANK:</p>
+                <p>ASIA UNITED BANK</p>
+                <p className="mt-0.5">ACCOUNT NAME:</p>
+                <p>PRIMEGEN TRADING CORPORATION</p>
+                <p className="mt-0.5">ACCOUNT NUMBER:</p>
+                <p>102-01-000648-3</p>
+              </div>
+              <div>
+                <p className="font-bold">G-CASH / MAYA</p>
+                <p className="mt-0.5">LEAH R. SAYNES</p>
+                <p>09617812908</p>
+              </div>
+              <div>
+                <p className="font-bold">PNB</p>
+                <p className="mt-0.5">MICHAEL P. SAYNES</p>
+                <p>50110044450</p>
+              </div>
+              <div>
+                <p className="font-bold">BANCO DE ORO (SM AURA BRANCH)</p>
+                <p className="mt-0.5">MICHAEL P. SAYNES</p>
+                <p>008010019955</p>
+              </div>
             </div>
           </div>
         </div>

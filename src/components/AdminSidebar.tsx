@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation'
 const NAV_ITEMS = [
   { href: '/admin-dashboard', label: 'Quotation Inbox' },
   { href: '/admin-dashboard/supplier-po', label: 'Supplier PO' },
-  { href: '/admin-dashboard/client-po', label: 'Client Quotation' }
+  { href: '/admin-dashboard/client-quotation', label: 'Client Quotation' }
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -19,6 +19,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {/* Horizontal Navigation Bar */}
       <header
+        className="admin-header"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -89,6 +90,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Mobile full-screen overlay -- sibling of header, same pattern as the homepage nav */}
       {open && (
         <div
+          className="admin-header"
           style={{
             position: 'fixed',
             inset: 0,
@@ -146,6 +148,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           }
           .nav-hamburger {
             display: flex !important;
+          }
+        }
+
+        @media print {
+          .admin-header {
+            display: none !important;
           }
         }
       `}</style>

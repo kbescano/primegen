@@ -2,7 +2,7 @@ import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import WeightCalculatorForm, { type CalcProduct } from '@/components/WeightCalculatorForm'
-import RelatedMaterialsCarousel from '@/components/RelatedMaterialsCarousel'
+import RelatedMaterialsGrid from '@/components/RelatedMaterialsCarousel'
 import ScrollReveal from '@/components/ScrollReveal'
 
 export const revalidate = 60
@@ -218,7 +218,7 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
               Related Materials
             </h2>
             <div className="w-full">
-              <RelatedMaterialsCarousel materials={related.docs as any} />
+              <RelatedMaterialsGrid materials={related.docs as any} />
             </div>
           </ScrollReveal>
         )}
