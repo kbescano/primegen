@@ -195,7 +195,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
             <div key={index} className="border border-gray-200 rounded-lg p-3 md:p-4">
               <div className="grid grid-cols-2 md:grid-cols-[70px_90px_1fr_120px_120px_36px] gap-2 items-center">
                 <input
-                  type="number"
+                  type="text"
                   min={0}
                   className={inputClass}
                   value={item.qty}
@@ -215,7 +215,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
                   placeholder="Description"
                 />
                 <input
-                  type="number"
+                  type="text"
                   min={0}
                   step="0.01"
                   className={inputClass}
@@ -280,7 +280,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
         <div className="mb-6 max-w-[200px]">
           <label className={labelClass}>VAT Rate (%)</label>
           <input
-            type="number"
+            type="text"
             min={0}
             className={inputClass}
             value={vatRate}

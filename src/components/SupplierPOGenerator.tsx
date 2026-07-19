@@ -174,7 +174,7 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
                   placeholder="Description"
                 />
                 <input
-                  type="number"
+                  type="text"
                   min={0}
                   className={inputClass}
                   value={item.qty}
@@ -188,7 +188,7 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
                   placeholder="Unit"
                 />
                 <input
-                  type="number"
+                  type="text"
                   min={0}
                   step="0.01"
                   className={inputClass}

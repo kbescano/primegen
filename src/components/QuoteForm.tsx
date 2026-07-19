@@ -118,7 +118,7 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
                 
                 <div className="relative flex items-center">
                   <input
-                    type="number"
+                    type="text"
                     min={1}
                     value={item.quantity}
                     onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })}
