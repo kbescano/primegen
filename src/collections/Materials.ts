@@ -31,6 +31,7 @@ export const Materials: CollectionConfig = {
        { label: 'Fence & Wire', value: 'fence-wire' },
        { label: 'PPE', value: 'ppe' },
        { label: 'Electrical & Cabling', value: 'electrical-cabling' },
+       { label: 'Steel Fabrication', value: 'steel-fabrication' },
   ],
     },
     {

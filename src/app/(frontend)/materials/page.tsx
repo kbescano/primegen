@@ -8,6 +8,7 @@ export const dynamic = 'force-dynamic'
 
 const STAGGER_STEP = 60 // ms between each card's reveal
 const STAGGER_CAP = 480 // ms max delay, so long lists don't take forever to fully reveal
+const STEEL_FABRICATION_VIDEO = 'https://www.pexels.com/download/video/30456101/'
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
@@ -80,6 +81,71 @@ export default async function MaterialsPage({ searchParams }: Props) {
               const label = cat?.label || slug
               const cardImage = cat?.image?.url || grouped[slug][0]?.photo?.url || null
               const delay = Math.min(index * STAGGER_STEP, STAGGER_CAP)
+              const isSteelFabrication = label.trim().toLowerCase() === 'steel fabrication'
+
+              // Special wide video hero card -- only renders for the "Steel Fabrication" category
+             if (isSteelFabrication) {
+  return (
+      <ScrollReveal
+        key={`nav-${slug}`}
+        as="a"
+        href={`#${slug}`}
+        style={{ transitionDelay: `${delay}ms` }}
+        className="group md:col-span-2 relative flex flex-col overflow-hidden bg-white outline-none cursor-pointer border border-[#01172f]/10 transition-all duration-700 hover:shadow-[0_20px_60px_-15px_rgba(1,23,47,0.12)]"
+      >
+        {/* Text Section */}
+        <div className="pt-12 md:pt-16 pb-10 px-8 md:px-12 text-left relative z-10">
+          {/* Bold Accent Line */}
+          <div className="w-12 h-[4px] bg-[#01172f] mb-6 transform origin-left transition-transform duration-500 ease-out group-hover:scale-x-150"></div>
+
+          <h3 className="text-[32px] md:text-[48px] font-black text-[#01172f] tracking-tighter uppercase leading-none">
+            {label}.
+          </h3>
+          
+          {cat?.description && (
+            <p className="mt-5 text-[15px] md:text-[17px] text-[#01172f]/70 font-medium max-w-[560px] leading-relaxed">
+              {cat.description}
+            </p>
+          )}
+        </div>
+
+        {/* Video Section */}
+        <div className="relative w-full aspect-video md:aspect-[21/9] bg-[#01172f] overflow-hidden">
+          <video
+            src={STEEL_FABRICATION_VIDEO}
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute inset-0 w-full h-full object-cover transition-transform duration-[1.5s] ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
+          />
+          
+          {/* Subtle Cinematic Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/10 pointer-events-none transition-opacity duration-700 group-hover:opacity-50" />
+
+          {/* Premium Sharp Button Overlay */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+            <span className="flex items-center gap-4 text-[12px] font-bold uppercase tracking-[0.25em] text-white bg-white/10 backdrop-blur-md px-8 py-4 border border-white/20 transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:bg-white group-hover:text-[#01172f] group-hover:border-white shadow-2xl scale-95 group-hover:scale-100">
+              Explore
+              <svg 
+                width="16" 
+                height="16" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="currentColor" 
+                strokeWidth="2.5" 
+                strokeLinecap="square" 
+                strokeLinejoin="miter" 
+                className="transition-transform duration-500 group-hover:translate-x-1.5"
+              >
+                <path d="M5 12h14M12 5l7 7-7 7" />
+              </svg>
+            </span>
+          </div>
+        </div>
+      </ScrollReveal>
+  );
+}
 
               return (
                 <ScrollReveal
@@ -108,17 +174,12 @@ export default async function MaterialsPage({ searchParams }: Props) {
 
                   {/* Eyebrow + bold header + Discover link, bottom-left */}
                   <div className="relative z-10 p-6 md:p-10 flex flex-col gap-2 md:gap-3 text-white">
-                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md shadow-sm">
-
-  <span className="text-[10px] md:text-[11px] font-medium uppercase tracking-[0.25em] text-white/90">
-     <h3 className="text-[#fdfffc] text-[28px] md:text-[36px] font-bold uppercase tracking-tight leading-[1.05]">
+                    
+                    <h3 className="text-[#fdfffc] text-[28px] md:text-[36px] font-bold uppercase tracking-tight leading-[1.05]">
                       {label}
                     </h3>
-  </span>
-</div>
-                   
                     <span className="mt-2 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.15em]">
-                      Browse
+                      Explore
                       <span className="flex items-center justify-center w-7 h-7 rounded-full border border-white/50 transition-colors duration-300 group-hover:bg-white group-hover:text-black">
                         <svg
                           width="12"
