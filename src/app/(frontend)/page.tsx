@@ -1,7 +1,8 @@
+import Link from 'next/link'
+import Image from 'next/image'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import CinematicVideoHero, { type HeroSlide } from '@/components/CinematicVideoHero'
 import FeaturedCarousel from '@/components/FeaturedCarousel'
-import Link from 'next/link'
 import MobileStickyCta from '@/components/MobileSticky'
 
 export const revalidate = 60
@@ -21,9 +22,9 @@ const VALUE_PROPS = [
 export default async function HomePage() {
   const payload = await getPayloadClient()
 
-  const [featured, heroSlides] = await Promise.all([
-    payload.find({ collection: 'materials', where: { featured: { equals: true } }, limit: 8 }),
+  const [heroSlides, categories] = await Promise.all([
     payload.find({ collection: 'hero-slides', where: { enabled: { equals: true } }, sort: 'order', limit: 10 }),
+    payload.find({ collection: 'categories', sort: 'order', limit: 100 }),
   ])
 
   const slides: HeroSlide[] =
@@ -57,20 +58,23 @@ export default async function HomePage() {
             Featured Materials.{' '}
             <span className="font-normal text-gray-500">Browse what&apos;s currently in stock.</span>
           </h2>
+
           <div className="mt-10">
-            <FeaturedCarousel materials={featured.docs as any} />
+            <FeaturedCarousel categories={categories.docs as any} />
           </div>
         </div>
       </section>
+
       {/* Mobile-only sticky CTA */}
-            <MobileStickyCta />
-  <footer className="py-2 bg-sage-tint border-t border-[#01172f]/5">
-  <div className="max-w-[1360px] mx-auto px-6">
-    <p className="text-center text-xs tracking-wide text-[#01172f]">
-      &copy; {new Date().getFullYear()} Primegen Trading Corporation
-    </p>
-  </div>
-</footer>
+      <MobileStickyCta />
+
+      <footer className="py-2 bg-sage-tint border-t border-[#01172f]/5">
+        <div className="max-w-[1360px] mx-auto px-6">
+          <p className="text-center text-xs tracking-wide text-[#01172f]">
+            &copy; {new Date().getFullYear()} Primegen Trading Corporation
+          </p>
+        </div>
+      </footer>
     </>
   )
 }

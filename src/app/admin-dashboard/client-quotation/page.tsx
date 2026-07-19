@@ -1,9 +1,9 @@
-import SupplierPOGenerator, { type SupplierPOInitial } from '@/components/SupplierPOGenerator'
+import QuotationGenerator, { type QuotationInitial } from '@/components/QuotationGenerator'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 
-export default async function SupplierPOPage({ searchParams }: { searchParams: Promise<{ from?: string }> }) {
+export default async function ClientQuotationPage({ searchParams }: { searchParams: Promise<{ from?: string }> }) {
   const { from } = await searchParams
-  let initial: SupplierPOInitial | undefined
+  let initial: QuotationInitial | undefined
 
   if (from) {
     try {
@@ -11,12 +11,13 @@ export default async function SupplierPOPage({ searchParams }: { searchParams: P
       const q: any = await payload.findByID({ collection: 'quotation-requests', id: from, depth: 2 })
       if (q) {
         initial = {
-          project: q.projectType ? `${q.projectType.charAt(0).toUpperCase()}${q.projectType.slice(1)} project -- for ${q.customerName}` : `For ${q.customerName}`,
+          customerName: q.customerName || '',
+          contactNumber: q.phone || '',
           items: Array.isArray(q.items)
             ? q.items.map((item: any) => ({
-                description: typeof item.material === 'object' ? item.material?.name || '' : String(item.material || ''),
                 qty: item.quantity || 1,
                 unit: typeof item.material === 'object' ? item.material?.unit || 'pcs' : 'pcs',
+                description: typeof item.material === 'object' ? item.material?.name || '' : String(item.material || ''),
                 unitPrice: 0,
               }))
             : undefined,
@@ -27,5 +28,5 @@ export default async function SupplierPOPage({ searchParams }: { searchParams: P
     }
   }
 
-  return <SupplierPOGenerator initial={initial} />
+  return <QuotationGenerator initial={initial} />
 }

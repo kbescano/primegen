@@ -1,66 +1,14 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { getPayloadClient } from '@/lib/getPayloadClient'
-import SearchBar from '@/components/SearchBar' // Adjust path if needed
+import SearchBar from '@/components/SearchBar'
+import ScrollReveal from '@/components/ScrollReveal'
 
-export const revalidate = 60
+export const dynamic = 'force-dynamic'
 
-const CATEGORIES: Record<string, { label: string; description: string }> = {
-  'bolts-fasteners': {
-    label: 'Bolts & Fasteners',
-    description: 'High-quality bolts, nuts, screws, washers, anchors, and fastening solutions for construction, industrial, and DIY applications.',
-  },
-  'steel-plates': {
-    label: 'Steel Plates',
-    description: 'Durable steel plates available in various grades, thicknesses, and sizes for fabrication, structural, and industrial projects.',
-  },
-  'sheet-pile': {
-    label: 'Sheet Pile',
-    description: 'Heavy-duty sheet piles designed for retaining walls, excavation support, flood protection, and foundation construction.',
-  },
-  'steel-bars': {
-    label: 'Steel Bars & Tubing',
-    description: 'Round bars, square bars, flat bars, pipes, tubes, and structural tubing for manufacturing, fabrication, and construction.',
-  },
-  beams: {
-    label: 'Beams',
-    description: 'Structural steel beams including I-beams, H-beams, and wide flange beams for residential, commercial, and industrial buildings.',
-  },
-  'black-iron': {
-    label: 'Black Iron',
-    description: 'Black iron pipes, fittings, and steel products ideal for gas lines, structural frameworks, and industrial applications.',
-  },
-  'galvanized-iron': {
-    label: 'Galvanized Iron',
-    description: 'Corrosion-resistant galvanized iron sheets, pipes, and structural materials built for long-lasting outdoor and industrial use.',
-  },
-  copper: {
-    label: 'Copper',
-    description: 'Premium copper pipes, fittings, wires, and accessories for plumbing, electrical, and industrial installations.',
-  },
-  stainless: {
-    label: 'Stainless',
-    description: 'High-grade stainless steel sheets, pipes, bars, fittings, and hardware offering exceptional corrosion resistance and durability.',
-  },
-  'pipe-fittings': {
-    label: 'Pipe Fittings',
-    description: 'Comprehensive range of elbows, tees, couplings, flanges, valves, and connectors for plumbing and industrial piping systems.',
-  },
-  'fence-wire': {
-    label: 'Fence & Wire',
-    description: 'Wire mesh, chain link, barbed wire, welded wire, and fencing materials for residential, commercial, and agricultural use.',
-  },
-  ppe: {
-    label: 'PPE',
-    description: 'Personal protective equipment including helmets, gloves, safety shoes, eyewear, and protective clothing for workplace safety.',
-  },
-  'electrical-cabling': {
-    label: 'Electrical & Cabling',
-    description: 'Electrical wires, power cables, conduits, connectors, switches, and installation accessories for residential and industrial projects.',
-  },
-}
+const STAGGER_STEP = 60 // ms between each card's reveal
+const STAGGER_CAP = 480 // ms max delay, so long lists don't take forever to fully reveal
 
-// searchParams is a Promise in Next.js 15
 type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }
@@ -71,209 +19,198 @@ export default async function MaterialsPage({ searchParams }: Props) {
   const resolvedParams = await searchParams
   const q = typeof resolvedParams?.q === 'string' ? resolvedParams.q : ''
 
-  const query: any = {
-    collection: 'materials',
-    limit: 200,
-    sort: 'category',
-  }
+  const [categoriesRes, materialsRes] = await Promise.all([
+    payload.find({ collection: 'categories', sort: 'order', limit: 100, depth: 2 }),
+    payload.find({
+      collection: 'materials',
+      limit: 200,
+      depth: 2,
+      ...(q ? { where: { name: { contains: q } } } : {}),
+    }),
+  ])
 
-  if (q) {
-    query.where = {
-      name: {
-        contains: q,
-      },
-    }
-  }
+  const categoryDocs = categoriesRes.docs as any[]
 
-  const { docs } = await payload.find(query)
-
-  // Group products by category
   const grouped: Record<string, any[]> = {}
-  for (const m of docs) {
-    const cat = m.category || 'other'
-    grouped[cat] = grouped[cat] || []
-    grouped[cat].push(m)
+  for (const m of materialsRes.docs as any[]) {
+    const slug = m.categoryRef?.slug || m.category || 'other'
+    grouped[slug] = grouped[slug] || []
+    grouped[slug].push(m)
   }
-  const categories = Object.keys(grouped)
+
+  const orderedSlugs = [
+    ...categoryDocs.map((c) => c.slug).filter((slug) => grouped[slug]),
+    ...Object.keys(grouped).filter((slug) => !categoryDocs.some((c) => c.slug === slug)),
+  ]
+
+  const categoryBySlug: Record<string, any> = {}
+  for (const c of categoryDocs) categoryBySlug[c.slug] = c
 
   return (
-    <section className="py-16 md:py-24 bg-[#fdfffc] min-h-screen">
-      <div className="max-w-[1360px] mx-auto px-6 lg:px-20">
+    <section className="py-16 md:py-28 bg-[#fdfffc] min-h-screen">
+      <div className="max-w-[1360px] mx-auto px-6 lg:px-12 xl:px-20">
 
         {/* Top Header with Functional Search Bar */}
-        <div className="mb-16 md:mb-20 flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-[#01172f]/10 pb-8">
+        <ScrollReveal className="mb-16 md:mb-24 flex flex-col md:flex-row md:items-end justify-between gap-8 border-b border-[#01172f]/10 pb-10">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[#103900] mb-3">
+            <p className="text-[10px] md:text-[11px] font-semibold uppercase tracking-[0.25em] text-[#103900] mb-4">
               Full Catalog
             </p>
-            <h1 className="text-[40px] md:text-[52px] font-bold tracking-[-0.02em] text-[#01172f] leading-none">
+            <h1 className="text-[40px] md:text-[56px] font-medium tracking-tight text-[#01172f] leading-none">
               Materials
             </h1>
           </div>
 
-          <SearchBar />
-        </div>
+          <SearchBar initialQuery={q} />
+        </ScrollReveal>
 
         {/* Empty State / No Results */}
-        {categories.length === 0 && (
-          <div className="py-24 flex flex-col items-center justify-center text-center">
-            <p className="text-[17px] font-semibold text-[#01172f] mb-2">No materials found</p>
+        {orderedSlugs.length === 0 && (
+          <ScrollReveal className="py-24 flex flex-col items-center justify-center text-center">
+            <p className="text-[17px] font-medium text-[#01172f] mb-2">No materials found</p>
             <p className="text-[14px] text-gray-500">We couldn&apos;t find anything matching &quot;{q}&quot;.</p>
+          </ScrollReveal>
+        )}
+
+        {/* Categories Grid (Top Section) -- each card staggers in individually */}
+        {orderedSlugs.length > 0 && !q && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-3 gap-y-10 md:gap-x-8 md:gap-y-14 mb-24 lg:mb-36">
+            {orderedSlugs.map((slug, index) => {
+              const cat = categoryBySlug[slug]
+              const label = cat?.label || slug
+              const cardImage = cat?.image?.url || grouped[slug][0]?.photo?.url || null
+              const delay = Math.min(index * STAGGER_STEP, STAGGER_CAP)
+
+              return (
+                <ScrollReveal
+                  key={`nav-${slug}`}
+                  as="a"
+                  href={`#${slug}`}
+                  style={{ transitionDelay: `${delay}ms` }}
+                  className="group flex flex-col outline-none cursor-pointer"
+                >
+                  <div className="relative w-full aspect-[4/5] bg-[#f8f9f7] overflow-hidden">
+                    {cardImage ? (
+                      <Image
+                        src={cardImage}
+                        alt={label}
+                        fill
+                        className="object-cover transition-transform duration-[1.5s] ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
+                        sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-[#01172f]/20 text-[10px] font-medium uppercase tracking-widest">
+                        No Image
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/0 transition-colors duration-700 group-hover:bg-black/[0.03]" />
+                  </div>
+
+                  <div className="flex flex-col mt-4 md:mt-5">
+                    <h3 className="text-[15px] md:text-[17px] font-medium tracking-tight text-[#01172f] capitalize truncate transition-colors duration-300">
+                      {label}
+                    </h3>
+
+                    <span className="mt-1.5 md:mt-2 flex items-center gap-2 text-[10px] md:text-[11px] font-medium uppercase tracking-[0.2em] text-[#01172f]/40 group-hover:text-[#103900] transition-colors duration-300">
+                      More
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:translate-x-1.5">
+                        <path d="M5 12h14M12 5l7 7-7 7"/>
+                      </svg>
+                    </span>
+                  </div>
+                </ScrollReveal>
+              )
+            })}
           </div>
         )}
 
-        {/* Categories Grid (Top Section) - only shows when NOT searching */}
-       {categories.length > 0 && !q && (
-  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 md:gap-x-6 md:gap-y-10 mb-24 lg:mb-32">
-    {categories.map((cat) => {
-      const firstProductImage = grouped[cat][0]?.photo?.url || null
+        {/* All Products Listed by Category */}
+        <div className="flex flex-col gap-24 md:gap-36">
+          {orderedSlugs.map((slug) => {
+            const cat = categoryBySlug[slug]
+            const label = cat?.label || slug
 
-      return (
-        <a
-          key={`nav-${cat}`}
-          href={`#${cat}`}
-          className="group flex flex-col h-full outline-none"
-        >
-          {/* 
-            Changed to aspect-square and added flex-shrink-0.
-            This locks the container into a perfect, uniform box regardless of screen size.
-          */}
-          <div className="relative w-full aspect-square bg-[#ffffff] rounded-[32px]  overflow-hidden mb-4 ring-1 ring-inset ring-[#103900]/20 transition-shadow duration-300 group-hover:ring-[#01172f]/15 flex-shrink-0">
-            {firstProductImage ? (
-              <Image
-                src={firstProductImage}
-                alt={CATEGORIES[cat]?.label || cat}
-                fill
-                className="object-contain p-4 md:p-6 transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 25vw"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-gray-400 text-[12px] font-medium uppercase tracking-wider">
-                No Image
-              </div>
-            )}
-          </div>
+            return (
+              <ScrollReveal key={slug} as="div" id={slug} className="scroll-mt-[120px]">
 
-          {/* flex-1 ensures this bottom section stretches, keeping heights uniform if text wraps */}
-          <div className="flex flex-col flex-1 justify-between gap-3">
-            <h3 className="text-[15px] md:text-[17px] font-semibold tracking-tight text-[#01172f] capitalize line-clamp-2">
-              {CATEGORIES[cat]?.label || cat}
-            </h3>
+                <div className="border-b border-[#01172f]/10 pb-6 mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4">
+                  <div>
+                    <h2 className="text-[24px] md:text-[28px] font-medium tracking-tight text-[#01172f]">
+                      {label}
+                    </h2>
+                    {cat?.description && (
+                      <p className="mt-3 max-w-[560px] text-[13px] md:text-[14px] leading-relaxed text-[#01172f]/60">
+                        {cat.description}
+                      </p>
+                    )}
+                  </div>
+                </div>
 
-            <div className="flex justify-between items-center border-t border-[#01172f]/10 pt-2.5 mt-auto">
-              <span className="text-[12px] md:text-[13px] text-gray-500">
-                View Details
-              </span>
-              <span className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.15em] text-[#103900]">
-                More
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="transition-transform duration-300 group-hover:translate-x-1"
-                >
-                  <path d="M5 12h14M12 5l7 7-7 7"/>
-                </svg>
-              </span>
-            </div>
-          </div>
-        </a>
-      )
-    })}
-  </div>
-)}
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-10 md:gap-x-6 md:gap-y-14">
+                  {grouped[slug].map((material, index) => {
+                    const imgUrl = material.photo?.url || null
+                    const delay = Math.min(index * STAGGER_STEP, STAGGER_CAP)
 
-        {/* All Products Listed by Category (Bottom Section) */}
-        <div className="flex flex-col gap-24 md:gap-32">
-          {categories.map((cat) => (
-            <div key={cat} id={cat} className="scroll-mt-[120px]">
-
-              <div className="border-b border-[#01172f]/10 pb-5 mb-10">
-                <h2 className="text-[22px] md:text-[26px] font-bold tracking-tight text-[#01172f]">
-                  {CATEGORIES[cat]?.label || cat}
-                </h2>
-                {CATEGORIES[cat]?.description && (
-                  <p className="mt-2 max-w-[560px] text-[13px] md:text-[14px] leading-relaxed text-gray-500">
-                    {CATEGORIES[cat]?.description}
-                  </p>
-                )}
-              </div>
-
-              {/* Product Grid */}
-              <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-4 gap-y-10 md:gap-x-6 md:gap-y-14">
-                {grouped[cat].map((material) => {
-                  const imgUrl = material.photo?.url || null
-
-                  return (
-                    <Link
-                      key={material.id}
-                      href={`/materials/${material.id}`}
-                      className="group flex flex-col cursor-pointer outline-none"
-                    >
-                      <div className="relative w-full aspect-[4/3] bg-[#f4f6f2] rounded-[32px] overflow-hidden mb-4 ring-1 ring-inset ring-[#01172f]/5 transition-shadow duration-300 group-hover:ring-[#01172f]/15">
-                        {imgUrl ? (
-                          <Image
-                            src={imgUrl}
-                            alt={material.name}
-                            fill
-                            className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
-                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400 text-[12px] font-medium uppercase tracking-wider">
-                            No Image Available
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex justify-between items-start gap-3">
-                        <div className="flex flex-col min-w-0">
-                          <h3 className="text-[14px] md:text-[15px] font-semibold tracking-tight text-[#01172f] leading-snug mb-1.5 transition-colors duration-200 group-hover:text-[#103900]">
-                            {material.name}
-                          </h3>
-                          <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-gray-500 flex items-center gap-1.5">
-                            {material.inStock !== false ? (
-                              <>
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#149911] inline-block"></span>
-                                Available
-                              </>
-                            ) : (
-                              <>
-                                <span className="w-1.5 h-1.5 rounded-full bg-red-500 inline-block"></span>
-                                Out of Stock
-                              </>
-                            )}
-                          </p>
+                    return (
+                      <ScrollReveal
+                        key={material.id}
+                        as={Link}
+                        href={`/materials/${material.id}`}
+                        style={{ transitionDelay: `${delay}ms` }}
+                        className="group flex flex-col cursor-pointer outline-none"
+                      >
+                        <div className="relative w-full aspect-[4/3] bg-[#f8f9f7] overflow-hidden">
+                          {imgUrl ? (
+                            <Image
+                              src={imgUrl}
+                              alt={material.name}
+                              fill
+                              className="object-cover transition-transform duration-[1.5s] ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
+                              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-[#01172f]/20 text-[10px] font-medium uppercase tracking-widest">
+                              No Image
+                            </div>
+                          )}
+                          <div className="absolute inset-0 bg-black/0 transition-colors duration-700 group-hover:bg-black/[0.03]" />
                         </div>
 
-                        <span className="flex items-center gap-1.5 text-[11px] font-semibold capitalize tracking-[0.15em] text-[#103900]">
-                Details
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="transition-transform duration-300 group-hover:translate-x-1"
-                >
-                  <path d="M5 12h14M12 5l7 7-7 7"/>
-                </svg>
-              </span>
-                      </div>
-                    </Link>
-                  )
-                })}
-              </div>
-            </div>
-          ))}
+                        <div className="flex flex-col mt-4 md:mt-5">
+                          <h3 className="text-[14px] md:text-[15px] font-medium tracking-tight text-[#01172f] leading-snug mb-2 transition-colors duration-300 group-hover:text-[#103900]">
+                            {material.name}
+                          </h3>
+
+                          <div className="flex justify-between items-center pr-2">
+                            <p className="text-[9px] md:text-[10px] font-medium uppercase tracking-[0.15em] text-[#01172f]/50 flex items-center gap-1.5">
+                              {material.inStock !== false ? (
+                                <>
+                                  <span className="w-1.5 h-1.5 rounded-full bg-[#103900]/70 inline-block"></span>
+                                  Available
+                                </>
+                              ) : (
+                                <>
+                                  <span className="w-1.5 h-1.5 rounded-full bg-red-800/60 inline-block"></span>
+                                  Out of Stock
+                                </>
+                              )}
+                            </p>
+
+                            <span className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.15em] text-[#01172f]/40 translate-x-0 opacity-100 md:opacity-0 md:-translate-x-2 transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-[#103900]">
+                              View
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                              </svg>
+                            </span>
+                          </div>
+                        </div>
+                      </ScrollReveal>
+                    )
+                  })}
+                </div>
+              </ScrollReveal>
+            )
+          })}
         </div>
 
       </div>

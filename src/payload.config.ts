@@ -15,7 +15,8 @@ import { AdSnapshots } from './collections/AdSnapshots'
 import { HeroSlides } from './collections/HeroSlides'
 import { WeightCalcProducts } from './collections/WeightCalcProducts'
 import { Suppliers } from './collections/Suppliers'
-import { ClientPurchaseOrders } from './collections/ClientPurchaseOrders'
+import { Categories } from './collections/Categories'
+import { ClientQuotations } from './collections/ClientQuotations'
 import { SupplierPurchaseOrders } from './collections/SupplierPurchaseOrders'
 import { AboutPage } from './globals/AboutPage'
 
@@ -41,7 +42,8 @@ export default buildConfig({
     HeroSlides,
     WeightCalcProducts,
     Suppliers,
-    ClientPurchaseOrders,
+    Categories,
+    ClientQuotations,
     SupplierPurchaseOrders,
   ],
   globals: [AboutPage],

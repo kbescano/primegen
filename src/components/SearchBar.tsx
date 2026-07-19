@@ -1,48 +1,57 @@
 'use client'
 
-import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { useTransition, useState } from 'react'
+import { useRouter, useSearchParams, usePathname } from 'next/navigation'
+import { useState, useEffect, useTransition } from 'react'
 
-export default function SearchBar() {
+export default function SearchBar({ initialQuery = '' }: { initialQuery?: string }) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
-  const [isPending, startTransition] = useTransition()
   
-  // Initialize state with current URL search param if it exists
-  const [term, setTerm] = useState(searchParams.get('q') || '')
+  const [query, setQuery] = useState(initialQuery)
+  const [isPending, startTransition] = useTransition()
 
-  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    setTerm(value)
-    
-    // useTransition keeps the UI responsive while Next.js fetches new server data
-    startTransition(() => {
-      const params = new URLSearchParams(searchParams)
-      if (value) {
-        params.set('q', value)
+  // Update URL whenever the debounced query changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString())
+      
+      if (query) {
+        params.set('q', query)
       } else {
         params.delete('q')
       }
-      // Update the URL without scrolling to the top
-      router.replace(`${pathname}?${params.toString()}`, { scroll: false })
-    })
-  }
+
+      startTransition(() => {
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false })
+      })
+    }, 400) // 400ms debounce delay (waits for user to stop typing)
+
+    return () => clearTimeout(timer)
+  }, [query, router, pathname, searchParams])
 
   return (
-    <div className="relative w-full md:w-[320px] shrink-0">
-      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-        <svg className={`w-5 h-5 transition-colors duration-300 ${isPending ? 'text-[#01172f]' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+    <div className="relative w-full md:w-80">
+      <input
+        type="text"
+        placeholder="Search materials..."
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        className="w-full bg-[#f8f9f7] border-none text-[14px] text-[#01172f] px-5 py-3.5 outline-none placeholder:text-[#01172f]/30 transition-all duration-300 focus:bg-[#f4f6f2] focus:ring-1 focus:ring-inset focus:ring-[#103900]/20"
+      />
+      
+      {/* Magnifying Glass Icon (Decorative only, no button) */}
+      <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-[#01172f]/30">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
         </svg>
       </div>
-      <input 
-        type="text" 
-        value={term}
-        onChange={handleSearch}
-        placeholder="Search materials..." 
-        className="w-full pl-11 pr-4 py-3 bg-gray-50 rounded-full ring-1 ring-inset ring-gray-200 focus:outline-none focus:ring-2 focus:ring-[#01172f] focus:bg-white transition-all duration-300 text-[15px] text-gray-900 placeholder:text-gray-400"
-      />
+
+      {/* Optional Loading Indicator while Next.js fetches new results */}
+      {isPending && (
+        <div className="absolute right-12 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-[#103900]/20 border-t-[#103900] animate-spin" />
+      )}
     </div>
   )
 }

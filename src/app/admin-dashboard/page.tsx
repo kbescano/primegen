@@ -92,10 +92,10 @@ export default async function QuotationInboxPage({
 
             <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
               <Link
-                href={`/admin-dashboard/client-po?from=${q.id}`}
+                href={`/admin-dashboard/client-quotation?from=${q.id}`}
                 style={{ fontSize: 13, fontWeight: 600, padding: '7px 14px', borderRadius: 6, textDecoration: 'none', background: '#103900', color: 'white' }}
               >
-                Create Client PO
+                Create Client Quotation
               </Link>
               <Link
                 href={`/admin-dashboard/supplier-po?from=${q.id}`}

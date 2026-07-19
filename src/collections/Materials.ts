@@ -62,5 +62,11 @@ export const Materials: CollectionConfig = {
       required: false,
       admin: { description: 'Optional: link a weight calculator shape/formula for this material\'s detail page' },
     },
+    {
+  name: 'categoryRef',
+  type: 'relationship',
+  relationTo: 'categories',
+  admin: { description: 'New category relationship. Migrating away from the old category select field.' },
+},
   ],
 }

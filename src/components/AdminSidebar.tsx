@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation'
 const NAV_ITEMS = [
   { href: '/admin-dashboard', label: 'Quotation Inbox' },
   { href: '/admin-dashboard/supplier-po', label: 'Supplier PO' },
-  { href: '/admin-dashboard/client-po', label: 'Client PO' }
+  { href: '/admin-dashboard/client-po', label: 'Client Quotation' }
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {

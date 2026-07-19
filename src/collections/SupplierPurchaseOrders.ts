@@ -21,7 +21,7 @@ export const SupplierPurchaseOrders: CollectionConfig = {
           const year = new Date().getFullYear()
           const existing = await req.payload.find({
             collection: 'supplier-purchase-orders',
-            where: { poNumber: { like: `SPO-${year}-` } },
+            where: { poNumber: { like: `${year}-` } },
             sort: '-poNumber',
             limit: 1,
           })
@@ -30,7 +30,7 @@ export const SupplierPurchaseOrders: CollectionConfig = {
             const last = existing.docs[0].poNumber as string
             next = parseInt(last.split('-').pop() || '0', 10) + 1
           }
-          data.poNumber = `SPO-${year}-${String(next).padStart(4, '0')}`
+          data.poNumber = `${year}-${String(next).padStart(9, '0')}`
         }
         return data
       },
@@ -50,6 +50,8 @@ export const SupplierPurchaseOrders: CollectionConfig = {
     { name: 'deliveryDate', type: 'text', label: 'Delivery / Service Date' },
     { name: 'supplierName', type: 'text' },
     { name: 'supplierAddress', type: 'textarea' },
+    { name: 'preparedBy', type: 'text', label: 'Prepared By (Name)' },
+    { name: 'preparedByRole', type: 'text', label: 'Prepared By (Role)', defaultValue: 'Sales Rep.' },
     {
       name: 'items',
       type: 'array',
