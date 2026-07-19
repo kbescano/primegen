@@ -10,20 +10,64 @@ const STATUS_LABELS: Record<string, string> = {
   completed: 'Completed',
 }
 
+const PERIODS = ['today', 'week', 'month', 'year'] as const
+const PERIOD_LABELS: Record<string, string> = {
+  today: 'Today',
+  week: 'This Week',
+  month: 'This Month',
+  year: 'All time',
+}
+
+function getPeriodStart(period?: string): Date | undefined {
+  const now = new Date()
+  if (period === 'today') {
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  }
+  if (period === 'week') {
+    const day = now.getDay() // 0 = Sun ... 6 = Sat
+    const diffToMonday = day === 0 ? -6 : 1 - day
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday)
+  }
+  if (period === 'month') {
+    return new Date(now.getFullYear(), now.getMonth(), 1)
+  }
+  if (period === 'year') {
+    return new Date(now.getFullYear(), 0, 1)
+  }
+  return undefined
+}
+
 export default async function QuotationInboxPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>
+  searchParams: Promise<{ status?: string; period?: string }>
 }) {
-  const { status } = await searchParams
-  const activeFilter = STATUSES.includes(status as any) ? status : undefined
+  const { status, period } = await searchParams
+  const activeStatus = STATUSES.includes(status as any) ? status : undefined
+  const activePeriod = PERIODS.includes(period as any) ? period : undefined
+
+  function buildHref(overrides: { status?: string; period?: string }) {
+    const params = new URLSearchParams()
+    const s = 'status' in overrides ? overrides.status : activeStatus
+    const p = 'period' in overrides ? overrides.period : activePeriod
+    if (s) params.set('status', s)
+    if (p) params.set('period', p)
+    const qs = params.toString()
+    return qs ? `/admin-dashboard?${qs}` : '/admin-dashboard'
+  }
 
   const payload = await getPayloadClient()
+
+  const periodStart = getPeriodStart(activePeriod)
+  const conditions: any[] = []
+  if (activeStatus) conditions.push({ status: { equals: activeStatus } })
+  if (periodStart) conditions.push({ createdAt: { greater_than_equal: periodStart.toISOString() } })
+
   const { docs } = await payload.find({
     collection: 'quotation-requests',
     sort: '-createdAt',
     limit: 100,
-    where: activeFilter ? { status: { equals: activeFilter } } : undefined,
+    where: conditions.length > 0 ? { and: conditions } : undefined,
     depth: 2,
   })
 
@@ -35,14 +79,32 @@ export default async function QuotationInboxPage({
         quotes are always sent by your team directly, never automatically.
       </p>
 
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
-        <FilterLink label="All" active={!activeFilter} href="/admin-dashboard" />
+      <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#0d0d0d', opacity: 0.4, marginBottom: 8 }}>
+        Status
+      </p>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+        <FilterLink label="All" active={!activeStatus} href={buildHref({ status: undefined })} />
         {STATUSES.map((s) => (
           <FilterLink
             key={s}
             label={STATUS_LABELS[s]}
-            active={activeFilter === s}
-            href={`/admin-dashboard?status=${s}`}
+            active={activeStatus === s}
+            href={buildHref({ status: s })}
+          />
+        ))}
+      </div>
+
+      <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#0d0d0d', opacity: 0.4, marginBottom: 8 }}>
+        Date Range
+      </p>
+      <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
+        <FilterLink label="All Time" active={!activePeriod} href={buildHref({ period: undefined })} />
+        {PERIODS.map((p) => (
+          <FilterLink
+            key={p}
+            label={PERIOD_LABELS[p]}
+            active={activePeriod === p}
+            href={buildHref({ period: p })}
           />
         ))}
       </div>
@@ -110,7 +172,13 @@ export default async function QuotationInboxPage({
             </p>
           </div>
         ))}
-        {docs.length === 0 && <p>No quotation requests {activeFilter ? `with status "${STATUS_LABELS[activeFilter]}"` : ''}.</p>}
+        {docs.length === 0 && (
+          <p>
+            No quotation requests
+            {activeStatus ? ` with status "${STATUS_LABELS[activeStatus]}"` : ''}
+            {activePeriod ? ` ${PERIOD_LABELS[activePeriod].toLowerCase()}` : ''}.
+          </p>
+        )}
       </div>
 
       <p style={{ marginTop: 24, fontSize: 13, color: '#0d0d0d', opacity: 0.5 }}>

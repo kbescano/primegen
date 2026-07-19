@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import Image from 'next/image'
 
 const NAV_LINKS = [
   { href: '/materials', label: 'Materials' },
@@ -28,9 +29,20 @@ export default function SiteHeader() {
             ${isMounted ? 'translate-x-0 opacity-100' : '-translate-x-8 opacity-0'}
           `}
         >
-          <Link href="/" className="font-bold bg-gradient-to-tr from-[#051d00] via-[#103900] to-[#52b788] bg-clip-text text-transparent" onClick={() => setOpen(false)}>
-            Primegen Trading Corporation
-          </Link>
+         <Link 
+  href="/" 
+  className="flex flex-row items-center gap-2 font-bold bg-gradient-to-tr from-[#051d00] via-[#103900] to-[#52b788] bg-clip-text text-transparent" 
+  onClick={() => setOpen(false)}
+>
+    <Image 
+    src="/branding/primegen-logo.jpg" 
+    alt="Primegen Logo" 
+    width={50} 
+    height={50} 
+  />
+  Primegen Trading Corporation
+
+</Link>
 
           <button
             className="flex md:hidden flex-col gap-1.5 w-6 h-[17px] bg-transparent border-none cursor-pointer"
@@ -53,9 +65,12 @@ export default function SiteHeader() {
                 </Link>
               </span>
             ))}
-            <Link href="/quote" className="inline-flex items-center justify-center px-7 py-3.5 rounded bg-[#01172f] text-white font-bold text-xs hover:bg-green-hover transition-colors">
-              Request a Quote
-            </Link>
+           <Link 
+  href="/quote" 
+  className="inline-flex items-center justify-center px-7 py-3.5 rounded border-2 border-[#149911] bg-[#fdfffc] text-[#149911] font-bold text-xs hover:bg-[#149911] hover:text-[#fdfffc] transition-colors"
+>
+  Request a Quote
+</Link>
           </nav>
         </div>
       </header>

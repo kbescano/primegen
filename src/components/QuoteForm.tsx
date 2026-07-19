@@ -195,13 +195,13 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
 
       {/* Actions */}
       <div className="pt-2 flex flex-col items-center gap-3">
-        <button
-          type="submit"
-          disabled={status === 'submitting'}
-          className="w-full py-4 rounded-xl bg-[#01172f] text-white text-[15px] font-medium tracking-wide hover:bg-gray-900 disabled:opacity-60 transition-all shadow-sm"
-        >
-          {status === 'submitting' ? 'Sending Request...' : 'Send Request'}
-        </button>
+       <button
+  type="submit"
+  disabled={status === 'submitting'}
+  className="w-full py-4 rounded-xl border-2 border-[#149911] bg-[#fdfffc] text-[#149911] text-[15px] font-medium tracking-wide hover:bg-[#149911] hover:text-[#fdfffc] disabled:opacity-60 transition-all shadow-sm"
+>
+  {status === 'submitting' ? 'Sending Request...' : 'Send Request'}
+</button>
         {status === 'error' && (
           <p className="text-red-600 text-[14px] font-medium">Something went wrong. Please try again.</p>
         )}

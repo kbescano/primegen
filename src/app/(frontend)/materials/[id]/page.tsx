@@ -187,11 +187,11 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
 
             {/* Primary CTA Button */}
             <a
-              href={`/quote?material=${material.id}`}
-              className="bg-[#01172f] hover:bg-[#143109] text-white text-center w-full py-4 rounded-[14px] text-[17px] font-semibold transition-colors shadow-sm"
-            >
-              Request a Quote
-            </a>
+  href={`/quote?material=${material.id}`}
+  className="bg-[#fdfffc] border-2 border-[#149911] text-[#149911] hover:bg-[#149911] hover:text-[#fdfffc] text-center w-full py-4 rounded-[14px] text-[17px] font-semibold transition-colors shadow-sm"
+>
+  Request a Quote
+</a>
 
           </ScrollReveal>
         </div>
