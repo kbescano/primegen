@@ -72,9 +72,9 @@ export default async function MaterialsPage({ searchParams }: Props) {
           </ScrollReveal>
         )}
 
-        {/* Categories Grid (Top Section) -- each card staggers in individually */}
+        {/* Categories Grid (Top Section) -- full-bleed hero panels, each stagger in individually */}
         {orderedSlugs.length > 0 && !q && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-3 gap-y-10 md:gap-x-8 md:gap-y-14 mb-24 lg:mb-36">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-24 lg:mb-36">
             {orderedSlugs.map((slug, index) => {
               const cat = categoryBySlug[slug]
               const label = cat?.label || slug
@@ -87,35 +87,53 @@ export default async function MaterialsPage({ searchParams }: Props) {
                   as="a"
                   href={`#${slug}`}
                   style={{ transitionDelay: `${delay}ms` }}
-                  className="group flex flex-col outline-none cursor-pointer"
+                  className="group relative flex items-end aspect-[4/5] md:aspect-[3/4] overflow-hidden bg-[#f8f9f7] outline-none cursor-pointer"
                 >
-                  <div className="relative w-full aspect-[4/5] bg-[#f8f9f7] overflow-hidden">
-                    {cardImage ? (
-                      <Image
-                        src={cardImage}
-                        alt={label}
-                        fill
-                        className="object-cover transition-transform duration-[1.5s] ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
-                        sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-[#01172f]/20 text-[10px] font-medium uppercase tracking-widest">
-                        No Image
-                      </div>
-                    )}
-                    <div className="absolute inset-0 bg-black/0 transition-colors duration-700 group-hover:bg-black/[0.03]" />
-                  </div>
+                  {cardImage ? (
+                    <Image
+                      src={cardImage}
+                      alt={label}
+                      fill
+                      className="object-cover transition-transform duration-[1.5s] ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
+                      sizes="(max-width: 768px) 100vw, 50vw"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center text-[#01172f]/20 text-[10px] font-medium uppercase tracking-widest">
+                      No Image
+                    </div>
+                  )}
 
-                  <div className="flex flex-col mt-4 md:mt-5">
-                    <h3 className="text-[15px] md:text-[17px] font-medium tracking-tight text-[#01172f] capitalize truncate transition-colors duration-300">
+                  {/* Gradient so white text stays legible over any photo */}
+                  <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />
+
+                  {/* Eyebrow + bold header + Discover link, bottom-left */}
+                  <div className="relative z-10 p-6 md:p-10 flex flex-col gap-2 md:gap-3 text-white">
+                   <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md shadow-sm">
+
+  <span className="text-[10px] md:text-[11px] font-medium uppercase tracking-[0.25em] text-white/90">
+     <h3 className="text-[#fdfffc] text-[28px] md:text-[36px] font-bold uppercase tracking-tight leading-[1.05]">
                       {label}
                     </h3>
-
-                    <span className="mt-1.5 md:mt-2 flex items-center gap-2 text-[10px] md:text-[11px] font-medium uppercase tracking-[0.2em] text-[#01172f]/40 group-hover:text-[#103900] transition-colors duration-300">
-                      More
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="transition-transform duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:translate-x-1.5">
-                        <path d="M5 12h14M12 5l7 7-7 7"/>
-                      </svg>
+  </span>
+</div>
+                   
+                    <span className="mt-2 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.15em]">
+                      Browse
+                      <span className="flex items-center justify-center w-7 h-7 rounded-full border border-white/50 transition-colors duration-300 group-hover:bg-white group-hover:text-black">
+                        <svg
+                          width="12"
+                          height="12"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          className="transition-transform duration-300 group-hover:translate-x-0.5"
+                        >
+                          <path d="M9 18l6-6-6-6" />
+                        </svg>
+                      </span>
                     </span>
                   </div>
                 </ScrollReveal>
@@ -124,7 +142,7 @@ export default async function MaterialsPage({ searchParams }: Props) {
           </div>
         )}
 
-        {/* All Products Listed by Category */}
+        {/* All Products Listed by Category -- same visual language as the category panels above, denser grid */}
         <div className="flex flex-col gap-24 md:gap-36">
           {orderedSlugs.map((slug) => {
             const cat = categoryBySlug[slug]
@@ -146,7 +164,7 @@ export default async function MaterialsPage({ searchParams }: Props) {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-10 md:gap-x-6 md:gap-y-14">
+                <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-3 gap-y-4 md:gap-x-6 md:gap-y-6">
                   {grouped[slug].map((material, index) => {
                     const imgUrl = material.photo?.url || null
                     const delay = Math.min(index * STAGGER_STEP, STAGGER_CAP)
@@ -157,52 +175,50 @@ export default async function MaterialsPage({ searchParams }: Props) {
                         as={Link}
                         href={`/materials/${material.id}`}
                         style={{ transitionDelay: `${delay}ms` }}
-                        className="group flex flex-col cursor-pointer outline-none"
+                        className="group relative flex items-end aspect-[4/5] overflow-hidden bg-[#f8f9f7] outline-none cursor-pointer"
                       >
-                        <div className="relative w-full aspect-[4/3] bg-[#f8f9f7] overflow-hidden">
-                          {imgUrl ? (
-                            <Image
-                              src={imgUrl}
-                              alt={material.name}
-                              fill
-                              className="object-cover transition-transform duration-[1.5s] ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
-                              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-[#01172f]/20 text-[10px] font-medium uppercase tracking-widest">
-                              No Image
-                            </div>
-                          )}
-                          <div className="absolute inset-0 bg-black/0 transition-colors duration-700 group-hover:bg-black/[0.03]" />
-                        </div>
+                        {imgUrl ? (
+                          <Image
+                            src={imgUrl}
+                            alt={material.name}
+                            fill
+                            className="object-cover transition-transform duration-[1.5s] ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
+                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex items-center justify-center text-[#01172f]/20 text-[10px] font-medium uppercase tracking-widest">
+                            No Image
+                          </div>
+                        )}
 
-                        <div className="flex flex-col mt-4 md:mt-5">
-                          <h3 className="text-[14px] md:text-[15px] font-medium tracking-tight text-[#01172f] leading-snug mb-2 transition-colors duration-300 group-hover:text-[#103900]">
-                            {material.name}
-                          </h3>
+                        {/* Gradient so white text stays legible over any photo */}
+                        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/75 via-black/25 to-transparent pointer-events-none" />
 
-                          <div className="flex justify-between items-center pr-2">
-                            <p className="text-[9px] md:text-[10px] font-medium uppercase tracking-[0.15em] text-[#01172f]/50 flex items-center gap-1.5">
-                              {material.inStock !== false ? (
-                                <>
-                                  <span className="w-1.5 h-1.5 rounded-full bg-[#103900]/70 inline-block"></span>
-                                  Available
-                                </>
-                              ) : (
-                                <>
-                                  <span className="w-1.5 h-1.5 rounded-full bg-red-800/60 inline-block"></span>
-                                  Out of Stock
-                                </>
-                              )}
-                            </p>
-
-                            <span className="flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.15em] text-[#01172f]/40 translate-x-0 opacity-100 md:opacity-0 md:-translate-x-2 transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-[#103900]">
-                              View
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                        {/* Bold overlaid title + status + arrow, matching the category panels above */}
+                        <div className="relative z-10 p-4 md:p-5 flex flex-col gap-1.5 text-white w-full">
+                          <div className="flex items-end justify-between gap-2">
+                            <h3 className="text-[#fdfffc] text-[14px] md:text-[16px] font-bold uppercase tracking-tight leading-snug">
+                              {material.name}
+                            </h3>
+                            <span className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-full border border-white/50 transition-all duration-300 opacity-100 md:opacity-0 md:translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-hover:bg-white group-hover:text-black">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform duration-300 group-hover:translate-x-0.5">
+                                <path d="M9 18l6-6-6-6" />
                               </svg>
                             </span>
                           </div>
+                          <p className="text-[9px] md:text-[10px] font-medium uppercase tracking-[0.15em] text-white/70 flex items-center gap-1.5">
+                            {material.inStock !== false ? (
+                              <>
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#4ade80] inline-block"></span>
+                                Available
+                              </>
+                            ) : (
+                              <>
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#f87171] inline-block"></span>
+                                Out of Stock
+                              </>
+                            )}
+                          </p>
                         </div>
                       </ScrollReveal>
                     )
