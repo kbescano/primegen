@@ -91,7 +91,7 @@ export default async function HomePage() {
               <ScrollReveal
                 key={v.num}
                 style={{ transitionDelay: `${i * 120}ms` }}
-                className="group relative bg-white border border-[#01172f]/10 p-8 md:p-10 overflow-hidden cursor-default transition-all duration-500 hover:border-[#149911]/40 hover:shadow-[0_20px_50px_-20px_rgba(16,57,0,0.25)] hover:-translate-y-1"
+                className="group relative bg-white shadow-md border border-[#01172f]/10 p-8 md:p-10 overflow-hidden cursor-default transition-all duration-500 hover:border-[#149911]/40 hover:shadow-[0_20px_50px_-20px_rgba(16,57,0,0.25)] hover:-translate-y-1"
               >
                 {/* Giant ghost numeral */}
                 <span className="absolute -top-6 -right-2 text-[120px] md:text-[140px] font-black leading-none text-[#01172f]/[0.04] select-none pointer-events-none transition-all duration-700 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:text-[#149911]/10 group-hover:scale-110">
