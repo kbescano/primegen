@@ -12,10 +12,15 @@ type LineItem = {
 }
 
 export type QuotationInitial = {
+  id?: string | number
+  quotationNumber?: string
+  quotationDate?: string
   customerName?: string
   company?: string
   address?: string
   contactNumber?: string
+  vatRate?: number
+  salesPerson?: string
   items?: LineItem[]
 }
 
@@ -35,19 +40,20 @@ const BASE_TERMS = [
 ]
 
 export default function QuotationGenerator({ initial }: { initial?: QuotationInitial }) {
-  const [quotationNumber, setQuotationNumber] = useState('')
-  const [quotationDate, setQuotationDate] = useState(new Date().toISOString().slice(0, 10))
+  const [quotationNumber, setQuotationNumber] = useState(initial?.quotationNumber ?? '')
+  const [quotationDate, setQuotationDate] = useState(initial?.quotationDate ?? new Date().toISOString().slice(0, 10))
   const [customerName, setCustomerName] = useState(initial?.customerName ?? '')
   const [company, setCompany] = useState(initial?.company ?? '')
   const [address, setAddress] = useState(initial?.address ?? '')
   const [contactNumber, setContactNumber] = useState(initial?.contactNumber ?? '')
+  const [salesPerson, setSalesPerson] = useState(initial?.salesPerson ?? '')
   const [items, setItems] = useState<LineItem[]>(
     initial?.items && initial.items.length > 0
       ? initial.items
       : [{ qty: 1, unit: 'pcs', description: '', unitPrice: 0 }]
   )
-  const [hasVat, setHasVat] = useState(true)
-  const [vatRate, setVatRate] = useState(12)
+  const [hasVat, setHasVat] = useState((initial?.vatRate ?? 12) > 0)
+  const [vatRate, setVatRate] = useState(initial?.vatRate && initial.vatRate > 0 ? initial.vatRate : 12)
   const [discountPercent, setDiscountPercent] = useState(0)
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
@@ -82,11 +88,15 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
     reader.readAsDataURL(file)
   }
 
+  const isEditing = Boolean(initial?.id)
+
   async function saveQuotation() {
     setSaving('saving')
     try {
-      const res = await fetch('/api/client-quotations', {
-        method: 'POST',
+      const url = isEditing ? `/api/client-quotations/${initial?.id}` : '/api/client-quotations'
+      const method = isEditing ? 'PATCH' : 'POST'
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
@@ -95,6 +105,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
           company,
           address,
           contactNumber,
+          salesPerson,
           items: items.map(({ imageDataUrl, ...rest }) => rest),
           vatRate: hasVat ? vatRate : 0,
           discountPercent,
@@ -102,8 +113,8 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
         }),
       })
       if (!res.ok) throw new Error('Save failed')
-      const created = await res.json()
-      setQuotationNumber(created.doc.quotationNumber)
+      const saved = await res.json()
+      setQuotationNumber(saved.doc.quotationNumber)
       setSaving('saved')
     } catch {
       setSaving('error')
@@ -138,7 +149,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
         <div className="mb-8">
           <div className="w-8 h-[3px] bg-[#149911] mb-4" />
           <h1 className="text-2xl font-black uppercase tracking-tight text-[#01172f] mb-2">
-            Client Quotation Generator
+            {isEditing ? 'Edit Client Quotation' : 'Client Quotation Generator'}
           </h1>
           <p className="text-sm text-gray-500 max-w-[560px]">
             Fill in the details below. Save to auto-generate the quotation number, then use Print /
@@ -212,6 +223,15 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
               value={contactNumber}
               onChange={(e) => setContactNumber(e.target.value)}
               placeholder="+639..."
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Sales Person</label>
+            <input
+              className={inputClass}
+              value={salesPerson}
+              onChange={(e) => setSalesPerson(e.target.value)}
+              placeholder="e.g. Nira"
             />
           </div>
         </div>
@@ -352,7 +372,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
                 : 'border-[#3D5F3B] text-[#3D5F3B] hover:shadow-[0_10px_30px_-10px_rgba(16,57,0,0.4)]'
             }`}
           >
-            {saving === 'saving' ? 'Saving...' : saving === 'saved' ? 'Saved ✓' : 'Save Quotation'}
+            {saving === 'saving' ? 'Saving...' : saving === 'saved' ? 'Saved ✓' : isEditing ? 'Update Quotation' : 'Save Quotation'}
           </button>
           <button
             onClick={() => window.print()}

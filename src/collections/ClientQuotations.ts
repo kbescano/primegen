@@ -49,6 +49,11 @@ export const ClientQuotations: CollectionConfig = {
     { name: 'address', type: 'text' },
     { name: 'contactNumber', type: 'text' },
     {
+      name: 'salesPerson',
+      type: 'text',
+      admin: { description: 'Manual entry for now -- once roles/accounts exist, this can become a relationship to a Users collection.' },
+    },
+    {
       name: 'items',
       type: 'array',
       label: 'Line Items',

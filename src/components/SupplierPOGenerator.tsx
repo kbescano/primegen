@@ -12,7 +12,13 @@ type LineItem = {
 }
 
 export type SupplierPOInitial = {
+  id?: string | number
+  poNumber?: string
+  poDate?: string
   supplierName?: string
+  supplierAddress?: string
+  preparedBy?: string
+  preparedByRole?: string
   project?: string
   items?: LineItem[]
 }
@@ -42,14 +48,14 @@ const TERMS = [
 ]
 
 export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOInitial }) {
-  const [poNumber, setPoNumber] = useState('')
-  const [poDate, setPoDate] = useState(new Date().toISOString().slice(0, 10))
+  const [poNumber, setPoNumber] = useState(initial?.poNumber ?? '')
+  const [poDate, setPoDate] = useState(initial?.poDate ?? new Date().toISOString().slice(0, 10))
   const [supplierName, setSupplierName] = useState(initial?.supplierName ?? '')
   const [companyName, setCompanyName] = useState('')
-  const [streetAddress, setStreetAddress] = useState('')
+  const [streetAddress, setStreetAddress] = useState(initial?.supplierAddress ?? '')
   const [phone, setPhone] = useState('')
-  const [preparedBy, setPreparedBy] = useState('')
-  const [preparedByRole, setPreparedByRole] = useState('Sales Rep.')
+  const [preparedBy, setPreparedBy] = useState(initial?.preparedBy ?? '')
+  const [preparedByRole, setPreparedByRole] = useState(initial?.preparedByRole ?? 'Sales Rep.')
   const [items, setItems] = useState<LineItem[]>(
     initial?.items && initial.items.length > 0
       ? initial.items
@@ -76,11 +82,15 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
     reader.readAsDataURL(file)
   }
 
+  const isEditing = Boolean(initial?.id)
+
   async function savePO() {
     setSaving('saving')
     try {
-      const res = await fetch('/api/supplier-purchase-orders', {
-        method: 'POST',
+      const url = isEditing ? `/api/supplier-purchase-orders/${initial?.id}` : '/api/supplier-purchase-orders'
+      const method = isEditing ? 'PATCH' : 'POST'
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
@@ -94,8 +104,8 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
         }),
       })
       if (!res.ok) throw new Error('Save failed')
-      const created = await res.json()
-      setPoNumber(created.doc.poNumber)
+      const saved = await res.json()
+      setPoNumber(saved.doc.poNumber)
       setSaving('saved')
     } catch {
       setSaving('error')
@@ -131,7 +141,7 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
         <div className="mb-8">
           <div className="w-8 h-[3px] bg-[#149911] mb-4" />
           <h1 className="text-2xl font-black uppercase tracking-tight text-[#01172f] mb-2">
-            Supplier Purchase Order
+            {isEditing ? 'Edit Supplier Purchase Order' : 'Supplier Purchase Order'}
           </h1>
           <p className="text-sm text-gray-500 max-w-[560px]">
             Fill in the details below. Save to auto-generate the PO number, then use Print / Save as
@@ -279,7 +289,7 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
                 : 'border-[#3D5F3B] text-[#3D5F3B] hover:shadow-[0_10px_30px_-10px_rgba(16,57,0,0.4)]'
             }`}
           >
-            {saving === 'saving' ? 'Saving...' : saving === 'saved' ? 'Saved ✓' : 'Save PO'}
+            {saving === 'saving' ? 'Saving...' : saving === 'saved' ? 'Saved ✓' : isEditing ? 'Update PO' : 'Save PO'}
           </button>
           <button
             onClick={() => window.print()}

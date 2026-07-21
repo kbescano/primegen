@@ -3,11 +3,13 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import NotificationBell from '@/components/NotificationBell'
 
 const NAV_ITEMS = [
   { href: '/admin-dashboard', label: 'Quotation Inbox' },
+  { href: '/admin-dashboard/client-quotation', label: 'Client Quotation' },
   { href: '/admin-dashboard/supplier-po', label: 'Supplier PO' },
-  { href: '/admin-dashboard/client-quotation', label: 'Client Quotation' }
+  { href: '/admin-dashboard/reports', label: 'Reports' },
 ]
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -15,142 +17,109 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [open, setOpen] = useState(false)
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div className="min-h-screen flex flex-col">
+      {/* ===== Top bar ===== */}
+      <header className="admin-header sticky top-0 z-40 bg-white border-b border-[#01172f]/10">
+        <div className="flex items-center justify-between px-4 sm:px-6 md:px-10 h-16">
+          <div className="flex items-center gap-3">
+            <p className="text-[14px] sm:text-[16px] font-black uppercase tracking-tight text-[#01172f] leading-none truncate">
+              Dashboard
+            </p>
+          </div>
 
-      {/* Horizontal Navigation Bar */}
-      <header
-        className="admin-header"
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '0 24px',
-          height: '52px',
-          backgroundColor: '#ffffff',
-          borderBottom: '1px solid #d2d2d7',
-          position: 'sticky',
-          top: 0,
-          zIndex: 40,
-          fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-        }}
-      >
-        {/* Left Side: Brand / Title */}
-        <span style={{ fontWeight: 600, fontSize: 21, color: '#1d1d1f' }}>
-          Dashboard
-        </span>
+          {/* Desktop nav */}
+          <nav className="hidden md:flex items-center gap-1 h-full">
+            {NAV_ITEMS.map((item) => {
+              const isActive = pathname === item.href
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`flex items-center h-full px-4 text-[12px] font-bold uppercase tracking-[0.08em] border-b-2 transition-colors duration-200 ${
+                    isActive
+                      ? 'border-[#149911] text-[#01172f]'
+                      : 'border-transparent text-[#01172f]/40 hover:text-[#01172f] hover:border-[#01172f]/15'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              )
+            })}
+            <Link
+              href="/"
+              className="ml-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#01172f]/35 hover:text-[#149911] transition-colors"
+            >
+              &larr; Site
+            </Link>
+            <div className="ml-2 pl-2 border-l border-[#01172f]/10">
+              <NotificationBell />
+            </div>
+          </nav>
 
-        {/* Desktop Links (hidden on mobile via CSS below) */}
-        <nav className="top-nav" style={{ display: 'flex', gap: 24, height: '100%' }}>
-          {NAV_ITEMS.map((item) => {
-            const isActive = pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  color: isActive ? '#1d1d1f' : '#6e6e73',
-                  textDecoration: 'none',
-                  fontSize: 14,
-                  height: '100%',
-                  boxSizing: 'border-box',
-                  borderBottom: isActive ? '2px solid #1d1d1f' : '2px solid transparent',
-                  transition: 'color 0.2s',
-                }}
-              >
-                {item.label}
-              </Link>
-            )
-          })}
-        </nav>
-
-        {/* Hamburger (mobile only, hidden on desktop via CSS below) */}
-        <button
-          className="nav-hamburger"
-          aria-label={open ? 'Close menu' : 'Open menu'}
-          onClick={() => setOpen((v) => !v)}
-          style={{
-            display: 'none',
-            flexDirection: 'column',
-            gap: 5,
-            width: 24,
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: 4,
-          }}
-        >
-          <span style={{ display: 'block', height: 2, width: '100%', background: '#1d1d1f', borderRadius: 2 }} />
-          <span style={{ display: 'block', height: 2, width: '100%', background: '#1d1d1f', borderRadius: 2 }} />
-          <span style={{ display: 'block', height: 2, width: '100%', background: '#1d1d1f', borderRadius: 2 }} />
-        </button>
+          {/* Mobile: bell + hamburger */}
+          <div className="flex md:hidden items-center gap-0.5 flex-shrink-0">
+          <NotificationBell />
+          <button
+            className="flex items-center justify-center w-10 h-10 flex-shrink-0"
+            aria-label={open ? 'Close menu' : 'Open menu'}
+            onClick={() => setOpen((v) => !v)}
+          >
+            <span className="flex flex-col gap-1.5 w-6 h-[15px] justify-center">
+              <span className={`block h-[2px] w-full bg-[#01172f] transition-transform ${open ? 'translate-y-[6.5px] rotate-45' : ''}`} />
+              <span className={`block h-[2px] w-full bg-[#01172f] transition-opacity ${open ? 'opacity-0' : ''}`} />
+              <span className={`block h-[2px] w-full bg-[#01172f] transition-transform ${open ? '-translate-y-[6.5px] -rotate-45' : ''}`} />
+            </span>
+          </button>
+          </div>
+        </div>
       </header>
 
-      {/* Mobile full-screen overlay -- sibling of header, same pattern as the homepage nav */}
+      {/* ===== Mobile full-screen overlay -- sibling of header, not nested ===== */}
       {open && (
-        <div
-          className="admin-header"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: '#ffffff',
-            zIndex: 999,
-            padding: 28,
-            overflowY: 'auto',
-            display: 'flex',
-            flexDirection: 'column',
-            fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
-          }}
-        >
-          <button
-            onClick={() => setOpen(false)}
-            aria-label="Close menu"
-            style={{ alignSelf: 'flex-end', background: 'none', border: 'none', cursor: 'pointer', padding: 8, marginBottom: 24 }}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1d1d1f" strokeWidth="2.5">
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
-
-          {NAV_ITEMS.map((item) => {
-            const isActive = pathname === item.href
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setOpen(false)}
-                style={{
-                  display: 'block',
-                  padding: '14px 0',
-                  fontSize: 22,
-                  fontWeight: 700,
-                  color: isActive ? '#3D5F3B' : '#1d1d1f',
-                  textDecoration: 'none',
-                }}
-              >
-                {item.label}
-              </Link>
-            )
-          })}
+        <div className="admin-header md:hidden fixed inset-0 bg-white z-50 flex flex-col px-6 pt-8 pb-10 overflow-y-auto">
+          <div className="flex items-center justify-between mb-10">
+            <div className="flex items-center gap-3">
+              <p className="text-[16px] font-black uppercase tracking-tight text-[#01172f]">Dashboard</p>
+            </div>
+            <button onClick={() => setOpen(false)} aria-label="Close menu" className="p-2">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#01172f" strokeWidth="2.5">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <nav className="flex flex-col gap-1">
+            {NAV_ITEMS.map((item) => {
+              const isActive = pathname === item.href
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setOpen(false)}
+                  className={`py-3.5 text-[20px] font-black uppercase tracking-tight border-b border-[#01172f]/10 ${
+                    isActive ? 'text-[#149911]' : 'text-[#01172f]'
+                  }`}
+                >
+                  {item.label}
+                </Link>
+              )
+            })}
+            <Link
+              href="/"
+              onClick={() => setOpen(false)}
+              className="py-3.5 text-[14px] font-bold uppercase tracking-wide text-[#01172f]/40"
+            >
+              &larr; Back to Site
+            </Link>
+          </nav>
         </div>
       )}
 
-      {/* Main Content Area */}
-      <main style={{ flex: 1, padding: 32, minWidth: 0, backgroundColor: '#fbfbfd' }}>
+      {/* ===== Main content ===== */}
+      <main className="flex-1 min-w-0 bg-[#fbfbfd] p-6 md:p-10">
         {children}
       </main>
 
       <style>{`
-        @media (max-width: 600px) {
-          .top-nav {
-            display: none !important;
-          }
-          .nav-hamburger {
-            display: flex !important;
-          }
-        }
-
         @media print {
           .admin-header {
             display: none !important;
