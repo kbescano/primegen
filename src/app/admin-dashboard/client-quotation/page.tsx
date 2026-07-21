@@ -26,6 +26,26 @@ const STATUS_COLORS: Record<string, string> = {
 const peso = (n: number) =>
   n.toLocaleString('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 })
 
+function mapDocToInitial(q: any): QuotationInitial {
+  return {
+    id: q.id,
+    quotationNumber: q.quotationNumber,
+    quotationDate: q.quotationDate ? String(q.quotationDate).slice(0, 10) : undefined,
+    customerName: q.customerName,
+    company: q.company,
+    address: q.address,
+    contactNumber: q.contactNumber,
+    salesPerson: q.salesPerson,
+    vatRate: q.vatRate,
+    discountAmount: q.discountAmount,
+    deliveryFee: q.deliveryFee,
+    sourceRequestId: q.sourceRequestId,
+    items: Array.isArray(q.items)
+      ? q.items.map((i: any) => ({ qty: i.qty, unit: i.unit, description: i.description, unitPrice: i.unitPrice }))
+      : undefined,
+  }
+}
+
 export default async function ClientQuotationPage({
   searchParams,
 }: {
@@ -41,41 +61,41 @@ export default async function ClientQuotationPage({
       try {
         const payload = await getPayloadClient()
         const q: any = await payload.findByID({ collection: 'client-quotations', id })
-        if (q) {
-          initial = {
-            id: q.id,
-            quotationNumber: q.quotationNumber,
-            quotationDate: q.quotationDate ? String(q.quotationDate).slice(0, 10) : undefined,
-            customerName: q.customerName,
-            company: q.company,
-            address: q.address,
-            contactNumber: q.contactNumber,
-            salesPerson: q.salesPerson,
-            vatRate: q.vatRate,
-            items: Array.isArray(q.items)
-              ? q.items.map((i: any) => ({ qty: i.qty, unit: i.unit, description: i.description, unitPrice: i.unitPrice }))
-              : undefined,
-          }
-        }
+        if (q) initial = mapDocToInitial(q)
       } catch {
         // fall through to a blank form
       }
     } else if (from) {
       try {
         const payload = await getPayloadClient()
-        const q: any = await payload.findByID({ collection: 'quotation-requests', id: from, depth: 2 })
-        if (q) {
-          initial = {
-            customerName: q.customerName || '',
-            contactNumber: q.phone || '',
-            items: Array.isArray(q.items)
-              ? q.items.map((item: any) => ({
-                  qty: item.quantity || 1,
-                  unit: typeof item.material === 'object' ? item.material?.unit || 'pcs' : 'pcs',
-                  description: typeof item.material === 'object' ? item.material?.name || '' : String(item.material || ''),
-                  unitPrice: 0,
-                }))
-              : undefined,
+
+        // Duplicate-proofing: if a client-quotation already exists for this request,
+        // edit that one instead of creating a second one -- even if the link that got us
+        // here is stale (e.g. an old tab, a double-click, a cached page).
+        const existingForRequest = await payload.find({
+          collection: 'client-quotations',
+          where: { sourceRequestId: { equals: from } },
+          limit: 1,
+        })
+
+        if (existingForRequest.docs.length > 0) {
+          initial = mapDocToInitial(existingForRequest.docs[0])
+        } else {
+          const reqDoc: any = await payload.findByID({ collection: 'quotation-requests', id: from, depth: 2 })
+          if (reqDoc) {
+            initial = {
+              sourceRequestId: from,
+              customerName: reqDoc.customerName || '',
+              contactNumber: reqDoc.phone || '',
+              items: Array.isArray(reqDoc.items)
+                ? reqDoc.items.map((item: any) => ({
+                    qty: item.quantity || 1,
+                    unit: typeof item.material === 'object' ? item.material?.unit || 'pcs' : 'pcs',
+                    description: typeof item.material === 'object' ? item.material?.name || '' : String(item.material || ''),
+                    unitPrice: 0,
+                  }))
+                : undefined,
+            }
           }
         }
       } catch {

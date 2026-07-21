@@ -66,6 +66,16 @@ export const ClientQuotations: CollectionConfig = {
     },
     { name: 'vatRate', type: 'number', defaultValue: 12, label: 'VAT Rate (%)' },
     {
+      name: 'sourceRequestId',
+      type: 'text',
+      admin: {
+        readOnly: true,
+        description: 'Internal: links back to the originating quotation-request, if generated from one. Prevents duplicate quotations for the same request.',
+      },
+    },
+    { name: 'discountAmount', type: 'number', defaultValue: 0, label: 'Discount (₱)' },
+    { name: 'deliveryFee', type: 'number', defaultValue: 0, label: 'Delivery Fee (₱)' },
+    {
       name: 'status',
       type: 'select',
       options: [

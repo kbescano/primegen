@@ -21,6 +21,9 @@ export type QuotationInitial = {
   contactNumber?: string
   salesPerson?: string
   vatRate?: number
+  discountAmount?: number
+  deliveryFee?: number
+  sourceRequestId?: string
   items?: LineItem[]
 }
 
@@ -54,10 +57,11 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
   )
   const [hasVat, setHasVat] = useState((initial?.vatRate ?? 12) > 0)
   const [vatRate, setVatRate] = useState(initial?.vatRate && initial.vatRate > 0 ? initial.vatRate : 12)
-  const [discountAmount, setDiscountAmount] = useState(0) // flat peso amount, not a percentage
-  const [deliveryFee, setDeliveryFee] = useState(0)
+  const [discountAmount, setDiscountAmount] = useState(initial?.discountAmount ?? 0) // flat peso amount, not a percentage
+  const [deliveryFee, setDeliveryFee] = useState(initial?.deliveryFee ?? 0)
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveErrorDetail, setSaveErrorDetail] = useState('')
+  const sourceRequestId = initial?.sourceRequestId // set once at creation time, never user-editable
 
   const subtotal = useMemo(() => items.reduce((sum, i) => sum + i.qty * i.unitPrice, 0), [items])
   const hasDiscount = discountAmount > 0
@@ -114,6 +118,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
           vatRate: hasVat ? vatRate : 0,
           discountAmount,
           deliveryFee,
+          sourceRequestId,
           status: 'draft',
         }),
       })

@@ -71,6 +71,22 @@ export default async function QuotationInboxPage({
     depth: 2,
   })
 
+  // Bulk lookup: which of these requests already have a client-quotation generated from them?
+  const requestIds = docs.map((d: any) => d.id)
+  const linkedQuotations =
+    requestIds.length > 0
+      ? await payload.find({
+          collection: 'client-quotations',
+          where: { sourceRequestId: { in: requestIds } },
+          limit: 200,
+        })
+      : { docs: [] as any[] }
+
+  const quotationIdByRequestId: Record<string, string> = {}
+  for (const cq of linkedQuotations.docs as any[]) {
+    if (cq.sourceRequestId) quotationIdByRequestId[cq.sourceRequestId] = cq.id
+  }
+
   return (
     <div className="max-w-[1200px] mx-auto">
       {/* Header */}
@@ -119,79 +135,92 @@ export default async function QuotationInboxPage({
 
       {/* Quotation cards */}
       <div className="flex flex-col gap-4">
-        {docs.map((q: any) => (
-          <div
-            key={q.id}
-            className="relative bg-white border border-[#01172f]/10 p-5 md:p-6 transition-all duration-300 hover:border-[#149911]/40 hover:shadow-[0_16px_40px_-16px_rgba(1,23,47,0.15)]"
-          >
-            <span className="absolute top-0 left-0 h-full w-[3px] bg-[#149911]/0 transition-colors duration-300" />
+        {docs.map((q: any) => {
+          const linkedQuotationId = quotationIdByRequestId[q.id]
 
-            <div className="flex justify-between items-start gap-3 flex-wrap mb-1">
-              <div>
-                <h3 className="text-[16px] font-bold text-[#01172f]">{q.customerName}</h3>
-                <p className="text-[13px] text-[#01172f]/50 font-medium">
-                  {q.phone} {q.email ? `· ${q.email}` : ''}
-                </p>
+          return (
+            <div
+              key={q.id}
+              className="relative bg-white border border-[#01172f]/10 p-5 md:p-6 transition-all duration-300 hover:border-[#149911]/40 hover:shadow-[0_16px_40px_-16px_rgba(1,23,47,0.15)]"
+            >
+              <span className="absolute top-0 left-0 h-full w-[3px] bg-[#149911]/0 transition-colors duration-300" />
+
+              <div className="flex justify-between items-start gap-3 flex-wrap mb-1">
+                <div>
+                  <h3 className="text-[16px] font-bold text-[#01172f]">{q.customerName}</h3>
+                  <p className="text-[13px] text-[#01172f]/50 font-medium">
+                    {q.phone} {q.email ? `· ${q.email}` : ''}
+                  </p>
+                </div>
+                <StatusSelect id={q.id} status={q.status} />
               </div>
-              <StatusSelect id={q.id} status={q.status} />
-            </div>
 
-            {Array.isArray(q.items) && q.items.length > 0 && (
-              <div className="mt-4 border-t border-[#01172f]/10 pt-3 overflow-x-auto">
-                <table className="w-full text-[13px] border-collapse min-w-[280px]">
-                  <thead>
-                    <tr className="text-left">
-                      <th className="pb-1.5 pr-2 text-[10px] font-bold uppercase tracking-[0.15em] text-[#01172f]/40">
-                        Material
-                      </th>
-                      <th className="pb-1.5 px-2 text-[10px] font-bold uppercase tracking-[0.15em] text-[#01172f]/40">
-                        Qty
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {q.items.map((item: any, i: number) => {
-                      const material = item.material
-                      return (
-                        <tr key={i}>
-                          <td className="py-1 pr-2 font-medium text-[#01172f]">
-                            {typeof material === 'object' ? material?.name : material}
-                          </td>
-                          <td className="py-1 px-2 font-mono text-[#01172f]/70">
-                            {item.quantity} {typeof material === 'object' ? material?.unit : ''}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+              {Array.isArray(q.items) && q.items.length > 0 && (
+                <div className="mt-4 border-t border-[#01172f]/10 pt-3 overflow-x-auto">
+                  <table className="w-full text-[13px] border-collapse min-w-[280px]">
+                    <thead>
+                      <tr className="text-left">
+                        <th className="pb-1.5 pr-2 text-[10px] font-bold uppercase tracking-[0.15em] text-[#01172f]/40">
+                          Material
+                        </th>
+                        <th className="pb-1.5 px-2 text-[10px] font-bold uppercase tracking-[0.15em] text-[#01172f]/40">
+                          Qty
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {q.items.map((item: any, i: number) => {
+                        const material = item.material
+                        return (
+                          <tr key={i}>
+                            <td className="py-1 pr-2 font-medium text-[#01172f]">
+                              {typeof material === 'object' ? material?.name : material}
+                            </td>
+                            <td className="py-1 px-2 font-mono text-[#01172f]/70">
+                              {item.quantity} {typeof material === 'object' ? material?.unit : ''}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {q.message && (
+                <p className="mt-3 text-[14px] text-[#01172f]/70 leading-relaxed">{q.message}</p>
+              )}
+
+              <div className="flex gap-3 flex-wrap mt-4">
+                {linkedQuotationId ? (
+                  <Link
+                    href={`/admin-dashboard/client-quotation?id=${linkedQuotationId}`}
+                    className="text-[12px] font-bold uppercase tracking-[0.1em] px-4 py-2 border-2 border-[#149911] text-[#103900] bg-[#149911]/[0.08] hover:bg-[#149911] hover:text-white transition-colors duration-300"
+                  >
+                    Update Quotation
+                  </Link>
+                ) : (
+                  <Link
+                    href={`/admin-dashboard/client-quotation?from=${q.id}`}
+                    className="text-[12px] font-bold uppercase tracking-[0.1em] px-4 py-2 bg-[#3D5F3B] text-white hover:bg-[#01172f] transition-colors duration-300"
+                  >
+                    Create Client Quotation
+                  </Link>
+                )}
+                <Link
+                  href={`/admin-dashboard/supplier-po?from=${q.id}`}
+                  className="text-[12px] font-bold uppercase tracking-[0.1em] px-4 py-2 border-2 border-[#3D5F3B] text-[#3D5F3B] hover:bg-[#3D5F3B] hover:text-white transition-colors duration-300"
+                >
+                  Create Supplier PO
+                </Link>
               </div>
-            )}
 
-            {q.message && (
-              <p className="mt-3 text-[14px] text-[#01172f]/70 leading-relaxed">{q.message}</p>
-            )}
-
-            <div className="flex gap-3 flex-wrap mt-4">
-              <Link
-                href={`/admin-dashboard/client-quotation?from=${q.id}`}
-                className="text-[12px] font-bold uppercase tracking-[0.1em] px-4 py-2 bg-[#3D5F3B] text-white hover:bg-[#01172f] transition-colors duration-300"
-              >
-                Create Client Quotation
-              </Link>
-              <Link
-                href={`/admin-dashboard/supplier-po?from=${q.id}`}
-                className="text-[12px] font-bold uppercase tracking-[0.1em] px-4 py-2 border-2 border-[#3D5F3B] text-[#3D5F3B] hover:bg-[#3D5F3B] hover:text-white transition-colors duration-300"
-              >
-                Create Supplier PO
-              </Link>
+              <p className="mt-4 text-[11px] text-[#01172f]/30 font-medium">
+                Submitted {new Date(q.createdAt).toLocaleString()} via {q.source}
+              </p>
             </div>
-
-            <p className="mt-4 text-[11px] text-[#01172f]/30 font-medium">
-              Submitted {new Date(q.createdAt).toLocaleString()} via {q.source}
-            </p>
-          </div>
-        ))}
+          )
+        })}
 
         {docs.length === 0 && (
           <div className="border border-dashed border-[#01172f]/15 py-16 text-center">
