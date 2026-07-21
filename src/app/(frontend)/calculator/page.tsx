@@ -1,5 +1,6 @@
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import WeightCalculatorForm, { type CalcProduct } from '@/components/WeightCalculatorForm'
+import SectionHeader from '@/components/SectionHeader'
 
 export const revalidate = 60
 
@@ -30,31 +31,32 @@ const FALLBACK_PRODUCTS: CalcProduct[] = [
 
 export default async function CalculatorPage() {
   const payload = await getPayloadClient()
-  const { docs } = await payload.find({ 
-    collection: 'weight-calc-products', 
-    where: { enabled: { equals: true } }, 
-    sort: 'order', 
-    limit: 50 
+  const { docs } = await payload.find({
+    collection: 'weight-calc-products',
+    where: { enabled: { equals: true } },
+    sort: 'order',
+    limit: 50
   })
 
   const products: CalcProduct[] =
     docs.length > 0
-      ? docs.map((p: any) => ({ 
-          id: p.id, 
-          name: p.name, 
-          shape: p.shape, 
-          density: p.density, 
-          standardLength: p.standardLength 
+      ? docs.map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          shape: p.shape,
+          density: p.density,
+          standardLength: p.standardLength
         }))
       : FALLBACK_PRODUCTS
 
   return (
-    <section className="py-28 px-6 lg:px-20 max-w-[1360px] mx-auto">
-      <p className="text-xs font-bold uppercase tracking-wider text-green mb-2">Tools</p>
-      <h1 className="mb-3">Weight Calculator</h1>
-      <p className="mb-8 max-w-[560px]">
-        Estimate the weight of steel products by shape and dimension -- useful for planning orders and checking delivery loads before you request a quote.
-      </p>
+    <section className="py-16 mb-10 md:py-28 px-6 lg:px-20 max-w-[1360px] mx-auto bg-[#fdfffc] min-h-screen">
+      <SectionHeader
+        size="page"
+        eyebrow="Tools"
+        title="Weight Calculator"
+        description="Estimate the weight of steel products by shape and dimension -- useful for planning orders and checking delivery loads before you request a quote."
+      />
       <WeightCalculatorForm products={products} />
     </section>
   )
