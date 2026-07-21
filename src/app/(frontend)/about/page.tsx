@@ -1,6 +1,7 @@
 import { getPayloadClient } from "@/lib/getPayloadClient";
 import ScrollReveal from "@/components/ScrollReveal";
 import SectionHeader from "@/components/SectionHeader";
+import Link from "next/link";
 
 export const revalidate = 60;
 
@@ -78,6 +79,22 @@ export default async function AboutPage() {
                 </p>
               </div>
             )}
+
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#01172f]/40 mb-2">
+                Facebook
+              </p>
+              <p className="m-0">
+                <Link
+                  href={"https://www.facebook.com/primegentradingcorp/"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[12px] font-bold"
+                >
+                  https://www.facebook.com/primegentradingcorp/
+                </Link>
+              </p>
+            </div>
           </div>
         </ScrollReveal>
 
