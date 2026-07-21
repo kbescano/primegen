@@ -72,7 +72,7 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
 
   return (
     <section className="py-16 md:py-28 bg-[#fdfffc] min-h-screen selection:bg-[#149911] selection:text-white">
-      <div className="max-w-[1300px] mx-auto px-6 lg:px-10">
+      <div className="max-w-[1360px] mx-auto px-6 lg:px-12 xl:px-20">
 
         {/* Top Header Row - High End Editorial */}
         <ScrollReveal className="border-b-2 border-[#01172f] pb-8 mb-12 flex flex-col md:flex-row md:justify-between md:items-end gap-6 relative">
