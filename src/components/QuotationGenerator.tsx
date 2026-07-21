@@ -22,8 +22,8 @@ export type QuotationInitial = {
 const peso = (n: number) =>
   n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-const TERMS = [
-  'All prices are quoted in Peso and are Inclusive of VAT, delivery charges, and other applicable taxes, unless otherwise specified. Prices are based on current material costs and may be adjusted due to market fluctuations.',
+const BASE_TERMS = [
+  '', // dynamic -- filled in at render time based on the VAT checkbox
   'This quotation is valid for 7 days from the date of issue. Prices and availability are subject to change without prior notice after this period.',
   'Full Payment before Delivery; Delivery will be arranged upon confirmation of full payment.',
   'Delivery timelines are estimates and depend on product availability and logistics. We shall not be held liable for delays due to causes beyond our control, including but not limited to supplier delays, transportation issues, or force majeure events.',
@@ -46,12 +46,25 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
       ? initial.items
       : [{ qty: 1, unit: 'pcs', description: '', unitPrice: 0 }]
   )
+  const [hasVat, setHasVat] = useState(true)
   const [vatRate, setVatRate] = useState(12)
+  const [discountPercent, setDiscountPercent] = useState(0)
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
 
   const subtotal = useMemo(() => items.reduce((sum, i) => sum + i.qty * i.unitPrice, 0), [items])
-  const vat = useMemo(() => subtotal * (vatRate / 100), [subtotal, vatRate])
-  const total = subtotal + vat
+  const hasDiscount = discountPercent > 0
+  const discountAmount = useMemo(() => (hasDiscount ? subtotal * (discountPercent / 100) : 0), [subtotal, discountPercent, hasDiscount])
+  const netOfDiscount = subtotal - discountAmount
+  const vat = useMemo(() => (hasVat ? netOfDiscount * (vatRate / 100) : 0), [netOfDiscount, vatRate, hasVat])
+  const total = netOfDiscount + vat
+
+  const terms = useMemo(() => {
+    const copy = [...BASE_TERMS]
+    copy[0] = `All prices are quoted in Peso and are ${
+      hasVat ? 'Inclusive' : 'Exclusive'
+    } of VAT, delivery charges, and other applicable taxes, unless otherwise specified. Prices are based on current material costs and may be adjusted due to market fluctuations.`
+    return copy
+  }, [hasVat])
 
   function updateItem(index: number, patch: Partial<LineItem>) {
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))
@@ -83,7 +96,8 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
           address,
           contactNumber,
           items: items.map(({ imageDataUrl, ...rest }) => rest),
-          vatRate,
+          vatRate: hasVat ? vatRate : 0,
+          discountPercent,
           status: 'draft',
         }),
       })
@@ -104,31 +118,19 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
     <div className="max-w-5xl mx-auto p-4 md:p-6 bg-[#fdfffc]">
       <style>{`
         @media print {
-          @page {
-            size: A4 portrait;
-            margin: 0;
-          }
-          html, body {
-            background-color: white !important;
-            margin: 0 !important;
-            padding: 0 !important;
-          }
-          * {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            color-adjust: exact !important;
-          }
-          .quotation-print-doc {
-            zoom: 0.72;
-            box-shadow: none !important;
-            border: none !important;
-            margin: 0 auto !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            min-width: 100% !important;
-            padding: 24px !important;
-          }
-        }
+    @page {
+      size: A4;
+      margin: 8mm;
+    }
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
+    }
+    .quotation-print-doc {
+      zoom: 0.8;
+    }
+  }
       `}</style>
 
       {/* ===== FORM (hidden when printing) ===== */}
@@ -272,7 +274,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
                     className="hidden"
                     onChange={(e) => handleImageSelect(index, e.target.files?.[0] ?? null)}
                   />
-                  <span className="px-3 py-1.5 border border-dashed border-gray-300 rounded text-[#103900] hover:border-[#149911] hover:bg-[#149911]/[0.03] transition-all duration-200 whitespace-nowrap">
+                  <span className="px-3 py-1.5 border border-dashed border-gray-300 rounded text-[#3D5F3B] hover:border-[#149911] hover:bg-[#149911]/[0.03] transition-all duration-200 whitespace-nowrap">
                     {item.imageDataUrl ? 'Change spec image' : '+ Add spec image (optional)'}
                   </span>
                 </label>
@@ -300,19 +302,44 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
           onClick={() =>
             setItems((prev) => [...prev, { qty: 1, unit: 'pcs', description: '', unitPrice: 0 }])
           }
-          className="text-sm text-[#103900] border border-dashed border-gray-300 rounded px-4 py-2.5 mb-8 hover:border-[#149911] hover:bg-[#149911]/[0.03] transition-all duration-200"
+          className="text-sm text-[#3D5F3B] border border-dashed border-gray-300 rounded px-4 py-2.5 mb-8 hover:border-[#149911] hover:bg-[#149911]/[0.03] transition-all duration-200"
         >
           + Add line item
         </button>
 
-        <div className="mb-8 max-w-[200px]">
-          <label className={labelClass}>VAT Rate (%)</label>
-          <input
-            type="text"
-            className={inputClass}
-            value={vatRate}
-            onChange={(e) => setVatRate(Number(e.target.value) || 0)}
-          />
+        {/* VAT + Discount controls */}
+        <div className="grid sm:grid-cols-2 gap-4 mb-8 max-w-[440px]">
+          <div>
+            <label className={labelClass}>Discount (%)</label>
+            <input
+              type="text"
+              className={inputClass}
+              value={discountPercent}
+              onChange={(e) => setDiscountPercent(Number(e.target.value) || 0)}
+              placeholder="0"
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-[11px] font-bold uppercase tracking-wide text-gray-500">VAT Rate (%)</label>
+              <label className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-gray-500 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={hasVat}
+                  onChange={(e) => setHasVat(e.target.checked)}
+                  className="w-3.5 h-3.5 accent-[#149911] cursor-pointer"
+                />
+                Apply VAT
+              </label>
+            </div>
+            <input
+              type="text"
+              className={`${inputClass} ${!hasVat ? 'opacity-40 pointer-events-none' : ''}`}
+              value={vatRate}
+              onChange={(e) => setVatRate(Number(e.target.value) || 0)}
+              disabled={!hasVat}
+            />
+          </div>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 mb-4 [&>button]:w-full sm:[&>button]:w-auto">
@@ -322,14 +349,14 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
             className={`px-8 py-3 rounded border-2 font-bold disabled:opacity-50 transition-all duration-300 hover:-translate-y-0.5 ${
               saving === 'saved'
                 ? 'border-[#149911] text-[#149911]'
-                : 'border-[#103900] text-[#103900] hover:shadow-[0_10px_30px_-10px_rgba(16,57,0,0.4)]'
+                : 'border-[#3D5F3B] text-[#3D5F3B] hover:shadow-[0_10px_30px_-10px_rgba(16,57,0,0.4)]'
             }`}
           >
             {saving === 'saving' ? 'Saving...' : saving === 'saved' ? 'Saved ✓' : 'Save Quotation'}
           </button>
           <button
             onClick={() => window.print()}
-            className="px-8 py-3 rounded bg-[#103900] text-white font-bold hover:bg-[#01172f] hover:-translate-y-0.5 hover:shadow-[0_10px_30px_-10px_rgba(1,23,47,0.4)] transition-all duration-300"
+            className="px-8 py-3 rounded bg-[#3D5F3B] text-white font-bold hover:bg-[#01172f] hover:-translate-y-0.5 hover:shadow-[0_10px_30px_-10px_rgba(1,23,47,0.4)] transition-all duration-300"
           >
             Print / Save as PDF
           </button>
@@ -347,7 +374,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
 
       {/* ===== FORMAL QUOTATION DOCUMENT -- True WYSIWYG Print Preview ===== */}
       <div className="w-full overflow-x-auto pb-4">
-        <div className="quotation-print-doc bg-white border border-gray-200 rounded p-6 md:p-8 print:border-0 print:rounded-none text-[#01172f] min-w-[794px] max-w-[850px] mx-auto shadow-[0_20px_60px_-20px_rgba(1,23,47,0.15)] print:shadow-none">
+        <div className="quotation-print-doc bg-white border border-gray-200 rounded p-8 print:border-0 print:p-0 print:rounded-none text-[#01172f] min-w-[794px] shadow-[0_20px_60px_-20px_rgba(1,23,47,0.15)] print:shadow-none">
           {/* Header: logo + company block, title + date/number */}
           <div className="flex flex-row justify-between items-start gap-3 mb-4">
             <div className="flex gap-3 items-start">
@@ -360,7 +387,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
                 />
               </div>
               <div>
-                <h2 className="text-base font-bold leading-tight text-[#103900]">PRIMEGEN</h2>
+                <h2 className="text-base font-bold leading-tight text-[#3D5F3B]">PRIMEGEN</h2>
                 <p className="text-[10px] font-semibold tracking-widest text-gray-600 mb-1">
                   TRADING CORPORATION
                 </p>
@@ -376,7 +403,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
             </div>
 
             <div className="text-right w-auto">
-              <h3 className="text-xl font-bold text-[#103900] mb-1">
+              <h3 className="text-xl font-bold text-[#3D5F3B] mb-1">
                 FORMAL QUOTATION
               </h3>
               <table className="text-xs ml-auto mt-0">
@@ -400,7 +427,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
 
           {/* Customer block */}
           <div className="mb-3">
-            <div className="bg-[#103900] text-white text-xs font-bold uppercase tracking-wide px-3 py-1">
+            <div className="bg-[#3D5F3B] text-white text-xs font-bold uppercase tracking-wide px-3 py-1">
               Customer
             </div>
             <div className="text-xs py-1 flex flex-col gap-0.5">
@@ -427,7 +454,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
           <div>
             <table className="w-full text-xs mb-2 border-collapse">
               <thead>
-                <tr className="bg-[#103900] text-white text-xs uppercase tracking-wide">
+                <tr className="bg-[#3D5F3B] text-white text-xs uppercase tracking-wide">
                   <th className="py-1.5 px-2 text-left w-[70px]">Qty</th>
                   <th className="py-1.5 px-2 text-left w-[90px]">Unit</th>
                   <th className="py-1.5 px-2 text-left">Description</th>
@@ -464,7 +491,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
             </table>
           </div>
 
-          {/* Totals */}
+          {/* Totals -- Discount and VAT rows are conditional */}
           <div className="flex justify-end mt-10 mb-4">
             <table className="text-xs w-full max-w-[280px]">
               <tbody>
@@ -472,11 +499,19 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
                   <td className="py-1 px-2 bg-[#e8f0e5]">Subtotal</td>
                   <td className="py-1 px-2 bg-[#e8f0e5] text-right font-mono">{peso(subtotal)}</td>
                 </tr>
-                <tr>
-                  <td className="py-1 px-2">VAT</td>
-                  <td className="py-1 px-2 text-right font-mono">{peso(vat)}</td>
-                </tr>
-                <tr className="border-t-2 border-[#103900]">
+                {hasDiscount && (
+                  <tr>
+                    <td className="py-1 px-2">Discount ({discountPercent}%)</td>
+                    <td className="py-1 px-2 text-right font-mono">-{peso(discountAmount)}</td>
+                  </tr>
+                )}
+                {hasVat && (
+                  <tr>
+                    <td className="py-1 px-2">VAT ({vatRate}%)</td>
+                    <td className="py-1 px-2 text-right font-mono">{peso(vat)}</td>
+                  </tr>
+                )}
+                <tr className="border-t-2 border-[#3D5F3B]">
                   <td className="py-1.5 px-2 font-bold text-sm bg-[#e8f0e5]">TOTAL</td>
                   <td className="py-1.5 px-2 font-bold text-sm text-right font-mono bg-[#e8f0e5]">
                     ₱{peso(total)}
@@ -491,7 +526,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
             <div>
               <p className="font-bold text-[10px] uppercase tracking-wide mb-1">Terms &amp; Condition</p>
               <ol className="list-decimal pl-4 flex flex-col gap-0.5 text-gray-700">
-                {TERMS.map((t, i) => (
+                {terms.map((t, i) => (
                   <li key={i}>{t}</li>
                 ))}
               </ol>
