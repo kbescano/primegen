@@ -157,19 +157,22 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#01172f]/40 mb-4">
           Materials Needed
         </p>
-        <div className="flex flex-col gap-2.5">
+        <div className="flex flex-col gap-4 sm:gap-2.5">
           {items.map((item, index) => {
             const selected =
               materials.find((m) => String(m.id) === String(item.materialId)) ??
               materials[0];
             return (
-              <div key={index} className="flex gap-2 items-center flex-nowrap">
+              <div
+                key={index}
+                className="flex flex-col sm:flex-row gap-2 sm:items-center bg-gray-50/50 sm:bg-transparent p-3 sm:p-0 border border-gray-100 sm:border-none rounded-md sm:rounded-none"
+              >
                 <select
                   value={item.materialId}
                   onChange={(e) =>
                     updateItem(index, { materialId: e.target.value })
                   }
-                  className={`${fieldClass} flex-1 min-w-0 h-[52px] py-0 appearance-none`}
+                  className={`${fieldClass} w-full sm:flex-1 min-w-0 h-[52px] py-0 appearance-none`}
                 >
                   {materials.map((m) => (
                     <option key={m.id} value={m.id}>
@@ -177,28 +180,34 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
                     </option>
                   ))}
                 </select>
-                <input
-                  type="text"
-                  min={1}
-                  value={item.quantity}
-                  onChange={(e) =>
-                    updateItem(index, { quantity: Number(e.target.value) })
-                  }
-                  className={`${fieldClass} w-[68px] px-2 flex-shrink-0 text-center h-[52px] py-0`}
-                  aria-label="Quantity"
-                />
-                <span className="text-[11px] font-medium uppercase tracking-wide text-[#01172f]/40 w-[52px] flex-shrink-0 truncate">
-                  {selected?.unit ?? ""}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => removeItem(index)}
-                  aria-label="Remove item"
-                  disabled={items.length === 1}
-                  className="w-7 flex-shrink-0 text-[#01172f]/30 hover:text-red-700 disabled:opacity-0 disabled:pointer-events-none transition-colors text-lg p-1"
-                >
-                  &times;
-                </button>
+                
+                <div className="flex items-center justify-between sm:justify-start gap-2">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      min={1}
+                      value={item.quantity}
+                      onChange={(e) =>
+                        updateItem(index, { quantity: Number(e.target.value) })
+                      }
+                      className={`${fieldClass} w-[68px] px-2 flex-shrink-0 text-center h-[52px] py-0`}
+                      aria-label="Quantity"
+                    />
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-[#01172f]/40 w-[52px] flex-shrink-0 truncate">
+                      {selected?.unit ?? ""}
+                    </span>
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={() => removeItem(index)}
+                    aria-label="Remove item"
+                    disabled={items.length === 1}
+                    className="w-10 h-10 sm:w-7 sm:h-auto flex items-center justify-center flex-shrink-0 text-[#01172f]/30 hover:text-red-700 disabled:opacity-0 disabled:pointer-events-none transition-colors text-2xl sm:text-lg"
+                  >
+                    &times;
+                  </button>
+                </div>
               </div>
             );
           })}
@@ -206,7 +215,7 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
         <button
           type="button"
           onClick={addItem}
-          className="mt-3 w-full border border-dashed border-[#01172f]/20 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.15em] text-[#103900] hover:border-[#149911] hover:text-[#149911] transition-colors duration-300"
+          className="mt-4 w-full border border-dashed border-[#01172f]/20 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.15em] text-[#103900] hover:border-[#149911] hover:text-[#149911] transition-colors duration-300"
         >
           + Add Another Material
         </button>
@@ -227,17 +236,19 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
             return (
               <li
                 key={index}
-                className="flex justify-between items-baseline gap-4 text-[14px]"
+                className="flex justify-between items-start gap-4 text-[14px]"
               >
-                <span className="font-medium text-[#01172f]">{mat.name}</span>
-                <span className="font-mono text-[#01172f]/50 whitespace-nowrap">
+                <span className="font-medium text-[#01172f] leading-snug">
+                  {mat.name}
+                </span>
+                <span className="font-mono text-[#01172f]/50 whitespace-nowrap pt-0.5">
                   {item.quantity} {mat.unit ?? ""}
                 </span>
               </li>
             );
           })}
         </ul>
-        <div className="border-t border-[#01172f]/10 mt-4 pt-4 flex justify-between items-baseline text-[12px]">
+        <div className="border-t border-[#01172f]/10 mt-4 pt-4 flex flex-col sm:flex-row sm:justify-between sm:items-baseline gap-2 text-[12px]">
           <span className="font-bold uppercase tracking-wide text-[#01172f]">
             {items.length} {items.length === 1 ? "material" : "materials"}{" "}
             requested
@@ -261,8 +272,6 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
         />
       </div>
 
-      {/* Liquid-fill submit, matching the detail page CTA */}
-      {/* Outlined submit -- green border/text on white, liquid-fills green on hover */}
       <button
         type="submit"
         disabled={status === "submitting"}
