@@ -15,7 +15,7 @@ const PERIOD_LABELS: Record<string, string> = {
   today: 'Today',
   week: 'This Week',
   month: 'This Month',
-  year: 'All time',
+  year: 'This Year',
 }
 
 function getPeriodStart(period?: string): Date | undefined {
@@ -72,17 +72,24 @@ export default async function QuotationInboxPage({
   })
 
   return (
-    <div>
-      <h1 style={{ fontSize: 26, marginBottom: 8, color: '#0d0d0d' }}>Quotation Requests</h1>
-      <p style={{ marginBottom: 20, color: '#0d0d0d', opacity: 0.65 }}>
-        Requests submitted from the website. Follow up by phone or email, then update status --
-        quotes are always sent by your team directly, never automatically.
-      </p>
+    <div className="max-w-[1200px] mx-auto">
+      {/* Header */}
+      <div className="mb-10">
+        <div className="w-10 h-[3px] bg-[#149911] mb-5" />
+        <h1 className="text-[26px] md:text-[32px] font-black uppercase tracking-tight text-[#01172f] leading-none mb-3">
+          Quotation Requests
+        </h1>
+        <p className="text-[14px] text-[#01172f]/50 font-medium max-w-[560px]">
+          Requests submitted from the website. Follow up by phone or email, then update status --
+          quotes are always sent by your team directly, never automatically.
+        </p>
+      </div>
 
-      <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#0d0d0d', opacity: 0.4, marginBottom: 8 }}>
+      {/* Status filter */}
+      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#01172f]/40 mb-3">
         Status
       </p>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+      <div className="flex gap-2 flex-wrap mb-6">
         <FilterLink label="All" active={!activeStatus} href={buildHref({ status: undefined })} />
         {STATUSES.map((s) => (
           <FilterLink
@@ -94,10 +101,11 @@ export default async function QuotationInboxPage({
         ))}
       </div>
 
-      <p style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#0d0d0d', opacity: 0.4, marginBottom: 8 }}>
+      {/* Date range filter */}
+      <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#01172f]/40 mb-3">
         Date Range
       </p>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 24, flexWrap: 'wrap' }}>
+      <div className="flex gap-2 flex-wrap mb-10">
         <FilterLink label="All Time" active={!activePeriod} href={buildHref({ period: undefined })} />
         {PERIODS.map((p) => (
           <FilterLink
@@ -109,26 +117,36 @@ export default async function QuotationInboxPage({
         ))}
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Quotation cards */}
+      <div className="flex flex-col gap-4">
         {docs.map((q: any) => (
-          <div key={q.id} className="facet-card" style={{ padding: 20, background: 'white', border: '1px solid #e5e5e5', borderRadius: 8 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
+          <div
+            key={q.id}
+            className="relative bg-white border border-[#01172f]/10 p-5 md:p-6 transition-all duration-300 hover:border-[#149911]/40 hover:shadow-[0_16px_40px_-16px_rgba(1,23,47,0.15)]"
+          >
+            <span className="absolute top-0 left-0 h-full w-[3px] bg-[#149911]/0 transition-colors duration-300" />
+
+            <div className="flex justify-between items-start gap-3 flex-wrap mb-1">
               <div>
-                <h3 style={{ fontSize: 16, color: '#0d0d0d' }}>{q.customerName}</h3>
-                <p style={{ fontSize: 14, color: '#0d0d0d', opacity: 0.7 }}>
-                  {q.phone} {q.email ? `| ${q.email}` : ''}
+                <h3 className="text-[16px] font-bold text-[#01172f]">{q.customerName}</h3>
+                <p className="text-[13px] text-[#01172f]/50 font-medium">
+                  {q.phone} {q.email ? `· ${q.email}` : ''}
                 </p>
               </div>
               <StatusSelect id={q.id} status={q.status} />
             </div>
 
             {Array.isArray(q.items) && q.items.length > 0 && (
-              <div style={{ marginTop: 14, borderTop: '1px solid #e5f0e8', paddingTop: 12 }}>
-                <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+              <div className="mt-4 border-t border-[#01172f]/10 pt-3 overflow-x-auto">
+                <table className="w-full text-[13px] border-collapse min-w-[280px]">
                   <thead>
-                    <tr style={{ color: '#0d0d0d', opacity: 0.6, textAlign: 'left' }}>
-                      <th style={{ padding: '4px 8px 4px 0' }}>Material</th>
-                      <th style={{ padding: '4px 8px' }}>Qty</th>
+                    <tr className="text-left">
+                      <th className="pb-1.5 pr-2 text-[10px] font-bold uppercase tracking-[0.15em] text-[#01172f]/40">
+                        Material
+                      </th>
+                      <th className="pb-1.5 px-2 text-[10px] font-bold uppercase tracking-[0.15em] text-[#01172f]/40">
+                        Qty
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
@@ -136,10 +154,10 @@ export default async function QuotationInboxPage({
                       const material = item.material
                       return (
                         <tr key={i}>
-                          <td style={{ padding: '4px 8px 4px 0' }}>
+                          <td className="py-1 pr-2 font-medium text-[#01172f]">
                             {typeof material === 'object' ? material?.name : material}
                           </td>
-                          <td style={{ padding: '4px 8px' }}>
+                          <td className="py-1 px-2 font-mono text-[#01172f]/70">
                             {item.quantity} {typeof material === 'object' ? material?.unit : ''}
                           </td>
                         </tr>
@@ -150,40 +168,48 @@ export default async function QuotationInboxPage({
               </div>
             )}
 
-            {q.message && <p style={{ marginTop: 12, fontSize: 14 }}>{q.message}</p>}
+            {q.message && (
+              <p className="mt-3 text-[14px] text-[#01172f]/70 leading-relaxed">{q.message}</p>
+            )}
 
-            <div style={{ display: 'flex', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
+            <div className="flex gap-3 flex-wrap mt-4">
               <Link
                 href={`/admin-dashboard/client-quotation?from=${q.id}`}
-                style={{ fontSize: 13, fontWeight: 600, padding: '7px 14px', borderRadius: 6, textDecoration: 'none', background: '#103900', color: 'white' }}
+                className="text-[12px] font-bold uppercase tracking-[0.1em] px-4 py-2 bg-[#103900] text-white hover:bg-[#01172f] transition-colors duration-300"
               >
                 Create Client Quotation
               </Link>
               <Link
                 href={`/admin-dashboard/supplier-po?from=${q.id}`}
-                style={{ fontSize: 13, fontWeight: 600, padding: '7px 14px', borderRadius: 6, textDecoration: 'none', border: '1.5px solid #103900', color: '#103900' }}
+                className="text-[12px] font-bold uppercase tracking-[0.1em] px-4 py-2 border-2 border-[#103900] text-[#103900] hover:bg-[#103900] hover:text-white transition-colors duration-300"
               >
                 Create Supplier PO
               </Link>
             </div>
 
-            <p style={{ marginTop: 12, fontSize: 12, color: '#0d0d0d', opacity: 0.4 }}>
+            <p className="mt-4 text-[11px] text-[#01172f]/30 font-medium">
               Submitted {new Date(q.createdAt).toLocaleString()} via {q.source}
             </p>
           </div>
         ))}
+
         {docs.length === 0 && (
-          <p>
-            No quotation requests
-            {activeStatus ? ` with status "${STATUS_LABELS[activeStatus]}"` : ''}
-            {activePeriod ? ` ${PERIOD_LABELS[activePeriod].toLowerCase()}` : ''}.
-          </p>
+          <div className="border border-dashed border-[#01172f]/15 py-16 text-center">
+            <p className="text-[14px] text-[#01172f]/40 font-medium">
+              No quotation requests
+              {activeStatus ? ` with status "${STATUS_LABELS[activeStatus]}"` : ''}
+              {activePeriod ? ` ${PERIOD_LABELS[activePeriod].toLowerCase()}` : ''}.
+            </p>
+          </div>
         )}
       </div>
 
-      <p style={{ marginTop: 24, fontSize: 13, color: '#0d0d0d', opacity: 0.5 }}>
+      <p className="mt-8 text-[13px] text-[#01172f]/40 font-medium">
         For internal notes or bulk edits, use the{' '}
-        <Link href="/admin/collections/quotation-requests" style={{ color: '#1f5c34' }}>
+        <Link
+          href="/admin/collections/quotation-requests"
+          className="text-[#103900] font-bold hover:text-[#149911] transition-colors underline underline-offset-2"
+        >
           full CMS admin view
         </Link>
         .
@@ -196,16 +222,11 @@ function FilterLink({ label, active, href }: { label: string; active?: boolean; 
   return (
     <Link
       href={href}
-      style={{
-        fontSize: 13,
-        fontWeight: 600,
-        padding: '6px 14px',
-        borderRadius: 20,
-        textDecoration: 'none',
-        background: active ? '#0d0d0d' : 'white',
-        color: active ? 'white' : '#0d0d0d',
-        border: '1.5px solid #b7d8c2',
-      }}
+      className={`text-[11px] font-bold uppercase tracking-[0.1em] px-4 py-2 border transition-all duration-200 ${
+        active
+          ? 'bg-[#01172f] border-[#01172f] text-white'
+          : 'bg-white border-[#01172f]/15 text-[#01172f]/60 hover:border-[#01172f]/40 hover:text-[#01172f]'
+      }`}
     >
       {label}
     </Link>

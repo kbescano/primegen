@@ -97,42 +97,67 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
   }
 
   const inputClass =
-    'w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#149911]'
-  const labelClass = 'block text-xs font-bold uppercase tracking-wide text-gray-600 mb-1'
+    'w-full px-3.5 py-2.5 border border-gray-300 rounded text-sm text-[#01172f] placeholder:text-gray-400 hover:border-[#01172f]/30 focus:outline-none focus:border-[#149911] focus:ring-1 focus:ring-[#149911]/25 transition-all duration-200'
+  const labelClass = 'block text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1.5'
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-6 bg-[#fdfffc]">
       <style>{`
         @media print {
-    @page {
-      size: A4;
-      margin: 8mm;
-    }
-    * {
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-      color-adjust: exact !important;
-    }
-    .quotation-print-doc {
-      zoom: 0.8;
-    }
-  }
+          @page {
+            size: A4 portrait;
+            margin: 0;
+          }
+          html, body {
+            background-color: white !important;
+            margin: 0 !important;
+            padding: 0 !important;
+          }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+          .quotation-print-doc {
+            zoom: 0.72;
+            box-shadow: none !important;
+            border: none !important;
+            margin: 0 auto !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            min-width: 100% !important;
+            padding: 24px !important;
+          }
+        }
       `}</style>
 
       {/* ===== FORM (hidden when printing) ===== */}
       <div className="print:hidden">
-        <h1 className="text-2xl font-bold mb-1 text-[#01172f]">Client Quotation Generator</h1>
-        <p className="text-sm text-gray-500 mb-8">
-          Fill in the details below. Save to auto-generate the quotation number, then use Print /
-          Save as PDF to send to the client.
-        </p>
-        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-8">
-          Before printing: in the print dialog, open &quot;More settings&quot; and uncheck
-          &quot;Headers and footers&quot; -- that removes the browser&apos;s own URL/date/page-number
-          strip, which can&apos;t be controlled from the page itself.
+        <div className="mb-8">
+          <div className="w-8 h-[3px] bg-[#149911] mb-4" />
+          <h1 className="text-2xl font-black uppercase tracking-tight text-[#01172f] mb-2">
+            Client Quotation Generator
+          </h1>
+          <p className="text-sm text-gray-500 max-w-[560px]">
+            Fill in the details below. Save to auto-generate the quotation number, then use Print /
+            Save as PDF to send to the client.
+          </p>
+        </div>
+
+        <p className="flex items-start gap-2.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-4 py-3 mb-8">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0 mt-0.5">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span>
+            Before printing: in the print dialog, open &quot;More settings&quot; and uncheck
+            &quot;Headers and footers&quot; -- that removes the browser&apos;s own URL/date/page-number
+            strip, which can&apos;t be controlled from the page itself.
+          </span>
         </p>
 
-        <div className="grid md:grid-cols-2 gap-4 mb-6">
+        <div className="grid md:grid-cols-2 gap-4 mb-8">
           <div>
             <label className={labelClass}>Quotation Date</label>
             <input
@@ -145,7 +170,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
           <div>
             <label className={labelClass}>Quotation #</label>
             <input
-              className={inputClass}
+              className={`${inputClass} font-mono`}
               value={quotationNumber}
               onChange={(e) => setQuotationNumber(e.target.value)}
               placeholder="Auto-generated on save (YYYY-#####)"
@@ -189,14 +214,19 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
           </div>
         </div>
 
-        <h2 className="text-lg font-bold mb-3 text-[#01172f]">Line Items</h2>
+        <div className="flex items-center gap-3 mb-4">
+          <h2 className="text-base font-black uppercase tracking-tight text-[#01172f]">Line Items</h2>
+          <span className="text-xs font-mono text-gray-400">{items.length}</span>
+        </div>
         <div className="flex flex-col gap-3 mb-2">
           {items.map((item, index) => (
-            <div key={index} className="border border-gray-200 rounded-lg p-3 md:p-4">
+            <div
+              key={index}
+              className="border border-gray-200 rounded-lg p-3 md:p-4 transition-shadow duration-300 hover:shadow-[0_8px_24px_-8px_rgba(1,23,47,0.1)] hover:border-gray-300"
+            >
               <div className="grid grid-cols-2 md:grid-cols-[70px_90px_1fr_120px_120px_36px] gap-2 items-center">
                 <input
                   type="text"
-                  min={0}
                   className={inputClass}
                   value={item.qty}
                   onChange={(e) => updateItem(index, { qty: Number(e.target.value) || 0 })}
@@ -216,20 +246,18 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
                 />
                 <input
                   type="text"
-                  min={0}
-                  step="0.01"
                   className={inputClass}
                   value={item.unitPrice}
                   onChange={(e) => updateItem(index, { unitPrice: Number(e.target.value) || 0 })}
                   placeholder="Unit price"
                 />
-                <div className="text-sm text-right font-mono">
+                <div className="text-sm text-right font-mono text-[#01172f] font-medium">
                   {peso(item.qty * item.unitPrice)}
                 </div>
                 <button
                   onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
                   disabled={items.length === 1}
-                  className="col-span-2 md:col-span-1 text-red-600 disabled:opacity-30 text-lg justify-self-end md:justify-self-auto"
+                  className="col-span-2 md:col-span-1 text-gray-400 hover:text-red-600 disabled:opacity-0 disabled:pointer-events-none transition-colors text-lg justify-self-end md:justify-self-auto"
                   aria-label="Remove line item"
                 >
                   &times;
@@ -244,7 +272,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
                     className="hidden"
                     onChange={(e) => handleImageSelect(index, e.target.files?.[0] ?? null)}
                   />
-                  <span className="px-3 py-1.5 border border-dashed border-gray-300 rounded text-[#103900] whitespace-nowrap">
+                  <span className="px-3 py-1.5 border border-dashed border-gray-300 rounded text-[#103900] hover:border-[#149911] hover:bg-[#149911]/[0.03] transition-all duration-200 whitespace-nowrap">
                     {item.imageDataUrl ? 'Change spec image' : '+ Add spec image (optional)'}
                   </span>
                 </label>
@@ -258,7 +286,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
                     <button
                       type="button"
                       onClick={() => handleImageSelect(index, null)}
-                      className="text-xs text-red-600"
+                      className="text-xs text-red-600 hover:text-red-700"
                     >
                       Remove
                     </button>
@@ -272,16 +300,15 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
           onClick={() =>
             setItems((prev) => [...prev, { qty: 1, unit: 'pcs', description: '', unitPrice: 0 }])
           }
-          className="text-sm text-[#103900] border border-dashed border-gray-300 rounded px-4 py-2 mb-6"
+          className="text-sm text-[#103900] border border-dashed border-gray-300 rounded px-4 py-2.5 mb-8 hover:border-[#149911] hover:bg-[#149911]/[0.03] transition-all duration-200"
         >
           + Add line item
         </button>
 
-        <div className="mb-6 max-w-[200px]">
+        <div className="mb-8 max-w-[200px]">
           <label className={labelClass}>VAT Rate (%)</label>
           <input
             type="text"
-            min={0}
             className={inputClass}
             value={vatRate}
             onChange={(e) => setVatRate(Number(e.target.value) || 0)}
@@ -292,17 +319,17 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
           <button
             onClick={saveQuotation}
             disabled={saving === 'saving'}
-            className={`px-8 py-3 rounded border-2 font-bold disabled:opacity-50 transition-colors ${
+            className={`px-8 py-3 rounded border-2 font-bold disabled:opacity-50 transition-all duration-300 hover:-translate-y-0.5 ${
               saving === 'saved'
                 ? 'border-[#149911] text-[#149911]'
-                : 'border-[#103900] text-[#103900]'
+                : 'border-[#103900] text-[#103900] hover:shadow-[0_10px_30px_-10px_rgba(16,57,0,0.4)]'
             }`}
           >
             {saving === 'saving' ? 'Saving...' : saving === 'saved' ? 'Saved ✓' : 'Save Quotation'}
           </button>
           <button
             onClick={() => window.print()}
-            className="px-8 py-3 rounded bg-[#103900] text-white font-bold hover:bg-[#01172f] transition-colors"
+            className="px-8 py-3 rounded bg-[#103900] text-white font-bold hover:bg-[#01172f] hover:-translate-y-0.5 hover:shadow-[0_10px_30px_-10px_rgba(1,23,47,0.4)] transition-all duration-300"
           >
             Print / Save as PDF
           </button>
@@ -311,13 +338,16 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
           <p className="text-sm text-red-600 mb-8">Save failed -- check you&apos;re logged in.</p>
         )}
 
-        <hr className="my-12" />
-        <p className="text-xs uppercase tracking-wide font-bold text-gray-400 mb-6">Preview</p>
+        <hr className="my-12 border-gray-200" />
+        <div className="flex items-center gap-3 mb-6">
+          <span className="text-xs uppercase tracking-wide font-bold text-gray-400">Preview</span>
+          <div className="flex-1 h-px bg-gray-200" />
+        </div>
       </div>
 
       {/* ===== FORMAL QUOTATION DOCUMENT -- True WYSIWYG Print Preview ===== */}
       <div className="w-full overflow-x-auto pb-4">
-        <div className="quotation-print-doc bg-white border border-gray-200 rounded p-8 print:border-0 print:p-0 print:rounded-none text-[#01172f] min-w-[794px]">
+        <div className="quotation-print-doc bg-white border border-gray-200 rounded p-6 md:p-8 print:border-0 print:rounded-none text-[#01172f] min-w-[794px] max-w-[850px] mx-auto shadow-[0_20px_60px_-20px_rgba(1,23,47,0.15)] print:shadow-none">
           {/* Header: logo + company block, title + date/number */}
           <div className="flex flex-row justify-between items-start gap-3 mb-4">
             <div className="flex gap-3 items-start">

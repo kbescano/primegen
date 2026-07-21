@@ -102,8 +102,9 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
     }
   }
 
-  const inputClass = 'w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#149911]'
-  const labelClass = 'block text-xs font-bold uppercase tracking-wide text-gray-600 mb-1'
+  const inputClass =
+    'w-full px-3.5 py-2.5 border border-gray-300 rounded text-sm text-[#01172f] placeholder:text-gray-400 hover:border-[#01172f]/30 focus:outline-none focus:border-[#149911] focus:ring-1 focus:ring-[#149911]/25 transition-all duration-200'
+  const labelClass = 'block text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1.5'
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-6 bg-[#fdfffc]">
@@ -127,22 +128,38 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
 
       {/* ===== FORM (hidden when printing) ===== */}
       <div className="print:hidden">
-        <h1 className="text-2xl font-bold mb-1 text-[#01172f]">Supplier Purchase Order</h1>
-        <p className="text-sm text-gray-500 mb-8">Fill in the details below. Save to auto-generate the PO number, then use Print / Save as PDF to send to the supplier.</p>
-        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-8">
-          Before printing: in the print dialog, open &quot;More settings&quot; and uncheck
-          &quot;Headers and footers&quot; -- that removes the browser&apos;s own URL/date/page-number
-          strip, which can&apos;t be controlled from the page itself.
+        <div className="mb-8">
+          <div className="w-8 h-[3px] bg-[#149911] mb-4" />
+          <h1 className="text-2xl font-black uppercase tracking-tight text-[#01172f] mb-2">
+            Supplier Purchase Order
+          </h1>
+          <p className="text-sm text-gray-500 max-w-[560px]">
+            Fill in the details below. Save to auto-generate the PO number, then use Print / Save as
+            PDF to send to the supplier.
+          </p>
+        </div>
+
+        <p className="flex items-start gap-2.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-4 py-3 mb-8">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0 mt-0.5">
+            <circle cx="12" cy="12" r="10" />
+            <line x1="12" y1="8" x2="12" y2="12" />
+            <line x1="12" y1="16" x2="12.01" y2="16" />
+          </svg>
+          <span>
+            Before printing: in the print dialog, open &quot;More settings&quot; and uncheck
+            &quot;Headers and footers&quot; -- that removes the browser&apos;s own URL/date/page-number
+            strip, which can&apos;t be controlled from the page itself.
+          </span>
         </p>
 
-        <div className="grid md:grid-cols-2 gap-4 mb-6">
+        <div className="grid md:grid-cols-2 gap-4 mb-8">
           <div>
             <label className={labelClass}>PO Date</label>
             <input type="date" className={inputClass} value={poDate} onChange={(e) => setPoDate(e.target.value)} />
           </div>
           <div>
             <label className={labelClass}>PO #</label>
-            <input className={inputClass} value={poNumber} onChange={(e) => setPoNumber(e.target.value)} placeholder="Auto-generated on save (YYYY-#########)" />
+            <input className={`${inputClass} font-mono`} value={poNumber} onChange={(e) => setPoNumber(e.target.value)} placeholder="Auto-generated on save (YYYY-#########)" />
           </div>
           <div>
             <label className={labelClass}>Supplier Name</label>
@@ -162,10 +179,16 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
           </div>
         </div>
 
-        <h2 className="text-lg font-bold mb-3 text-[#01172f]">Line Items</h2>
+        <div className="flex items-center gap-3 mb-4">
+          <h2 className="text-base font-black uppercase tracking-tight text-[#01172f]">Line Items</h2>
+          <span className="text-xs font-mono text-gray-400">{items.length}</span>
+        </div>
         <div className="flex flex-col gap-3 mb-2">
           {items.map((item, index) => (
-            <div key={index} className="border border-gray-200 rounded-lg p-3 md:p-4">
+            <div
+              key={index}
+              className="border border-gray-200 rounded-lg p-3 md:p-4 transition-shadow duration-300 hover:shadow-[0_8px_24px_-8px_rgba(1,23,47,0.1)] hover:border-gray-300"
+            >
               <div className="grid grid-cols-2 md:grid-cols-[1fr_70px_90px_120px_120px_36px] gap-2 items-center">
                 <input
                   className={`${inputClass} col-span-2 md:col-span-1`}
@@ -175,7 +198,6 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
                 />
                 <input
                   type="text"
-                  min={0}
                   className={inputClass}
                   value={item.qty}
                   onChange={(e) => updateItem(index, { qty: Number(e.target.value) || 0 })}
@@ -189,18 +211,16 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
                 />
                 <input
                   type="text"
-                  min={0}
-                  step="0.01"
                   className={inputClass}
                   value={item.unitPrice}
                   onChange={(e) => updateItem(index, { unitPrice: Number(e.target.value) || 0 })}
                   placeholder="Price"
                 />
-                <div className="text-sm text-right font-mono">{peso(item.qty * item.unitPrice)}</div>
+                <div className="text-sm text-right font-mono text-[#01172f] font-medium">{peso(item.qty * item.unitPrice)}</div>
                 <button
                   onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
                   disabled={items.length === 1}
-                  className="col-span-2 md:col-span-1 text-red-600 disabled:opacity-30 text-lg justify-self-end md:justify-self-auto"
+                  className="col-span-2 md:col-span-1 text-gray-400 hover:text-red-600 disabled:opacity-0 disabled:pointer-events-none transition-colors text-lg justify-self-end md:justify-self-auto"
                   aria-label="Remove line item"
                 >
                   &times;
@@ -215,14 +235,14 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
                     className="hidden"
                     onChange={(e) => handleImageSelect(index, e.target.files?.[0] ?? null)}
                   />
-                  <span className="px-3 py-1.5 border border-dashed border-gray-300 rounded text-[#103900] whitespace-nowrap">
+                  <span className="px-3 py-1.5 border border-dashed border-gray-300 rounded text-[#103900] hover:border-[#149911] hover:bg-[#149911]/[0.03] transition-all duration-200 whitespace-nowrap">
                     {item.imageDataUrl ? 'Change spec image' : '+ Add spec image (optional)'}
                   </span>
                 </label>
                 {item.imageDataUrl && (
                   <>
                     <img src={item.imageDataUrl} alt="" className="h-10 w-10 object-contain border border-gray-200 rounded flex-shrink-0" />
-                    <button type="button" onClick={() => handleImageSelect(index, null)} className="text-xs text-red-600">
+                    <button type="button" onClick={() => handleImageSelect(index, null)} className="text-xs text-red-600 hover:text-red-700">
                       Remove
                     </button>
                   </>
@@ -233,12 +253,12 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
         </div>
         <button
           onClick={() => setItems((prev) => [...prev, { description: '', qty: 1, unit: 'pcs', unitPrice: 0 }])}
-          className="text-sm text-[#103900] border border-dashed border-gray-300 rounded px-4 py-2 mb-6"
+          className="text-sm text-[#103900] border border-dashed border-gray-300 rounded px-4 py-2.5 mb-8 hover:border-[#149911] hover:bg-[#149911]/[0.03] transition-all duration-200"
         >
           + Add line item
         </button>
 
-        <div className="grid md:grid-cols-2 gap-4 mb-6">
+        <div className="grid md:grid-cols-2 gap-4 mb-8">
           <div>
             <label className={labelClass}>Prepared By (Name)</label>
             <input className={inputClass} value={preparedBy} onChange={(e) => setPreparedBy(e.target.value)} placeholder="e.g. Nira" />
@@ -253,27 +273,32 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
           <button
             onClick={savePO}
             disabled={saving === 'saving'}
-            className={`px-8 py-3 rounded border-2 font-bold disabled:opacity-50 transition-colors ${
-              saving === 'saved' ? 'border-[#149911] text-[#149911]' : 'border-[#103900] text-[#103900]'
+            className={`px-8 py-3 rounded border-2 font-bold disabled:opacity-50 transition-all duration-300 hover:-translate-y-0.5 ${
+              saving === 'saved'
+                ? 'border-[#149911] text-[#149911]'
+                : 'border-[#103900] text-[#103900] hover:shadow-[0_10px_30px_-10px_rgba(16,57,0,0.4)]'
             }`}
           >
             {saving === 'saving' ? 'Saving...' : saving === 'saved' ? 'Saved ✓' : 'Save PO'}
           </button>
           <button
             onClick={() => window.print()}
-            className="px-8 py-3 rounded bg-[#103900] text-white font-bold hover:bg-[#01172f] transition-colors"
+            className="px-8 py-3 rounded bg-[#103900] text-white font-bold hover:bg-[#01172f] hover:-translate-y-0.5 hover:shadow-[0_10px_30px_-10px_rgba(1,23,47,0.4)] transition-all duration-300"
           >
             Print / Save as PDF
           </button>
         </div>
         {saving === 'error' && <p className="text-sm text-red-600 mb-8">Save failed -- check you&apos;re logged in.</p>}
 
-        <hr className="my-12" />
-        <p className="text-xs uppercase tracking-wide font-bold text-gray-400 mb-6">Preview</p>
+        <hr className="my-12 border-gray-200" />
+        <div className="flex items-center gap-3 mb-6">
+          <span className="text-xs uppercase tracking-wide font-bold text-gray-400">Preview</span>
+          <div className="flex-1 h-px bg-gray-200" />
+        </div>
       </div>
 
-      {/* ===== FORMAL PURCHASE ORDER DOCUMENT -- print spacing tightened throughout to maximize one-page fit ===== */}
-      <div className="po-print-doc bg-white border border-gray-200 rounded p-5 md:p-10 print:border-0 print:p-0 print:rounded-none text-[#01172f]">
+      {/* ===== FORMAL PURCHASE ORDER DOCUMENT -- untouched from the working, print-tested version ===== */}
+      <div className="po-print-doc bg-white border border-gray-200 rounded p-5 md:p-10 print:border-0 print:p-0 print:rounded-none text-[#01172f] shadow-[0_20px_60px_-20px_rgba(1,23,47,0.15)] print:shadow-none">
 
         {/* Header: logo + company block, PO banner + PO#/date box */}
         <div className="flex flex-col sm:flex-row justify-between items-start gap-6 print:gap-3 mb-6 print:mb-3">
@@ -356,7 +381,7 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
           </table>
         </div>
 
-        {/* Totals -- Subtotal + Total only, no VAT. Fixed mt-20 replaced with a natural, content-proportional gap */}
+        {/* Totals -- Subtotal + Total only, no VAT */}
         <div className="flex justify-end mt-10 mb-10">
           <table className="text-sm print:text-xs w-full max-w-[280px]">
             <tbody>
