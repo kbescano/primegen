@@ -196,12 +196,12 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
             {/* Extraordinary Animated CTA Button */}
             <a
               href={`/quote?material=${material.id}`}
-              className="relative flex items-center justify-center w-full text-[#103900] py-5 mt-auto overflow-hidden group cursor-pointer border border-[#01172f]"
+              className="relative flex items-center justify-center w-full text-[#3D5F3B] py-5 mt-auto overflow-hidden group cursor-pointer border border-[#01172f]"
             >
               {/* Liquid Hover Fill */}
               <span className="absolute inset-0 bg-[#149911] transform scale-x-0 origin-left transition-transform duration-500 ease-[cubic-bezier(0.87,0,0.13,1)] group-hover:scale-x-100" />
 
-              <span className="relative z-10 flex items-center gap-4 text-[13px] font-bold uppercase tracking-[0.2em] transition-colors duration-300 text-[#103900] hover:text-[#fdfffc]">
+              <span className="relative z-10 flex items-center gap-4 text-[13px] font-bold uppercase tracking-[0.2em] transition-colors duration-300 text-[#3D5F3B] hover:text-[#fdfffc]">
                 Request a Quote
 
                 {/* Animated Arrow */}
@@ -224,7 +224,7 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
         </div>
 
         {/* Bottom Callout Banner - Monolithic Block */}
-        <ScrollReveal className="bg-[#fdfffc] text-[#fdfffc] mt-24 p-10 md:p-14 flex flex-col md:flex-row items-start md:items-center gap-8 md:gap-12 w-full relative overflow-hidden group border border-[#103900] hover:border-[#149911]/50 transition-colors duration-500">
+        <ScrollReveal className="bg-[#fdfffc] text-[#fdfffc] mt-24 p-10 md:p-14 flex flex-col md:flex-row items-start md:items-center gap-8 md:gap-12 w-full relative overflow-hidden group border border-[#3D5F3B] hover:border-[#149911]/50 transition-colors duration-500">
 
           {/* Decorative Glow */}
           <div className="absolute -right-20 -top-20 w-64 h-64 bg-[#149911]/20 rounded-full blur-3xl pointer-events-none transition-opacity duration-700 opacity-50 group-hover:opacity-100" />

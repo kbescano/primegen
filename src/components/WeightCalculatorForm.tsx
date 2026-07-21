@@ -287,7 +287,7 @@ export default function WeightCalculatorForm({ products = APPLICABLE_PRODUCTS }:
         )}
       </div>
 
-      <div className="bg-[#103900] text-white rounded p-6">
+      <div className="bg-[#3D5F3B] text-white rounded p-6">
         <p className="text-xs font-bold uppercase tracking-wide text-white mb-3.5">Result</p>
         {result ? (
           <div className="flex flex-col gap-3.5">

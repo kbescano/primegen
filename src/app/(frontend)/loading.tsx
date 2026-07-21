@@ -8,10 +8,7 @@ export default function GlobalLoading() {
       <div className="absolute w-[600px] h-[600px] bg-[#149911]/[0.08] rounded-full blur-3xl animate-[pulseGlow_4s_ease-in-out_infinite]" />
 
       <div className="relative flex flex-col items-center justify-center animate-[riseIn_0.9s_cubic-bezier(0.25,1,0.5,1)_both]">
-
-        {/* Accent bar above the wordmark */}
-        <div className="w-10 h-[3px] bg-[#149911] mb-8 origin-left animate-[barGrow_0.8s_cubic-bezier(0.87,0,0.13,1)_0.2s_both]" />
-
+    
         {/* Bold Typography Hierarchy */}
         <h1 className="text-3xl md:text-5xl font-black tracking-[0.2em] md:tracking-[0.25em] uppercase text-[#fdfffc]">
           Primegen

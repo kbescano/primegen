@@ -125,7 +125,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                   padding: '14px 0',
                   fontSize: 22,
                   fontWeight: 700,
-                  color: isActive ? '#103900' : '#1d1d1f',
+                  color: isActive ? '#3D5F3B' : '#1d1d1f',
                   textDecoration: 'none',
                 }}
               >

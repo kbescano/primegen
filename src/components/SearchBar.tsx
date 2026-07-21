@@ -31,7 +31,7 @@ export default function SearchBar({ initialQuery = '' }: { initialQuery?: string
   }, [query, router, pathname, searchParams])
 
   return (
-    <div className="relative w-full md:w-72 flex items-center gap-2.5 border-b border-[#01172f]/15 pb-2.5 transition-colors duration-300 focus-within:border-[#103900]">
+    <div className="relative w-full md:w-72 flex items-center gap-2.5 border-b border-[#01172f]/15 pb-2.5 transition-colors duration-300 focus-within:border-[#3D5F3B]">
       {/* Magnifying Glass Icon */}
       <svg
         width="15"
@@ -58,7 +58,7 @@ export default function SearchBar({ initialQuery = '' }: { initialQuery?: string
 
       {/* Loading indicator while Next.js fetches new results */}
       {isPending && (
-        <div className="w-3 h-3 flex-shrink-0 rounded-full border-2 border-[#103900]/20 border-t-[#103900] animate-spin" />
+        <div className="w-3 h-3 flex-shrink-0 rounded-full border-2 border-[#3D5F3B]/20 border-t-[#3D5F3B] animate-spin" />
       )}
     </div>
   )

@@ -55,7 +55,7 @@ export default async function AboutPage() {
                 <p className="m-0">
                   <a
                     href={`tel:${phone}`}
-                    className="text-[#103900] hover:text-[#149911] font-bold text-[15px] transition-colors"
+                    className="text-[#3D5F3B] hover:text-[#149911] font-bold text-[15px] transition-colors"
                   >
                     {phone}
                   </a>
@@ -71,7 +71,7 @@ export default async function AboutPage() {
                 <p className="m-0">
                   <a
                     href={`mailto:${email}`}
-                    className="text-[#103900] hover:text-[#149911] font-bold text-[15px] transition-colors"
+                    className="text-[#3D5F3B] hover:text-[#149911] font-bold text-[15px] transition-colors"
                   >
                     {email}
                   </a>

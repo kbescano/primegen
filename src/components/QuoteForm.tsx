@@ -95,7 +95,7 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
       {preselectedMaterial && (
-        <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.15em] text-[#103900] m-0">
+        <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.15em] text-[#3D5F3B] m-0">
           <span className="w-1.5 h-1.5 rounded-full bg-[#149911] inline-block" />
           Pre-filled: {preselectedMaterial.name}
         </p>
@@ -215,7 +215,7 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
         <button
           type="button"
           onClick={addItem}
-          className="mt-4 w-full border border-dashed border-[#01172f]/20 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.15em] text-[#103900] hover:border-[#149911] hover:text-[#149911] transition-colors duration-300"
+          className="mt-4 w-full border border-dashed border-[#01172f]/20 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.15em] text-[#3D5F3B] hover:border-[#149911] hover:text-[#149911] transition-colors duration-300"
         >
           + Add Another Material
         </button>
@@ -275,7 +275,7 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
       <button
         type="submit"
         disabled={status === "submitting"}
-        className="relative flex items-center justify-center w-full bg-white text-[#103900] py-4 overflow-hidden group cursor-pointer border-2 border-[#149911] disabled:opacity-60 mt-2 transition-colors duration-300"
+        className="relative flex items-center justify-center w-full bg-white text-[#3D5F3B] py-4 overflow-hidden group cursor-pointer border-2 border-[#149911] disabled:opacity-60 mt-2 transition-colors duration-300"
       >
         <span className="absolute inset-0 bg-[#149911] transform scale-x-0 origin-left transition-transform duration-500 ease-[cubic-bezier(0.87,0,0.13,1)] group-hover:scale-x-100" />
         <span className="relative z-10 text-[13px] text-[#149911] font-bold uppercase tracking-[0.2em] transition-colors duration-300 group-hover:text-[#fdfffc]">

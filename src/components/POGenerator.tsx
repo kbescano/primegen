@@ -152,7 +152,7 @@ export default function POGenerator({ title, partyLabel, apiPath, partyFieldPref
         </div>
         <button
           onClick={() => setItems((prev) => [...prev, { description: '', qty: 1, uom: 'pcs', unitPrice: 0 }])}
-          className="text-sm text-[#103900] border border-dashed border-gray-300 rounded px-4 py-2 mb-6"
+          className="text-sm text-[#3D5F3B] border border-dashed border-gray-300 rounded px-4 py-2 mb-6"
         >
           + Add line item
         </button>
@@ -193,14 +193,14 @@ export default function POGenerator({ title, partyLabel, apiPath, partyFieldPref
             onClick={savePO}
             disabled={saving === 'saving'}
             className={`px-8 py-3 rounded border-2 font-bold disabled:opacity-50 transition-colors ${
-              saving === 'saved' ? 'border-[#149911] text-[#149911]' : 'border-[#103900] text-[#103900]'
+              saving === 'saved' ? 'border-[#149911] text-[#149911]' : 'border-[#3D5F3B] text-[#3D5F3B]'
             }`}
           >
             {saving === 'saving' ? 'Saving...' : saving === 'saved' ? 'Saved ✓' : 'Save PO'}
           </button>
           <button
             onClick={() => window.print()}
-            className="px-8 py-3 rounded bg-[#103900] text-white font-bold hover:bg-[#01172f] transition-colors"
+            className="px-8 py-3 rounded bg-[#3D5F3B] text-white font-bold hover:bg-[#01172f] transition-colors"
           >
             Print / Save as PDF
           </button>

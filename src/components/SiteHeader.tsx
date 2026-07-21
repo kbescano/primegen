@@ -31,7 +31,7 @@ export default function SiteHeader() {
         >
           <Link
             href="/"
-            className="flex flex-row items-center gap-2 font-bold bg-gradient-to-tr from-[#051d00] via-[#103900] to-[#52b788] bg-clip-text text-transparent"
+            className="flex flex-row items-center gap-2 font-bold bg-gradient-to-tr from-[#051d00] via-[#3D5F3B] to-[#52b788] bg-clip-text text-transparent"
             onClick={() => setOpen(false)}
           >
             <Image

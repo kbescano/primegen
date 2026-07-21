@@ -175,13 +175,13 @@ export default async function QuotationInboxPage({
             <div className="flex gap-3 flex-wrap mt-4">
               <Link
                 href={`/admin-dashboard/client-quotation?from=${q.id}`}
-                className="text-[12px] font-bold uppercase tracking-[0.1em] px-4 py-2 bg-[#103900] text-white hover:bg-[#01172f] transition-colors duration-300"
+                className="text-[12px] font-bold uppercase tracking-[0.1em] px-4 py-2 bg-[#3D5F3B] text-white hover:bg-[#01172f] transition-colors duration-300"
               >
                 Create Client Quotation
               </Link>
               <Link
                 href={`/admin-dashboard/supplier-po?from=${q.id}`}
-                className="text-[12px] font-bold uppercase tracking-[0.1em] px-4 py-2 border-2 border-[#103900] text-[#103900] hover:bg-[#103900] hover:text-white transition-colors duration-300"
+                className="text-[12px] font-bold uppercase tracking-[0.1em] px-4 py-2 border-2 border-[#3D5F3B] text-[#3D5F3B] hover:bg-[#3D5F3B] hover:text-white transition-colors duration-300"
               >
                 Create Supplier PO
               </Link>
@@ -208,7 +208,7 @@ export default async function QuotationInboxPage({
         For internal notes or bulk edits, use the{' '}
         <Link
           href="/admin/collections/quotation-requests"
-          className="text-[#103900] font-bold hover:text-[#149911] transition-colors underline underline-offset-2"
+          className="text-[#3D5F3B] font-bold hover:text-[#149911] transition-colors underline underline-offset-2"
         >
           full CMS admin view
         </Link>
