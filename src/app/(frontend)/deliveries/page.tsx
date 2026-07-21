@@ -140,7 +140,7 @@ export default async function DeliveriesPage() {
                         href={d.permalinkUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide text-[#103900] hover:text-[#149911] transition-colors"
+                        className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide text-[#3D5F3B] hover:text-[#149911] transition-colors"
                       >
                         View Original Post
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">

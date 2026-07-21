@@ -18,7 +18,7 @@ const STATUS_LABELS: Record<string, string> = {
 }
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-600',
-  issued: 'bg-[#149911]/10 text-[#103900]',
+  issued: 'bg-[#149911]/10 text-[#3D5F3B]',
   fulfilled: 'bg-[#149911] text-white',
   cancelled: 'bg-red-50 text-red-600',
 }
@@ -115,7 +115,7 @@ export default async function SupplierPOPage({
         </div>
         <Link
           href="/admin-dashboard/supplier-po?new=true"
-          className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.1em] px-5 py-3 bg-[#103900] text-white hover:bg-[#01172f] transition-colors duration-300 w-fit flex-shrink-0"
+          className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.1em] px-5 py-3 bg-[#3D5F3B] text-white hover:bg-[#01172f] transition-colors duration-300 w-fit flex-shrink-0"
         >
           + Create New PO
         </Link>
@@ -164,7 +164,7 @@ export default async function SupplierPOPage({
                   <p className="text-[15px] font-bold text-[#01172f] font-mono">{peso(total)}</p>
                   <Link
                     href={`/admin-dashboard/supplier-po?id=${po.id}`}
-                    className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#103900] hover:text-[#149911] transition-colors"
+                    className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#3D5F3B] hover:text-[#149911] transition-colors"
                   >
                     View / Edit &rarr;
                   </Link>

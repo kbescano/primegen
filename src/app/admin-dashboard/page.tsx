@@ -195,7 +195,7 @@ export default async function QuotationInboxPage({
                 {linkedQuotationId ? (
                   <Link
                     href={`/admin-dashboard/client-quotation?id=${linkedQuotationId}`}
-                    className="text-[12px] font-bold uppercase tracking-[0.1em] px-4 py-2 border-2 border-[#149911] text-[#103900] bg-[#149911]/[0.08] hover:bg-[#149911] hover:text-white transition-colors duration-300"
+                    className="text-[12px] font-bold uppercase tracking-[0.1em] px-4 py-2 border-2 border-[#149911] text-[#3D5F3B] bg-[#149911]/[0.08] hover:bg-[#149911] hover:text-white transition-colors duration-300"
                   >
                     Update Quotation
                   </Link>

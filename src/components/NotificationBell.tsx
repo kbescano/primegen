@@ -124,7 +124,7 @@ export default function NotificationBell() {
           <Link
             href="/admin-dashboard?status=pending"
             onClick={() => setOpen(false)}
-            className="block px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-[#103900] hover:text-[#149911] transition-colors border-t border-[#01172f]/10"
+            className="block px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-[#3D5F3B] hover:text-[#149911] transition-colors border-t border-[#01172f]/10"
           >
             View All Pending
           </Link>

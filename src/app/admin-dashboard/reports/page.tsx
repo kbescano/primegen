@@ -94,7 +94,7 @@ export default async function ReportsPage({
   const STATUS_LABELS: Record<string, string> = { draft: 'Draft', sent: 'Sent', accepted: 'Accepted', expired: 'Expired' }
   const STATUS_COLORS: Record<string, string> = {
     draft: 'bg-gray-100 text-gray-600',
-    sent: 'bg-[#149911]/10 text-[#103900]',
+    sent: 'bg-[#149911]/10 text-[#3D5F3B]',
     accepted: 'bg-[#149911] text-white',
     expired: 'bg-red-50 text-red-600',
   }
@@ -144,7 +144,7 @@ export default async function ReportsPage({
                   </div>
                   <div className="flex items-center gap-3 flex-shrink-0">
                     <span className="text-[12px] text-[#01172f]/40 font-mono">{m.totalQty} units</span>
-                    <span className="text-[11px] font-bold bg-[#f4f6f2] text-[#103900] px-2.5 py-1">
+                    <span className="text-[11px] font-bold bg-[#f4f6f2] text-[#3D5F3B] px-2.5 py-1">
                       {m.requests}&times;
                     </span>
                   </div>
@@ -218,7 +218,7 @@ function FunnelStep({
   highlight?: boolean
 }) {
   return (
-    <div className={`p-5 text-center ${highlight ? 'bg-[#103900] text-white' : 'bg-[#f4f6f2] text-[#01172f]'}`}>
+    <div className={`p-5 text-center ${highlight ? 'bg-[#3D5F3B] text-white' : 'bg-[#f4f6f2] text-[#01172f]'}`}>
       <p className={`text-[32px] md:text-[40px] font-black leading-none mb-2 ${highlight ? 'text-white' : 'text-[#01172f]'}`}>
         {value}
       </p>
