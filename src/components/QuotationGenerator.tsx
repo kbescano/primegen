@@ -19,8 +19,8 @@ export type QuotationInitial = {
   company?: string
   address?: string
   contactNumber?: string
-  vatRate?: number
   salesPerson?: string
+  vatRate?: number
   items?: LineItem[]
 }
 
@@ -54,15 +54,19 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
   )
   const [hasVat, setHasVat] = useState((initial?.vatRate ?? 12) > 0)
   const [vatRate, setVatRate] = useState(initial?.vatRate && initial.vatRate > 0 ? initial.vatRate : 12)
-  const [discountPercent, setDiscountPercent] = useState(0)
+  const [discountAmount, setDiscountAmount] = useState(0) // flat peso amount, not a percentage
+  const [deliveryFee, setDeliveryFee] = useState(0)
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [saveErrorDetail, setSaveErrorDetail] = useState('')
 
   const subtotal = useMemo(() => items.reduce((sum, i) => sum + i.qty * i.unitPrice, 0), [items])
-  const hasDiscount = discountPercent > 0
-  const discountAmount = useMemo(() => (hasDiscount ? subtotal * (discountPercent / 100) : 0), [subtotal, discountPercent, hasDiscount])
-  const netOfDiscount = subtotal - discountAmount
-  const vat = useMemo(() => (hasVat ? netOfDiscount * (vatRate / 100) : 0), [netOfDiscount, vatRate, hasVat])
-  const total = netOfDiscount + vat
+  const hasDiscount = discountAmount > 0
+  const hasDeliveryFee = deliveryFee > 0
+  // Order: Subtotal -> less Discount -> plus Delivery Fee -> VAT applied to that combined figure -> Total
+  const netAfterDiscount = subtotal - discountAmount
+  const netWithDelivery = netAfterDiscount + deliveryFee
+  const vat = useMemo(() => (hasVat ? netWithDelivery * (vatRate / 100) : 0), [netWithDelivery, vatRate, hasVat])
+  const total = netWithDelivery + vat
 
   const terms = useMemo(() => {
     const copy = [...BASE_TERMS]
@@ -108,16 +112,25 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
           salesPerson,
           items: items.map(({ imageDataUrl, ...rest }) => rest),
           vatRate: hasVat ? vatRate : 0,
-          discountPercent,
+          discountAmount,
+          deliveryFee,
           status: 'draft',
         }),
       })
-      if (!res.ok) throw new Error('Save failed')
+      if (!res.ok) {
+        let detail = `HTTP ${res.status}`
+        try {
+          const errBody = await res.json()
+          detail = errBody?.errors?.[0]?.message || errBody?.message || detail
+        } catch {}
+        throw new Error(detail)
+      }
       const saved = await res.json()
       setQuotationNumber(saved.doc.quotationNumber)
       setSaving('saved')
-    } catch {
+    } catch (err: any) {
       setSaving('error')
+      setSaveErrorDetail(err?.message || 'Unknown error')
     }
   }
 
@@ -294,7 +307,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
                     className="hidden"
                     onChange={(e) => handleImageSelect(index, e.target.files?.[0] ?? null)}
                   />
-                  <span className="px-3 py-1.5 border border-dashed border-gray-300 rounded text-[#3D5F3B] hover:border-[#149911] hover:bg-[#149911]/[0.03] transition-all duration-200 whitespace-nowrap">
+                  <span className="px-3 py-1.5 border border-dashed border-gray-300 rounded text-[#103900] hover:border-[#149911] hover:bg-[#149911]/[0.03] transition-all duration-200 whitespace-nowrap">
                     {item.imageDataUrl ? 'Change spec image' : '+ Add spec image (optional)'}
                   </span>
                 </label>
@@ -322,21 +335,31 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
           onClick={() =>
             setItems((prev) => [...prev, { qty: 1, unit: 'pcs', description: '', unitPrice: 0 }])
           }
-          className="text-sm text-[#3D5F3B] border border-dashed border-gray-300 rounded px-4 py-2.5 mb-8 hover:border-[#149911] hover:bg-[#149911]/[0.03] transition-all duration-200"
+          className="text-sm text-[#103900] border border-dashed border-gray-300 rounded px-4 py-2.5 mb-8 hover:border-[#149911] hover:bg-[#149911]/[0.03] transition-all duration-200"
         >
           + Add line item
         </button>
 
-        {/* VAT + Discount controls */}
-        <div className="grid sm:grid-cols-2 gap-4 mb-8 max-w-[440px]">
+        {/* Discount + Delivery Fee + VAT controls */}
+        <div className="grid sm:grid-cols-3 gap-4 mb-8 max-w-[660px]">
           <div>
-            <label className={labelClass}>Discount (%)</label>
+            <label className={labelClass}>Discount (₱)</label>
             <input
               type="text"
               className={inputClass}
-              value={discountPercent}
-              onChange={(e) => setDiscountPercent(Number(e.target.value) || 0)}
-              placeholder="0"
+              value={discountAmount}
+              onChange={(e) => setDiscountAmount(Number(e.target.value) || 0)}
+              placeholder="0.00"
+            />
+          </div>
+          <div>
+            <label className={labelClass}>Delivery Fee (₱)</label>
+            <input
+              type="text"
+              className={inputClass}
+              value={deliveryFee}
+              onChange={(e) => setDeliveryFee(Number(e.target.value) || 0)}
+              placeholder="0.00"
             />
           </div>
           <div>
@@ -349,7 +372,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
                   onChange={(e) => setHasVat(e.target.checked)}
                   className="w-3.5 h-3.5 accent-[#149911] cursor-pointer"
                 />
-                Apply VAT
+                Apply
               </label>
             </div>
             <input
@@ -369,20 +392,22 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
             className={`px-8 py-3 rounded border-2 font-bold disabled:opacity-50 transition-all duration-300 hover:-translate-y-0.5 ${
               saving === 'saved'
                 ? 'border-[#149911] text-[#149911]'
-                : 'border-[#3D5F3B] text-[#3D5F3B] hover:shadow-[0_10px_30px_-10px_rgba(16,57,0,0.4)]'
+                : 'border-[#103900] text-[#103900] hover:shadow-[0_10px_30px_-10px_rgba(16,57,0,0.4)]'
             }`}
           >
             {saving === 'saving' ? 'Saving...' : saving === 'saved' ? 'Saved ✓' : isEditing ? 'Update Quotation' : 'Save Quotation'}
           </button>
           <button
             onClick={() => window.print()}
-            className="px-8 py-3 rounded bg-[#3D5F3B] text-white font-bold hover:bg-[#01172f] hover:-translate-y-0.5 hover:shadow-[0_10px_30px_-10px_rgba(1,23,47,0.4)] transition-all duration-300"
+            className="px-8 py-3 rounded bg-[#103900] text-white font-bold hover:bg-[#01172f] hover:-translate-y-0.5 hover:shadow-[0_10px_30px_-10px_rgba(1,23,47,0.4)] transition-all duration-300"
           >
             Print / Save as PDF
           </button>
         </div>
         {saving === 'error' && (
-          <p className="text-sm text-red-600 mb-8">Save failed -- check you&apos;re logged in.</p>
+          <p className="text-sm text-red-600 mb-8">
+            Save failed: {saveErrorDetail || "please check you're logged in and try again."}
+          </p>
         )}
 
         <hr className="my-12 border-gray-200" />
@@ -407,7 +432,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
                 />
               </div>
               <div>
-                <h2 className="text-base font-bold leading-tight text-[#3D5F3B]">PRIMEGEN</h2>
+                <h2 className="text-base font-bold leading-tight text-[#103900]">PRIMEGEN</h2>
                 <p className="text-[10px] font-semibold tracking-widest text-gray-600 mb-1">
                   TRADING CORPORATION
                 </p>
@@ -423,7 +448,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
             </div>
 
             <div className="text-right w-auto">
-              <h3 className="text-xl font-bold text-[#3D5F3B] mb-1">
+              <h3 className="text-xl font-bold text-[#103900] mb-1">
                 FORMAL QUOTATION
               </h3>
               <table className="text-xs ml-auto mt-0">
@@ -447,7 +472,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
 
           {/* Customer block */}
           <div className="mb-3">
-            <div className="bg-[#3D5F3B] text-white text-xs font-bold uppercase tracking-wide px-3 py-1">
+            <div className="bg-[#103900] text-white text-xs font-bold uppercase tracking-wide px-3 py-1">
               Customer
             </div>
             <div className="text-xs py-1 flex flex-col gap-0.5">
@@ -474,7 +499,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
           <div>
             <table className="w-full text-xs mb-2 border-collapse">
               <thead>
-                <tr className="bg-[#3D5F3B] text-white text-xs uppercase tracking-wide">
+                <tr className="bg-[#103900] text-white text-xs uppercase tracking-wide">
                   <th className="py-1.5 px-2 text-left w-[70px]">Qty</th>
                   <th className="py-1.5 px-2 text-left w-[90px]">Unit</th>
                   <th className="py-1.5 px-2 text-left">Description</th>
@@ -511,7 +536,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
             </table>
           </div>
 
-          {/* Totals -- Discount and VAT rows are conditional */}
+          {/* Totals -- Discount, Delivery Fee, and VAT rows are conditional */}
           <div className="flex justify-end mt-10 mb-4">
             <table className="text-xs w-full max-w-[280px]">
               <tbody>
@@ -521,8 +546,14 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
                 </tr>
                 {hasDiscount && (
                   <tr>
-                    <td className="py-1 px-2">Discount ({discountPercent}%)</td>
+                    <td className="py-1 px-2">Discount</td>
                     <td className="py-1 px-2 text-right font-mono">-{peso(discountAmount)}</td>
+                  </tr>
+                )}
+                {hasDeliveryFee && (
+                  <tr>
+                    <td className="py-1 px-2">Delivery Fee</td>
+                    <td className="py-1 px-2 text-right font-mono">{peso(deliveryFee)}</td>
                   </tr>
                 )}
                 {hasVat && (
@@ -531,7 +562,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
                     <td className="py-1 px-2 text-right font-mono">{peso(vat)}</td>
                   </tr>
                 )}
-                <tr className="border-t-2 border-[#3D5F3B]">
+                <tr className="border-t-2 border-[#103900]">
                   <td className="py-1.5 px-2 font-bold text-sm bg-[#e8f0e5]">TOTAL</td>
                   <td className="py-1.5 px-2 font-bold text-sm text-right font-mono bg-[#e8f0e5]">
                     ₱{peso(total)}

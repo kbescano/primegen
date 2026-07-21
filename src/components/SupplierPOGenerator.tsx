@@ -62,6 +62,7 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
       : [{ description: '', qty: 1, unit: 'pcs', unitPrice: 0 }]
   )
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
+  const [saveErrorDetail, setSaveErrorDetail] = useState('')
 
   const subtotal = useMemo(() => items.reduce((sum, i) => sum + i.qty * i.unitPrice, 0), [items])
   const total = subtotal
@@ -103,12 +104,20 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
           status: 'draft',
         }),
       })
-      if (!res.ok) throw new Error('Save failed')
+      if (!res.ok) {
+        let detail = `HTTP ${res.status}`
+        try {
+          const errBody = await res.json()
+          detail = errBody?.errors?.[0]?.message || errBody?.message || detail
+        } catch {}
+        throw new Error(detail)
+      }
       const saved = await res.json()
       setPoNumber(saved.doc.poNumber)
       setSaving('saved')
-    } catch {
+    } catch (err: any) {
       setSaving('error')
+      setSaveErrorDetail(err?.message || 'Unknown error')
     }
   }
 
@@ -298,7 +307,11 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
             Print / Save as PDF
           </button>
         </div>
-        {saving === 'error' && <p className="text-sm text-red-600 mb-8">Save failed -- check you&apos;re logged in.</p>}
+        {saving === 'error' && (
+          <p className="text-sm text-red-600 mb-8">
+            Save failed: {saveErrorDetail || 'please check you\'re logged in and try again.'}
+          </p>
+        )}
 
         <hr className="my-12 border-gray-200" />
         <div className="flex items-center gap-3 mb-6">
