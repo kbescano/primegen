@@ -157,61 +157,61 @@ export default function QuoteForm({ products }: { products: Material[] }) {
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#01172f]/40 mb-4">
           Products Needed
         </p>
-        <div className="flex flex-col gap-4 sm:gap-2.5">
-          {items.map((item, index) => {
-            const selected =
-              products.find((m) => String(m.id) === String(item.materialId)) ??
-              products[0];
-            return (
-              <div
-                key={index}
-                className="flex flex-col sm:flex-row gap-2 sm:items-center bg-gray-50/50 sm:bg-transparent p-3 sm:p-0 border border-gray-100 sm:border-none rounded-md sm:rounded-none"
-              >
-                <select
-                  value={item.materialId}
-                  onChange={(e) =>
-                    updateItem(index, { materialId: e.target.value })
-                  }
-                  className={`${fieldClass} w-full sm:flex-1 min-w-0 h-[52px] py-0 appearance-none`}
-                >
-                  {products.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-                
-                <div className="flex items-center justify-between sm:justify-start gap-2">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      min={1}
-                      value={item.quantity}
-                      onChange={(e) =>
-                        updateItem(index, { quantity: Number(e.target.value) })
-                      }
-                      className={`${fieldClass} w-[68px] px-2 flex-shrink-0 text-center h-[52px] py-0`}
-                      aria-label="Quantity"
-                    />
-                    <span className="text-[11px] font-medium uppercase tracking-wide text-[#01172f]/40 w-[52px] flex-shrink-0 truncate">
-                      {selected?.unit ?? ""}
-                    </span>
-                  </div>
-                  
-                  <button
-                    type="button"
-                    onClick={() => removeItem(index)}
-                    aria-label="Remove item"
-                    disabled={items.length === 1}
-                    className="w-10 h-10 sm:w-7 sm:h-auto flex items-center justify-center flex-shrink-0 text-[#01172f]/30 hover:text-red-700 disabled:opacity-0 disabled:pointer-events-none transition-colors text-2xl sm:text-lg"
-                  >
-                    &times;
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+        <div className="flex flex-col gap-3.5 sm:gap-2.5">
+  {items.map((item, index) => {
+    const selected =
+      products.find((m) => String(m.id) === String(item.materialId)) ??
+      products[0];
+    return (
+      <div
+        key={index}
+        className="flex flex-col sm:flex-row gap-3 sm:gap-2 sm:items-center bg-slate-50/60 sm:bg-transparent p-3.5 sm:p-0 border border-slate-200/70 sm:border-none rounded-xl sm:rounded-none shadow-xs sm:shadow-none"
+      >
+        <select
+          value={item.materialId}
+          onChange={(e) =>
+            updateItem(index, { materialId: e.target.value })
+          }
+          className={`${fieldClass} w-full sm:flex-1 sm:min-w-0 h-[48px] sm:h-[52px] py-0 appearance-none pr-9 bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2301172f%22 stroke-width=%222%22><path d=%22M6 9l6 6 6-6%22/></svg>')] bg-no-repeat bg-[right_14px_center]`}
+        >
+          {products.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+
+        <div className="flex items-center justify-between sm:justify-start sm:flex-none gap-3 pt-2 sm:pt-0 border-t border-slate-200/60 sm:border-none">
+          <div className="flex items-center gap-2">
+            <input
+              type="text"
+              min={1}
+              value={item.quantity}
+              onChange={(e) =>
+                updateItem(index, { quantity: Number(e.target.value) })
+              }
+              className={`${fieldClass} w-[72px] px-2 flex-shrink-0 text-center h-[48px] sm:h-[52px] py-0`}
+              aria-label="Quantity"
+            />
+            <span className="text-[11px] font-medium uppercase tracking-wide text-[#01172f]/50 w-[56px] flex-shrink-0 truncate">
+              {selected?.unit ?? ""}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => removeItem(index)}
+            aria-label="Remove item"
+            disabled={items.length === 1}
+            className="w-9 h-9 sm:w-7 sm:h-7 flex items-center justify-center flex-shrink-0 text-[#01172f]/40 hover:text-red-600 disabled:opacity-0 disabled:pointer-events-none transition-colors text-xl sm:text-lg rounded-lg sm:rounded-none bg-slate-200/40 sm:bg-transparent"
+          >
+            &times;
+          </button>
         </div>
+      </div>
+    );
+  })}
+</div>
         <button
           type="button"
           onClick={addItem}

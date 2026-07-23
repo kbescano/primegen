@@ -21,7 +21,7 @@ type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
-export default async function MaterialsPage({ searchParams }: Props) {
+export default async function ProductsPage({ searchParams }: Props) {
   const payload = await getPayloadClient();
 
   const resolvedParams = await searchParams;

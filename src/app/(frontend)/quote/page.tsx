@@ -1,6 +1,7 @@
 import { Suspense } from 'react'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import QuoteForm from '@/components/QuoteForm'
+import SectionHeader from '@/components/SectionHeader'
 
 export const revalidate = 300
 
@@ -23,8 +24,12 @@ export default async function QuotePage() {
   return (
     <section className="py-28 flex justify-center px-6 lg:px-20">
       <div className="max-w-[520px] w-full">
-        <h1 className="mb-3 text-center">Request a Quote</h1>
-        <p className="mb-8 text-center">Select the products and quantities you need. Our team will follow up with pricing directly.</p>
+         <SectionHeader
+                size="page"
+                eyebrow="Form"
+                title="Request a Quote"
+                description="Select the products and quantities you need. Our team will follow up with pricing directly."
+          />
         <Suspense fallback={<p className="text-center">Loading form...</p>}>
           <QuoteForm products={products} />
         </Suspense>
