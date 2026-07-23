@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 
-type Material = { id: string; name: string; unit: string };
+type Product = { id: string; name: string; unit: string };
 type LineItem = { materialId: string; quantity: number };
 
 const fieldClass =
@@ -12,9 +12,9 @@ const fieldClass =
 const labelClass =
   "text-[10px] font-bold uppercase tracking-[0.2em] text-[#01172f]/40 mb-2 block";
 
-export default function QuoteForm({ products }: { products: Material[] }) {
+export default function QuoteForm({ products }: { products: Product[] }) {
   const searchParams = useSearchParams();
-  const preselected = searchParams.get("material");
+  const preselected = searchParams.get("product");
   const preselectedMaterial = products.find(
     (m) => String(m.id) === String(preselected),
   );
@@ -61,7 +61,7 @@ export default function QuoteForm({ products }: { products: Material[] }) {
       source: "website",
       items: items
         .filter((i) => i.materialId)
-        .map((i) => ({ material: i.materialId, quantity: i.quantity })),
+        .map((i) => ({ product: i.materialId, quantity: i.quantity })),
     };
     try {
       const res = await fetch("/api/quotation-requests", {
@@ -158,66 +158,66 @@ export default function QuoteForm({ products }: { products: Material[] }) {
           Products Needed
         </p>
         <div className="flex flex-col gap-3.5 sm:gap-2.5">
-  {items.map((item, index) => {
-    const selected =
-      products.find((m) => String(m.id) === String(item.materialId)) ??
-      products[0];
-    return (
-      <div
-        key={index}
-        className="flex flex-col sm:flex-row gap-3 sm:gap-2 sm:items-center bg-slate-50/60 sm:bg-transparent p-3.5 sm:p-0 border border-slate-200/70 sm:border-none rounded-xl sm:rounded-none shadow-xs sm:shadow-none"
-      >
-        <select
-          value={item.materialId}
-          onChange={(e) =>
-            updateItem(index, { materialId: e.target.value })
-          }
-          className={`${fieldClass} w-full sm:flex-1 sm:min-w-0 h-[48px] sm:h-[52px] py-0 appearance-none pr-9 bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2301172f%22 stroke-width=%222%22><path d=%22M6 9l6 6 6-6%22/></svg>')] bg-no-repeat bg-[right_14px_center]`}
-        >
-          {products.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name}
-            </option>
-          ))}
-        </select>
+          {items.map((item, index) => {
+            const selected =
+              products.find((m) => String(m.id) === String(item.materialId)) ??
+              products[0];
+            return (
+              <div
+                key={index}
+                className="flex flex-col sm:flex-row gap-3 sm:gap-2 sm:items-center bg-slate-50/60 sm:bg-transparent p-3.5 sm:p-0 border border-slate-200/70 sm:border-none rounded-xl sm:rounded-none shadow-xs sm:shadow-none"
+              >
+                <select
+                  value={item.materialId}
+                  onChange={(e) =>
+                    updateItem(index, { materialId: e.target.value })
+                  }
+                  className={`${fieldClass} w-full sm:flex-1 sm:min-w-0 h-[48px] sm:h-[52px] py-0 appearance-none pr-9 bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2301172f%22 stroke-width=%222%22><path d=%22M6 9l6 6 6-6%22/></svg>')] bg-no-repeat bg-[right_14px_center]`}
+                >
+                  {products.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name}
+                    </option>
+                  ))}
+                </select>
 
-        <div className="flex items-center justify-between sm:justify-start sm:flex-none gap-3 pt-2 sm:pt-0 border-t border-slate-200/60 sm:border-none">
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              min={1}
-              value={item.quantity}
-              onChange={(e) =>
-                updateItem(index, { quantity: Number(e.target.value) })
-              }
-              className={`${fieldClass} w-[72px] px-2 flex-shrink-0 text-center h-[48px] sm:h-[52px] py-0`}
-              aria-label="Quantity"
-            />
-            <span className="text-[11px] font-medium uppercase tracking-wide text-[#01172f]/50 w-[56px] flex-shrink-0 truncate">
-              {selected?.unit ?? ""}
-            </span>
-          </div>
+                <div className="flex items-center justify-between sm:justify-start sm:flex-none gap-3 pt-2 sm:pt-0 border-t border-slate-200/60 sm:border-none">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      value={item.quantity}
+                      onChange={(e) =>
+                        updateItem(index, { quantity: Number(e.target.value) })
+                      }
+                      className={`${fieldClass} !w-[72px] px-2 flex-shrink-0 text-center h-[48px] sm:h-[52px] py-0`}
+                      aria-label="Quantity"
+                    />
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-[#01172f]/50 w-[56px] flex-shrink-0 truncate">
+                      {selected?.unit ?? ""}
+                    </span>
+                  </div>
 
-          <button
-            type="button"
-            onClick={() => removeItem(index)}
-            aria-label="Remove item"
-            disabled={items.length === 1}
-            className="w-9 h-9 sm:w-7 sm:h-7 flex items-center justify-center flex-shrink-0 text-[#01172f]/40 hover:text-red-600 disabled:opacity-0 disabled:pointer-events-none transition-colors text-xl sm:text-lg rounded-lg sm:rounded-none bg-slate-200/40 sm:bg-transparent"
-          >
-            &times;
-          </button>
+                  <button
+                    type="button"
+                    onClick={() => removeItem(index)}
+                    aria-label="Remove item"
+                    disabled={items.length === 1}
+                    className="w-9 h-9 sm:w-7 sm:h-7 flex items-center justify-center flex-shrink-0 text-[#01172f]/40 hover:text-red-600 disabled:opacity-0 disabled:pointer-events-none transition-colors text-xl sm:text-lg rounded-lg sm:rounded-none bg-slate-200/40 sm:bg-transparent"
+                  >
+                    &times;
+                  </button>
+                </div>
+              </div>
+            );
+          })}
         </div>
-      </div>
-    );
-  })}
-</div>
         <button
           type="button"
           onClick={addItem}
           className="mt-4 w-full border border-dashed border-[#01172f]/20 px-4 py-3 text-[11px] font-bold uppercase tracking-[0.15em] text-[#3D5F3B] hover:border-[#149911] hover:text-[#149911] transition-colors duration-300"
         >
-          + Add Another Material
+          + Add Another Product
         </button>
       </div>
 
@@ -250,7 +250,7 @@ export default function QuoteForm({ products }: { products: Material[] }) {
         </ul>
         <div className="border-t border-[#01172f]/10 mt-4 pt-4 flex flex-col sm:flex-row sm:justify-between sm:items-baseline gap-2 text-[12px]">
           <span className="font-bold uppercase tracking-wide text-[#01172f]">
-            {items.length} {items.length === 1 ? "material" : "products"}{" "}
+            {items.length} {items.length === 1 ? "product" : "products"}{" "}
             requested
           </span>
           <span className="text-[#01172f]/40 font-medium">
