@@ -150,7 +150,7 @@ export default async function AboutPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:gap-8 lg:grid-cols-[380px_1fr]">
+      <div className="grid gap-6 md:gap-8 lg:grid-cols-[380px_1fr] mt-20">
 
         {/* Contact Information Card */}
         <ScrollReveal direction="left" className="bg-white border border-[#01172f]/10 p-8 md:p-10 flex flex-col justify-center">

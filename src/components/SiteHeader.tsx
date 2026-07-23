@@ -25,15 +25,15 @@ export default function SiteHeader() {
 
   return (
     <>
-      <header className="bg-white backdrop-blur-md py-3.5 sticky top-0 z-50 border-b border-green/15 overflow-hidden">
+      <header className="bg-white backdrop-blur-md py-2 md:py-3.5 sticky top-0 z-50 border-b border-green/15 overflow-hidden">
         <div
-          className={`max-w-[1360px] mx-auto px-6 lg:px-20 flex items-center justify-between relative transition-all duration-700 ease-out
+          className={`max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-20 flex items-center justify-between relative transition-all duration-700 ease-out
             ${isMounted ? "translate-x-0 opacity-100" : "-translate-x-8 opacity-0"}
           `}
         >
           <Link
             href="/"
-            className="flex flex-row items-center gap-2 font-bold bg-gradient-to-tr from-[#051d00] via-[#3D5F3B] to-[#52b788] bg-clip-text text-transparent"
+            className="flex flex-row items-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base font-bold tracking-tight bg-gradient-to-tr from-[#051d00] via-[#3D5F3B] to-[#52b788] bg-clip-text text-transparent mr-2"
             onClick={() => setOpen(false)}
           >
             <Image
@@ -41,12 +41,13 @@ export default function SiteHeader() {
               alt="Primegen Logo"
               width={60}
               height={60}
+              className="w-8 h-8 sm:w-10 sm:h-10 md:w-[60px] md:h-[60px] object-contain shrink-0"
             />
             Primegen Trading Corporation
           </Link>
 
           <button
-            className="flex md:hidden flex-col gap-1.5 w-6 h-[17px] bg-transparent border-none cursor-pointer"
+            className="flex md:hidden flex-col justify-center gap-1.5 w-6 h-[17px] bg-transparent border-none cursor-pointer shrink-0"
             aria-label={open ? "Close menu" : "Open menu"}
             onClick={() => setOpen((v) => !v)}
           >
