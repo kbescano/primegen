@@ -184,7 +184,7 @@ export default function QuoteForm({ products }: { products: Product[] }) {
                 <div className="flex items-center justify-between sm:justify-start sm:flex-none gap-3 pt-2 sm:pt-0 border-t border-slate-200/60 sm:border-none">
                   <div className="flex items-center gap-2">
                     <input
-                      type="number"
+                      type="text"
                       min={1}
                       value={item.quantity}
                       onChange={(e) =>
