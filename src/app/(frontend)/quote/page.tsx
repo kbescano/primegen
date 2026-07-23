@@ -6,7 +6,7 @@ export const revalidate = 300
 
 export const metadata = {
   title: 'Request a Quote',
-  description: 'Tell us what materials you need and our team will get back to you with pricing.',
+  description: 'Tell us what products you need and our team will get back to you with pricing.',
 }
 
 export default async function QuotePage() {

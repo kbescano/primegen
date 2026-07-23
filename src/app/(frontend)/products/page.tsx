@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: 'Products',
-  description: 'Browse our full catalog of steel, cement, PPE, fencing, pipe fittings, and other construction materials.',
+  description: 'Browse our full catalog of steel, cement, PPE, fencing, pipe fittings, and other construction products.',
 }
 
 const STAGGER_STEP = 60; // ms between each card's reveal

@@ -8,7 +8,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'Primegen Trading Corporation | Steel & Construction Materials Supplier',
+    default: 'Primegen Trading Corporation | Steel & Construction products Supplier',
     template: '%s | Primegen Trading Corporation',
   },
   description:
@@ -18,12 +18,12 @@ export const metadata: Metadata = {
     locale: 'en_PH',
     url: siteUrl,
     siteName: 'Primegen Trading Corporation',
-    title: 'Primegen Trading Corporation | Steel & Construction Materials Supplier',
+    title: 'Primegen Trading Corporation | Steel & Construction products Supplier',
     description:
       'Construction products trading -- cement, steel, aggregates, and more. Serving contractors and builders across Cavite and the Philippines.',
     images: [
       {
-        url: '/branding/primegen_trading_logo.png',
+        url: '/branding/primegen-logo.png',
         width: 1200,
         height: 630,
         alt: 'Primegen Trading Corporation',
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     title: 'Primegen Trading Corporation | Steel & Construction Materials Supplier',
     description:
       'Construction products trading -- cement, steel, aggregates, and more. Serving contractors and builders across Cavite and the Philippines.',
-    images: ['/branding/primegen_trading_logo.png'],
+    images: ['/branding/primegen-logo.png'],
   },
 }
 
