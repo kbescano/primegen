@@ -21,7 +21,7 @@ export type CalcProduct = {
   standardLength: number
 }
 
-// Filtered and mapped product list based on applicable structural materials
+// Filtered and mapped product list based on applicable structural products
 export const APPLICABLE_PRODUCTS: CalcProduct[] = [
   { id: 'deformed-bar', name: 'Deformed Bar', shape: 'round-bar', density: 7850, standardLength: 6 },
   { id: 'angle-bar', name: 'Angle Bar', shape: 'angle-bar', density: 7850, standardLength: 6 },

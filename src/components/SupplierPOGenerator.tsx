@@ -309,7 +309,7 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
         </div>
         {saving === 'error' && (
           <p className="text-sm text-red-600 mb-8">
-            Save failed: {saveErrorDetail || 'please check you\'re logged in and try again.'}
+            Save failed: {saveErrorDetail || "please check you're logged in and try again."}
           </p>
         )}
 
@@ -325,21 +325,22 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
 
         {/* Header: logo + company block, PO banner + PO#/date box */}
         <div className="flex flex-col sm:flex-row justify-between items-start gap-6 print:gap-3 mb-6 print:mb-3">
-          <div className="flex gap-3 items-start">
-            <div className="relative w-16 h-16 print:w-12 print:h-12 flex-shrink-0">
-              <Image src="/branding/primegen-logo.jpg" alt="Primegen Trading Corporation" fill className="object-contain" />
+          <div className="flex gap-1.5 items-center">
+            <div className="relative w-44 h-44 flex-shrink-0 overflow-hidden">
+              <Image src="/branding/primegen_trading_logo.png" alt="Primegen Trading Corporation" fill className="object-contain scale-[1.1]" />
             </div>
             <div>
-              <h2 className="text-lg print:text-base font-bold leading-tight text-[#3D5F3B]">PRIMEGEN</h2>
-              <p className="text-[10px] font-semibold tracking-widest text-gray-600">TRADING CORPORATION</p>
-               <p className="text-[9px] text-gray-500 leading-snug max-w-[220px]">
+              <h2 className="text-xl font-black leading-none text-[#103900] tracking-tight">PRIMEGEN</h2>
+              <p className="text-[11px] font-bold tracking-[0.2em] text-[#01172f] mt-0 mb-1.5">TRADING CORPORATION</p>
+              <div className="w-full max-w-[240px] h-[2px] bg-[#149911] mb-1.5" />
+              <p className="text-[9px] font-bold text-[#103900] leading-snug max-w-[240px] m-0">
                 SOUTHERN CITY HOMES, YG BUILDING, CEBU ST, 4 TANZANG LUMA, IMUS, 4103 CAVITE,
                 PHILIPPINES
               </p>
-              <p className="text-[9px] text-gray-500">
+              <p className="text-[9px] font-bold text-[#103900] m-0 mt-1">
                 0917-185-9127 / 0917-133-9515 / 046-8860853
               </p>
-              <p className="text-[9px] text-gray-500">SALES@PRIMEGENTRADINGCORP.COM</p>
+              <p className="text-[9px] font-bold text-[#103900] m-0 mt-1">SALES@PRIMEGENTRADINGCORP.COM</p>
             </div>
           </div>
 
@@ -364,8 +365,10 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
 
         {/* Supplier block */}
         <div className="mb-6 print:mb-3">
-          <div className="w-16 h-2 bg-[#3D5F3B] mb-2 print:mb-1" />
-          <div className="text-sm print:text-xs flex flex-col gap-0.5">
+          <div className="bg-[#3D5F3B] text-white text-xs font-bold uppercase tracking-wide px-3 py-1 print:py-0.5">
+            Supplier
+          </div>
+          <div className="text-sm print:text-xs flex flex-col gap-0.5 py-2 print:py-1">
             <p>NAME: {supplierName || '________'}</p>
             <p>COMPANY NAME: {companyName || '________'}</p>
             <p>STREET ADDRESS: {streetAddress || '________'}</p>

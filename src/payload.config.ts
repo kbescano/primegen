@@ -7,7 +7,7 @@ import { buildConfig } from 'payload'
 
 import { Users } from './collections/Users'
 import { Media } from './collections/Media'
-import { Materials } from './collections/Materials'
+import { Products } from './collections/Products'
 import { Pages } from './collections/Pages'
 import { QuotationRequests } from './collections/QuotationRequests'
 import { AgentActions } from './collections/AgentActions'
@@ -43,7 +43,7 @@ export default buildConfig({
   collections: [
     Users,
     Media,
-    Materials,
+    Products,
     Pages,
     QuotationRequests,
     AgentActions,

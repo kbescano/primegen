@@ -38,20 +38,20 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
 
   let material: any
   try {
-    material = await payload.findByID({ collection: 'materials', id, depth: 2 })
+    material = await payload.findByID({ collection: 'products', id, depth: 2 })
   } catch {
     notFound()
   }
   if (!material) notFound()
 
   // Real category label from the Categories collection, not the stale hardcoded slug map
-  const categoryLabel = material.categoryRef?.label || material.category || 'Materials'
+  const categoryLabel = material.categoryRef?.label || material.category || 'Products'
   const categoryId = typeof material.categoryRef === 'object' ? material.categoryRef?.id : material.categoryRef
 
-  // Related materials: match on the new categoryRef relationship when present,
-  // falling back to the legacy category string for materials not yet migrated
+  // Related products: match on the new categoryRef relationship when present,
+  // falling back to the legacy category string for products not yet migrated
   const related = await payload.find({
-    collection: 'materials',
+    collection: 'products',
     where: {
       and: [
         categoryId
@@ -246,23 +246,23 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
           </div>
         </ScrollReveal>
 
-        {/* Related Materials */}
+        {/* Related Products */}
         {related.docs.length > 0 && (
           <ScrollReveal className="mt-32">
             <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-4">
               <div>
                 <div className="w-8 h-[3px] bg-[#149911] mb-4" />
                 <h2 className="text-[32px] md:text-[40px] font-black tracking-tighter text-[#01172f] uppercase leading-none">
-                  Related Materials.
+                  Related Products.
                 </h2>
               </div>
-              <a href="/materials" className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#01172f] hover:text-[#149911] transition-colors border-b border-transparent hover:border-[#149911] pb-1">
+              <a href="/products" className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#01172f] hover:text-[#149911] transition-colors border-b border-transparent hover:border-[#149911] pb-1">
                 View Catalog
               </a>
             </div>
 
             <div className="w-full">
-              <RelatedMaterialsGrid materials={related.docs as any} />
+              <RelatedMaterialsGrid products={related.docs as any} />
             </div>
           </ScrollReveal>
         )}

@@ -16,7 +16,7 @@ export const Categories: CollectionConfig = {
       type: 'text',
       required: true,
       unique: true,
-      admin: { description: 'Used in URLs and to match existing materials (e.g. "steel-bars").' },
+      admin: { description: 'Used in URLs and to match existing products (e.g. "steel-bars").' },
     },
     { name: 'description', type: 'textarea' },
     { name: 'image', type: 'upload', relationTo: 'media' },

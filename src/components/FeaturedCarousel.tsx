@@ -65,7 +65,7 @@ export default function FeaturedCarousel({
           return (
             <Link
               key={cat.id}
-              href={`/materials#${cat.slug}`}
+              href={`/products#${cat.slug}`}
               className={`group md:col-span-2 relative flex flex-col overflow-hidden bg-white outline-none cursor-pointer border border-[#01172f]/10 ${revealClass}`}
               style={{ transitionDelay: `${i * 100}ms` }}
             >
@@ -125,7 +125,7 @@ export default function FeaturedCarousel({
         return (
           <Link
             key={cat.id}
-            href={`/materials#${cat.slug}`}
+            href={`/products#${cat.slug}`}
             className={`group relative flex items-end aspect-[4/5] md:aspect-[3/4] overflow-hidden bg-[#f8f9f7] outline-none ${revealClass}`}
             style={{ transitionDelay: `${i * 100}ms` }}
           >

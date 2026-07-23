@@ -7,15 +7,15 @@ type Material = {
   photo?: { url?: string; alt?: string }
 }
 
-export default function RelatedMaterialsGrid({ materials }: { materials: Material[] }) {
-  if (materials.length === 0) return null
+export default function RelatedMaterialsGrid({ products }: { products: Material[] }) {
+  if (products.length === 0) return null
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-10 md:gap-x-6 md:gap-y-14">
-      {materials.map((m) => (
+      {products.map((m) => (
         <Link
           key={m.id}
-          href={`/materials/${m.id}`}
+          href={`/products/${m.id}`}
           className="group flex flex-col cursor-pointer outline-none"
         >
           <div className="relative w-full aspect-[4/3] bg-[#f8f9f7] overflow-hidden">

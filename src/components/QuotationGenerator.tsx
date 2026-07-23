@@ -35,9 +35,9 @@ const BASE_TERMS = [
   'This quotation is valid for 7 days from the date of issue. Prices and availability are subject to change without prior notice after this period.',
   'Full Payment before Delivery; Delivery will be arranged upon confirmation of full payment.',
   'Delivery timelines are estimates and depend on product availability and logistics. We shall not be held liable for delays due to causes beyond our control, including but not limited to supplier delays, transportation issues, or force majeure events.',
-  'Ownership of materials shall remain with Primegen Trading Corp. until full payment is received. Risk passes to the buyer upon delivery or collection.',
+  'Ownership of products shall remain with Primegen Trading Corp. until full payment is received. Risk passes to the buyer upon delivery or collection.',
   'Cancellations must be made in writing within 1 day of order placement. Returns are subject to approval and may incur restocking fees. Custom or special-order items are non-returnable.',
-  "Materials supplied are covered by manufacturer's warranty only, subject to their terms and conditions. No additional warranties are expressed or implied unless agreed upon in writing.",
+  "Products supplied are covered by manufacturer's warranty only, subject to their terms and conditions. No additional warranties are expressed or implied unless agreed upon in writing.",
   'Proceeding with this quotation constitutes acceptance of these terms and conditions in full.',
   'Refund Processing. Approved refunds (if any) will be processed within 7–14 working days via the original mode of payment.',
 ]
@@ -427,28 +427,29 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
         <div className="quotation-print-doc bg-white border border-gray-200 rounded p-8 print:border-0 print:p-0 print:rounded-none text-[#01172f] min-w-[794px] shadow-[0_20px_60px_-20px_rgba(1,23,47,0.15)] print:shadow-none">
           {/* Header: logo + company block, title + date/number */}
           <div className="flex flex-row justify-between items-start gap-3 mb-4">
-            <div className="flex gap-3 items-start">
-              <div className="relative w-12 h-12 flex-shrink-0">
+            <div className="flex gap-1.5 items-center">
+              <div className="relative w-44 h-44 flex-shrink-0 overflow-hidden">
                 <Image
-                  src="/branding/primegen-logo.jpg"
+                  src="/branding/primegen_trading_logo.png"
                   alt="Primegen Trading Corporation"
                   fill
-                  className="object-contain"
+                  className="object-contain scale-[1.1]"
                 />
               </div>
               <div>
-                <h2 className="text-base font-bold leading-tight text-[#3D5F3B]">PRIMEGEN</h2>
-                <p className="text-[10px] font-semibold tracking-widest text-gray-600 mb-1">
+                <h2 className="text-xl font-black leading-none text-[#103900] tracking-tight">PRIMEGEN</h2>
+                <p className="text-[11px] font-bold tracking-[0.2em] text-[#01172f] mt-0 mb-1.5">
                   TRADING CORPORATION
                 </p>
-                <p className="text-[9px] text-gray-500 leading-snug max-w-[220px]">
+                <div className="w-full max-w-[240px] h-[2px] bg-[#149911] mb-1.5" />
+                <p className="text-[9px] font-bold text-[#103900] leading-snug max-w-[240px] m-0">
                   SOUTHERN CITY HOMES, YG BUILDING, CEBU ST, 4 TANZANG LUMA, IMUS, 4103 CAVITE,
                   PHILIPPINES
                 </p>
-                <p className="text-[9px] text-gray-500">
+                <p className="text-[9px] font-bold text-[#103900] m-0 mt-1">
                   0917-185-9127 / 0917-133-9515 / 046-8860853
                 </p>
-                <p className="text-[9px] text-gray-500">SALES@PRIMEGENTRADINGCORP.COM</p>
+                <p className="text-[9px] font-bold text-[#103900] m-0 mt-1">SALES@PRIMEGENTRADINGCORP.COM</p>
               </div>
             </div>
 

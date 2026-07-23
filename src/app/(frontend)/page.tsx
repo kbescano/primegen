@@ -15,8 +15,8 @@ const FALLBACK_SLIDES: HeroSlide[] = [
     id: "f1",
     label: "Fabrication & Steel",
     title: "Precision in Every Cut",
-    cta: "Browse Materials",
-    href: "/materials",
+    cta: "Browse Products",
+    href: "/products",
     video: "/videos/hero-1.mp4",
   },
   {
@@ -24,7 +24,7 @@ const FALLBACK_SLIDES: HeroSlide[] = [
     label: "Full Catalog",
     title: "Built on Trust",
     cta: "See Current Prices",
-    href: "/materials",
+    href: "/products",
     video: "/videos/hero-2.mp4",
   },
   {
@@ -121,7 +121,7 @@ export default async function HomePage() {
       <section className="py-28 bg-sage-tint">
         <div className="max-w-[1360px] mx-auto px-6 lg:px-20">
           <h2 className="mb-2 normal-case text-[#01172f]">
-            Featured Materials.{" "}
+            Featured Products.{" "}
             <span className="font-normal text-gray-500">
               Browse what&apos;s currently in stock.
             </span>

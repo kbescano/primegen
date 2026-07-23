@@ -50,7 +50,7 @@ export default function SearchBar({ initialQuery = '' }: { initialQuery?: string
 
       <input
         type="text"
-        placeholder="Search materials"
+        placeholder="Search products"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         className="w-full bg-transparent border-none text-[14px] text-[#01172f] outline-none placeholder:text-[#01172f]/30 p-0"

@@ -28,7 +28,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: 'Other',
 }
 
-export default function MaterialCarousel({ materials }: { materials: Material[] }) {
+export default function MaterialCarousel({ products }: { products: Material[] }) {
   const trackRef = useRef<HTMLDivElement>(null)
   const [selected, setSelected] = useState<Material | null>(null)
 
@@ -54,7 +54,7 @@ export default function MaterialCarousel({ materials }: { materials: Material[] 
         ref={trackRef} 
         className="flex gap-6 overflow-x-auto scroll-smooth snap-x snap-mandatory pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
-        {materials.map((m) => (
+        {products.map((m) => (
           <div
             key={m.id}
             className="group relative flex flex-col justify-between flex-none w-[360px] h-[520px] snap-start bg-gray-900 rounded-[28px] transition-all duration-300 overflow-hidden p-8 max-[480px]:w-[80vw] max-[480px]:h-[500px]"
@@ -142,9 +142,9 @@ export default function MaterialCarousel({ materials }: { materials: Material[] 
             onClick={(e) => e.stopPropagation()} 
             className="w-full max-w-3xl my-auto flex flex-col items-center animate-in fade-in zoom-in-95 duration-200"
           >
-            {materials.length > 1 && (
+            {products.length > 1 && (
               <div className="flex items-center gap-1 bg-white/80 backdrop-blur border border-gray-100 rounded-full p-1.5 mb-4 overflow-x-auto max-w-full md:max-w-fit shadow-md [scrollbar-width:none]">
-                {materials.map((m) => (
+                {products.map((m) => (
                   <button
                     key={m.id}
                     onClick={() => setSelected(m)}
@@ -264,7 +264,7 @@ export default function MaterialCarousel({ materials }: { materials: Material[] 
   selected.usage
 ) : (
   <>
-    General material for various construction applications. Classified under <span className="font-semibold">{selected.category ? CATEGORY_LABELS[selected.category] || selected.category : 'General Materials'}</span> for structural integrity and building compliance.
+    General material for various construction applications. Classified under <span className="font-semibold">{selected.category ? CATEGORY_LABELS[selected.category] || selected.category : 'General Products'}</span> for structural integrity and building compliance.
   </>
 )}
                     </p>
@@ -273,7 +273,7 @@ export default function MaterialCarousel({ materials }: { materials: Material[] 
 
                 {/* Explore Link */}
                 <Link 
-                  href={`/materials/${selected.id}`} 
+                  href={`/products/${selected.id}`} 
                   className="text-[#143109] hover:underline text-[14px] font-medium mt-5 inline-flex items-center gap-1 group w-fit"
                 >
                   Explore {selected.name} further 

@@ -13,8 +13,8 @@ export async function POST() {
   }
 
   // Walk every material and link categoryRef based on its existing category string
-  const materials = await payload.find({ collection: 'materials', limit: 500 })
-  for (const m of materials.docs) {
+  const products = await payload.find({ collection: 'products', limit: 500 })
+  for (const m of products.docs) {
     const slug = m.category as string
     const catId = catBySlug[slug]
 
@@ -28,12 +28,12 @@ export async function POST() {
     }
 
     await payload.update({
-      collection: 'materials',
+      collection: 'products',
       id: m.id,
       data: { categoryRef: catId },
     })
     results.push(`linked: ${m.name} -> ${slug}`)
   }
 
-  return NextResponse.json({ results, total: materials.docs.length })
+  return NextResponse.json({ results, total: products.docs.length })
 }

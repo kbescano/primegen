@@ -1,5 +1,5 @@
 /**
- * Seeds a few sample materials so the site isn't empty on first run.
+ * Seeds a few sample products so the site isn't empty on first run.
  * Run with: npx tsx scripts/seed.ts
  * (or: npm install -D tsx first, if not already present)
  */
@@ -26,8 +26,8 @@ async function seed() {
     console.log('CHANGE THIS PASSWORD after first login.')
   }
 
-  console.log('Seeding sample materials...')
-  const materials = [
+  console.log('Seeding sample products...')
+  const products = [
     { name: 'Portland Cement (40kg)', category: 'cement-concrete', price: 285, unit: 'bag' },
     { name: 'Deformed Steel Bar 10mm x 6m', category: 'steel-rebar', price: 245, unit: 'length' },
     { name: 'Deformed Steel Bar 12mm x 6m', category: 'steel-rebar', price: 350, unit: 'length' },
@@ -38,15 +38,15 @@ async function seed() {
     { name: 'PVC Pipe 4" x 3m', category: 'plumbing', price: 380, unit: 'length' },
   ]
 
-  for (const m of materials) {
+  for (const m of products) {
     const existing = await payload.find({
-      collection: 'materials',
+      collection: 'products',
       where: { name: { equals: m.name } },
       limit: 1,
     })
     if (existing.totalDocs === 0) {
       await payload.create({
-        collection: 'materials',
+        collection: 'products',
         data: {
           ...m,
           inStock: true,

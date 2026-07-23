@@ -48,15 +48,15 @@ export const QuotationRequests: CollectionConfig = {
     {
       name: 'items',
       type: 'array',
-      label: 'Materials requested',
+      label: 'Products requested',
       admin: {
-        description: 'Materials and quantities the customer requested',
+        description: 'Products and quantities the customer requested',
       },
       fields: [
         {
           name: 'material',
           type: 'relationship',
-          relationTo: 'materials',
+          relationTo: 'products',
           required: true,
         },
         {

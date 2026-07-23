@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import Image from "next/image";
 
 const NAV_LINKS = [
-  { href: "/materials", label: "Materials" },
+  { href: "/products", label: "Products" },
   { href: "/deliveries", label: "Delivered" },
   { href: "/calculator", label: "Calculator" },
   { href: "/about", label: "About" },
@@ -36,10 +36,10 @@ export default function SiteHeader() {
             onClick={() => setOpen(false)}
           >
             <Image
-              src="/branding/primegen-logo.jpg"
+              src="/branding/primegen_trading_logo.png"
               alt="Primegen Logo"
-              width={50}
-              height={50}
+              width={60}
+              height={60}
             />
             Primegen Trading Corporation
           </Link>
@@ -80,6 +80,37 @@ export default function SiteHeader() {
           </nav>
         </div>
       </header>
+
+      {/* Contact Sub-header (Below Navbar - Minimalist & Current Palette) */}
+      <div className="bg-white text-[#01172f] py-2 border-b border-green/15 text-xs font-semibold">
+        <div className="max-w-[1360px] mx-auto px-6 lg:px-20 flex flex-col sm:flex-row items-center justify-between gap-1 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <span className="opacity-40 font-normal">Phone</span>
+            <a
+              href="tel:09171859127"
+              className="hover:text-[#149911] transition-colors"
+            >
+              0917-185-9127
+            </a>
+            <span className="opacity-20 hidden sm:inline">/</span>
+            <a
+              href="tel:09171339515"
+              className="hover:text-[#149911] transition-colors hidden sm:inline"
+            >
+              0917-133-9515
+            </a>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="opacity-40 font-normal">Email</span>
+            <a
+              href="mailto:sales@primegentradingcorp.com"
+              className="hover:text-[#149911] transition-colors"
+            >
+              sales@primegentradingcorp.com
+            </a>
+          </div>
+        </div>
+      </div>
 
       {open && (
         <div className="md:hidden fixed inset-0 bg-white z-[999] p-7 overflow-y-auto flex flex-col">

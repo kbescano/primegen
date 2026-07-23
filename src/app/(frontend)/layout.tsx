@@ -4,7 +4,7 @@ import './globals.css'
 
 export const metadata = {
   title: 'Primegen Trading Corporation',
-  description: 'Construction materials trading -- cement, steel, aggregates, and more.',
+  description: 'Construction products trading -- cement, steel, aggregates, and more.',
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {

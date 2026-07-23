@@ -37,7 +37,7 @@ export const HeroSlides: CollectionConfig = {
       name: 'href',
       type: 'text',
       required: true,
-      defaultValue: '/materials',
+      defaultValue: '/products',
       admin: { description: 'Where the CTA button links to, e.g. /quote' },
     },
     {

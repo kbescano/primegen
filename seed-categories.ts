@@ -8,11 +8,11 @@ const CATEGORIES = [
   { label: 'Steel Bars & Tubing', slug: 'steel-bars', order: 4, description: 'Round bars, square bars, flat bars, pipes, tubes, and structural tubing for manufacturing, fabrication, and construction.' },
   { label: 'Beams', slug: 'beams', order: 5, description: 'Structural steel beams including I-beams, H-beams, and wide flange beams for residential, commercial, and industrial buildings.' },
   { label: 'Black Iron', slug: 'black-iron', order: 6, description: 'Black iron pipes, fittings, and steel products ideal for gas lines, structural frameworks, and industrial applications.' },
-  { label: 'Galvanized Iron', slug: 'galvanized-iron', order: 7, description: 'Corrosion-resistant galvanized iron sheets, pipes, and structural materials built for long-lasting outdoor and industrial use.' },
+  { label: 'Galvanized Iron', slug: 'galvanized-iron', order: 7, description: 'Corrosion-resistant galvanized iron sheets, pipes, and structural products built for long-lasting outdoor and industrial use.' },
   { label: 'Copper', slug: 'copper', order: 8, description: 'Premium copper pipes, fittings, wires, and accessories for plumbing, electrical, and industrial installations.' },
   { label: 'Stainless', slug: 'stainless', order: 9, description: 'High-grade stainless steel sheets, pipes, bars, fittings, and hardware offering exceptional corrosion resistance and durability.' },
   { label: 'Pipe Fittings', slug: 'pipe-fittings', order: 10, description: 'Comprehensive range of elbows, tees, couplings, flanges, valves, and connectors for plumbing and industrial piping systems.' },
-  { label: 'Fence & Wire', slug: 'fence-wire', order: 11, description: 'Wire mesh, chain link, barbed wire, welded wire, and fencing materials for residential, commercial, and agricultural use.' },
+  { label: 'Fence & Wire', slug: 'fence-wire', order: 11, description: 'Wire mesh, chain link, barbed wire, welded wire, and fencing products for residential, commercial, and agricultural use.' },
   { label: 'PPE', slug: 'ppe', order: 12, description: 'Personal protective equipment including helmets, gloves, safety shoes, eyewear, and protective clothing for workplace safety.' },
   { label: 'Electrical & Cabling', slug: 'electrical-cabling', order: 13, description: 'Electrical wires, power cables, conduits, connectors, switches, and installation accessories for residential and industrial projects.' },
 ]

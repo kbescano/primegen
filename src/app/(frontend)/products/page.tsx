@@ -30,7 +30,7 @@ export default async function MaterialsPage({ searchParams }: Props) {
       depth: 2,
     }),
     payload.find({
-      collection: "materials",
+      collection: "products",
       limit: 200,
       depth: 2,
       ...(q ? { where: { name: { contains: q } } } : {}),
@@ -61,7 +61,7 @@ export default async function MaterialsPage({ searchParams }: Props) {
       <div className="max-w-[1360px] mx-auto px-6 lg:px-12 xl:px-20">
         {/* Top Header with Functional Search Bar */}
 
-        <SectionHeader size="page" eyebrow="Full Catalog" title="Materials">
+        <SectionHeader size="page" eyebrow="Full Catalog" title="Products">
           <SearchBar initialQuery={q} />
         </SectionHeader>
 
@@ -69,7 +69,7 @@ export default async function MaterialsPage({ searchParams }: Props) {
         {orderedSlugs.length === 0 && (
           <ScrollReveal className="py-24 flex flex-col items-center justify-center text-center">
             <p className="text-[17px] font-medium text-[#01172f] mb-2">
-              No materials found
+              No products found
             </p>
             <p className="text-[14px] text-gray-500">
               We couldn&apos;t find anything matching &quot;{q}&quot;.
@@ -243,7 +243,7 @@ export default async function MaterialsPage({ searchParams }: Props) {
                       <ScrollReveal
                         key={material.id}
                         as={Link}
-                        href={`/materials/${material.id}`}
+                        href={`/products/${material.id}`}
                         style={{ transitionDelay: `${delay}ms` }}
                         className="group relative flex items-end aspect-[4/5] overflow-hidden bg-[#f8f9f7] outline-none cursor-pointer"
                       >

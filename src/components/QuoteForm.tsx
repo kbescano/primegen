@@ -12,10 +12,10 @@ const fieldClass =
 const labelClass =
   "text-[10px] font-bold uppercase tracking-[0.2em] text-[#01172f]/40 mb-2 block";
 
-export default function QuoteForm({ materials }: { materials: Material[] }) {
+export default function QuoteForm({ products }: { products: Material[] }) {
   const searchParams = useSearchParams();
   const preselected = searchParams.get("material");
-  const preselectedMaterial = materials.find(
+  const preselectedMaterial = products.find(
     (m) => String(m.id) === String(preselected),
   );
 
@@ -24,7 +24,7 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
   >("idle");
   const [items, setItems] = useState<LineItem[]>([
     {
-      materialId: preselectedMaterial?.id ?? materials[0]?.id ?? "",
+      materialId: preselectedMaterial?.id ?? products[0]?.id ?? "",
       quantity: 1,
     },
   ]);
@@ -32,7 +32,7 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
   function addItem() {
     setItems((prev) => [
       ...prev,
-      { materialId: materials[0]?.id ?? "", quantity: 1 },
+      { materialId: products[0]?.id ?? "", quantity: 1 },
     ]);
   }
   function removeItem(index: number) {
@@ -155,13 +155,13 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
 
       <div className="border-t border-[#01172f]/10 pt-6 mt-2">
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#01172f]/40 mb-4">
-          Materials Needed
+          Products Needed
         </p>
         <div className="flex flex-col gap-4 sm:gap-2.5">
           {items.map((item, index) => {
             const selected =
-              materials.find((m) => String(m.id) === String(item.materialId)) ??
-              materials[0];
+              products.find((m) => String(m.id) === String(item.materialId)) ??
+              products[0];
             return (
               <div
                 key={index}
@@ -174,7 +174,7 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
                   }
                   className={`${fieldClass} w-full sm:flex-1 min-w-0 h-[52px] py-0 appearance-none`}
                 >
-                  {materials.map((m) => (
+                  {products.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.name}
                     </option>
@@ -230,8 +230,8 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
         <ul className="flex flex-col gap-2.5 m-0 p-0 list-none">
           {items.map((item, index) => {
             const mat =
-              materials.find((m) => String(m.id) === String(item.materialId)) ??
-              materials[0];
+              products.find((m) => String(m.id) === String(item.materialId)) ??
+              products[0];
             if (!mat) return null;
             return (
               <li
@@ -250,7 +250,7 @@ export default function QuoteForm({ materials }: { materials: Material[] }) {
         </ul>
         <div className="border-t border-[#01172f]/10 mt-4 pt-4 flex flex-col sm:flex-row sm:justify-between sm:items-baseline gap-2 text-[12px]">
           <span className="font-bold uppercase tracking-wide text-[#01172f]">
-            {items.length} {items.length === 1 ? "material" : "materials"}{" "}
+            {items.length} {items.length === 1 ? "material" : "products"}{" "}
             requested
           </span>
           <span className="text-[#01172f]/40 font-medium">

@@ -46,7 +46,7 @@ async function callClaude(prompt: string): Promise<AgentSuggestion[]> {
 }
 
 function buildAnalysisPrompt(campaigns: any[], insightsByCampaign: Record<string, any>) {
-  return `You are an ads performance analyst for a construction materials trading company in the Philippines. Their business depends entirely on leads (quotation requests) generated from Facebook ads.
+  return `You are an ads performance analyst for a construction products trading company in the Philippines. Their business depends entirely on leads (quotation requests) generated from Facebook ads.
 
 Here is yesterday's performance data per campaign:
 ${JSON.stringify(insightsByCampaign, null, 2)}

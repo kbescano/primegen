@@ -1,12 +1,12 @@
 # Primegen Trading Corporation. — Website + Ad Agent
 
-Next.js 15 + Payload CMS 3 site for a construction materials trading company, with an
+Next.js 15 + Payload CMS 3 site for a construction products trading company, with an
 AI-assisted Facebook Ads management agent that requires human approval for meaningful changes.
 
 ## What's included
 
-- **Public website** — home (live price ticker), materials catalog, quotation request form
-- **Payload CMS** — client edits materials (photos/prices/stock), pages, reviews leads
+- **Public website** — home (live price ticker), products catalog, quotation request form
+- **Payload CMS** — client edits products (photos/prices/stock), pages, reviews leads
 - **Admin dashboard** (`/admin-dashboard`) — ads overview, pending approvals, analytics, quotation inbox, pause-all button
 - **Ad agent** — daily Claude-powered analysis of Meta Ads performance, proposes actions, logs everything to `agent-actions`
 

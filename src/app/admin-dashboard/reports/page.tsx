@@ -43,7 +43,7 @@ export default async function ReportsPage({
   const requestToQuotationRate = requestCount > 0 ? Math.round((quotationCount / requestCount) * 100) : 0
   const quotationToAcceptedRate = quotationCount > 0 ? Math.round((acceptedCount / quotationCount) * 100) : 0
 
-  // --- 2. Most Requested Materials ---
+  // --- 2. Most Requested Products ---
   const materialTally: Record<string, { name: string; requests: number; totalQty: number }> = {}
   for (const r of requests) {
     for (const item of r.items || []) {
@@ -127,10 +127,10 @@ export default async function ReportsPage({
       </div>
 
       <div className="grid md:grid-cols-2 gap-6 mb-6">
-        {/* ===== 2. Most Requested Materials ===== */}
+        {/* ===== 2. Most Requested Products ===== */}
         <div className="bg-white border border-[#01172f]/10 p-6 md:p-8">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#01172f]/40 mb-6">
-            Most Requested Materials
+            Most Requested Products
           </p>
           {topMaterials.length === 0 ? (
             <p className="text-[13px] text-[#01172f]/40 font-medium">No requests in this period.</p>
