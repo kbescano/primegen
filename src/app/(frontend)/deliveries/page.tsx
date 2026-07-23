@@ -5,6 +5,11 @@ import Image from 'next/image'
 
 export const dynamic = 'force-dynamic'
 
+export const metadata = {
+  title: 'Deliveries',
+  description: 'Recent deliveries completed by Primegen Trading Corporation across the Philippines.',
+}
+
 const STAGGER_STEP = 60
 const STAGGER_CAP = 480
 

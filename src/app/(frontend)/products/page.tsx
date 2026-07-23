@@ -7,6 +7,11 @@ import SectionHeader from "@/components/SectionHeader";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = {
+  title: 'Products',
+  description: 'Browse our full catalog of steel, cement, PPE, fencing, pipe fittings, and other construction materials.',
+}
+
 const STAGGER_STEP = 60; // ms between each card's reveal
 const STAGGER_CAP = 480; // ms max delay, so long lists don't take forever to fully reveal
 const STEEL_FABRICATION_VIDEO =

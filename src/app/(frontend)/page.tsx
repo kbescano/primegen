@@ -40,7 +40,7 @@ const FALLBACK_SLIDES: HeroSlide[] = [
 const VALUE_PROPS = [
   {
     num: "01",
-    title: "Direct-from-supplier pricing",
+    title: "Direct supplier low price",
     body: "No markup layers, prices reflect current supplier cost.",
   },
   {

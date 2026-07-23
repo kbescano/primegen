@@ -4,6 +4,11 @@ import QuoteForm from '@/components/QuoteForm'
 
 export const revalidate = 300
 
+export const metadata = {
+  title: 'Request a Quote',
+  description: 'Tell us what materials you need and our team will get back to you with pricing.',
+}
+
 export default async function QuotePage() {
   const payload = await getPayloadClient()
   const { docs } = await payload.find({

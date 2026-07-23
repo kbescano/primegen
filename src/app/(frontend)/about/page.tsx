@@ -6,6 +6,11 @@ import SectionHeader from '@/components/SectionHeader'
 
 export const revalidate = 60
 
+export const metadata = {
+  title: 'About Us',
+  description: 'Learn about Primegen Trading Corporation -- your trusted supplier for commercial and industrial equipment, metal supply, and metal fabrication services in Cavite, Philippines.',
+}
+
 const SERVICES = [
   'Commercial & Industrial Equipment Supply',
   'Metal Supply',
@@ -67,6 +72,8 @@ export default async function AboutPage() {
 
   return (
     <section className="py-16 md:py-28 px-6 lg:px-8 max-w-[1200px] mx-auto bg-[#fdfffc] min-h-screen">
+
+      <h1 className="sr-only">{title}</h1>
 
       {/* ===== Split Hero -- text left, logo showcase panel right ===== */}
        <SectionHeader

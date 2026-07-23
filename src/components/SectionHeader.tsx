@@ -39,13 +39,19 @@ export default function SectionHeader({
             {eyebrow}
           </p>
         )}
-        <h2
-          className={`font-black tracking-tighter text-[#01172f] uppercase leading-[0.95] ${
-            isPage ? 'text-[40px] md:text-[64px]' : 'text-[26px] md:text-[36px]'
-          }`}
-        >
-          {title}.
-        </h2>
+        {isPage ? (
+          <h1
+            className="font-black tracking-tighter text-[#01172f] uppercase leading-[0.95] text-[40px] md:text-[64px]"
+          >
+            {title}.
+          </h1>
+        ) : (
+          <h2
+            className="font-black tracking-tighter text-[#01172f] uppercase leading-[0.95] text-[26px] md:text-[36px]"
+          >
+            {title}.
+          </h2>
+        )}
         {description && (
           <p className="mt-4 max-w-[560px] text-[13px] md:text-[15px] leading-relaxed text-[#01172f]/60 font-medium">
             {description}

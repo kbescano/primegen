@@ -4,6 +4,11 @@ import SectionHeader from '@/components/SectionHeader'
 
 export const revalidate = 60
 
+export const metadata = {
+  title: 'Weight Calculator',
+  description: 'Estimate the weight of steel products by shape and dimension before you request a quote.',
+}
+
 const FALLBACK_PRODUCTS: CalcProduct[] = [
   { id: 'deformed-bar', name: 'Deformed Bar', shape: 'round-bar', density: 7850, standardLength: 6 },
   { id: 'angle-bar', name: 'Angle Bar', shape: 'angle-bar', density: 7850, standardLength: 6 },
