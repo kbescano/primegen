@@ -112,7 +112,7 @@ export default function AdminLoginForm({ redirectTo = '/admin-dashboard' }: { re
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white max-w-sm w-full p-8 text-center shadow-[0_30px_80px_-20px_rgba(1,23,47,0.35)]">
             <div className="w-8 h-[3px] bg-[#149911] mx-auto mb-5" />
-            <h2 className="text-xl font-black text-[#01172f] mb-6">Kanino ka lang?</h2>
+            <h2 className="text-xl font-black text-[#01172f] mb-6">Kanino ka lang Monira?</h2>
             <div className="flex flex-col gap-3">
               <button
                 onClick={() => handleFunChoice('ken')}

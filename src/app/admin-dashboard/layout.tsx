@@ -17,7 +17,7 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
   return (
     <html lang="en">
       <body style={{ margin: 0, fontFamily: 'Inter, sans-serif', background: '#ffffff' }}>
-        <AdminSidebar user={{ name: (user as any).name, email: user.email, role: (user as any).role }}>{children}</AdminSidebar>
+        <AdminSidebar user={{ name: (user as any).name, email: user.email || '', role: (user as any).role }}>{children}</AdminSidebar>
       </body>
     </html>
   )
