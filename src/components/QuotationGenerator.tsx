@@ -1,7 +1,9 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
 import { useMemo, useState } from 'react'
+import ClientPickerModal from '@/components/ClientPickerModal'
 
 type LineItem = {
   qty: number
@@ -42,7 +44,15 @@ const BASE_TERMS = [
   'Refund Processing. Approved refunds (if any) will be processed within 7–14 working days via the original mode of payment.',
 ]
 
-export default function QuotationGenerator({ initial }: { initial?: QuotationInitial }) {
+export default function QuotationGenerator({
+  initial,
+  showBackToList = false,
+  showClientPicker = false,
+}: {
+  initial?: QuotationInitial
+  showBackToList?: boolean
+  showClientPicker?: boolean
+}) {
   const [quotationNumber, setQuotationNumber] = useState(initial?.quotationNumber ?? '')
   const [quotationDate, setQuotationDate] = useState(initial?.quotationDate ?? new Date().toISOString().slice(0, 10))
   const [customerName, setCustomerName] = useState(initial?.customerName ?? '')
@@ -61,6 +71,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
   const [deliveryFee, setDeliveryFee] = useState(initial?.deliveryFee ?? 0)
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveErrorDetail, setSaveErrorDetail] = useState('')
+  const [pickerOpen, setPickerOpen] = useState(showClientPicker)
   const sourceRequestId = initial?.sourceRequestId // set once at creation time, never user-editable
 
   const subtotal = useMemo(() => items.reduce((sum, i) => sum + i.qty * i.unitPrice, 0), [items])
@@ -98,6 +109,50 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
 
   const isEditing = Boolean(initial?.id)
 
+  function handleSelectClient(c: { name: string; company?: string; address?: string; phone?: string }) {
+    setCustomerName(c.name)
+    setCompany(c.company ?? '')
+    setAddress(c.address ?? '')
+    setContactNumber(c.phone ?? '')
+    setPickerOpen(false)
+  }
+
+  async function upsertClientRecord() {
+    if (!customerName) return
+    try {
+      const findRes = await fetch(
+        `/api/clients?where[name][equals]=${encodeURIComponent(customerName)}&limit=1`,
+        { credentials: 'include' }
+      )
+      const findData = await findRes.json()
+      const existing = findData?.docs?.[0]
+      const clientPayload = {
+        name: customerName,
+        company,
+        address,
+        phone: contactNumber,
+        status: 'active',
+      }
+      if (existing) {
+        await fetch(`/api/clients/${existing.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(clientPayload),
+        })
+      } else {
+        await fetch('/api/clients', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(clientPayload),
+        })
+      }
+    } catch {
+      // non-critical -- never block the quotation save flow if this fails
+    }
+  }
+
   async function saveQuotation() {
     setSaving('saving')
     try {
@@ -132,6 +187,7 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
       }
       const saved = await res.json()
       setQuotationNumber(saved.doc.quotationNumber)
+      await upsertClientRecord()
       setSaving('saved')
     } catch (err: any) {
       setSaving('error')
@@ -145,6 +201,9 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-6 bg-[#fdfffc]">
+      {pickerOpen && (
+        <ClientPickerModal onSelect={handleSelectClient} onSkip={() => setPickerOpen(false)} />
+      )}
       <style>{`
         @media print {
     @page {
@@ -165,6 +224,14 @@ export default function QuotationGenerator({ initial }: { initial?: QuotationIni
       {/* ===== FORM (hidden when printing) ===== */}
       <div className="print:hidden">
         <div className="mb-8">
+          {showBackToList && (
+            <Link
+              href="/admin-dashboard/client-quotation"
+              className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.1em] text-[#01172f]/50 hover:text-[#149911] transition-colors mb-4"
+            >
+              &larr; Back to Client Quotations
+            </Link>
+          )}
           <div className="w-8 h-[3px] bg-[#149911] mb-4" />
           <h1 className="text-2xl font-black uppercase tracking-tight text-[#01172f] mb-2">
             {isEditing ? 'Edit Client Quotation' : 'Client Quotation Generator'}

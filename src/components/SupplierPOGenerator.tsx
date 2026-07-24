@@ -1,7 +1,9 @@
 'use client'
 
 import Image from 'next/image'
+import Link from 'next/link'
 import { useMemo, useState } from 'react'
+import SupplierPickerModal from '@/components/SupplierPickerModal'
 
 type LineItem = {
   description: string
@@ -47,7 +49,15 @@ const TERMS = [
   'This PO and these Terms constitute the entire agreement between Buyer and Seller and supersede all prior communications.',
 ]
 
-export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOInitial }) {
+export default function SupplierPOGenerator({
+  initial,
+  showSupplierPicker = false,
+  showBackToList = false,
+}: {
+  initial?: SupplierPOInitial
+  showSupplierPicker?: boolean
+  showBackToList?: boolean
+}) {
   const [poNumber, setPoNumber] = useState(initial?.poNumber ?? '')
   const [poDate, setPoDate] = useState(initial?.poDate ?? new Date().toISOString().slice(0, 10))
   const [supplierName, setSupplierName] = useState(initial?.supplierName ?? '')
@@ -63,6 +73,7 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
   )
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveErrorDetail, setSaveErrorDetail] = useState('')
+  const [pickerOpen, setPickerOpen] = useState(showSupplierPicker)
 
   const subtotal = useMemo(() => items.reduce((sum, i) => sum + i.qty * i.unitPrice, 0), [items])
   const total = subtotal
@@ -84,6 +95,50 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
   }
 
   const isEditing = Boolean(initial?.id)
+
+  function handleSelectSupplier(s: { name: string; company?: string; address?: string; phone?: string }) {
+    setSupplierName(s.name)
+    setCompanyName(s.company ?? '')
+    setStreetAddress(s.address ?? '')
+    setPhone(s.phone ?? '')
+    setPickerOpen(false)
+  }
+
+  async function upsertSupplierRecord() {
+    if (!supplierName) return
+    try {
+      const findRes = await fetch(
+        `/api/suppliers?where[name][equals]=${encodeURIComponent(supplierName)}&limit=1`,
+        { credentials: 'include' }
+      )
+      const findData = await findRes.json()
+      const existing = findData?.docs?.[0]
+      const supplierPayload = {
+        name: supplierName,
+        company: companyName,
+        address: streetAddress,
+        phone,
+        status: 'active',
+      }
+      if (existing) {
+        await fetch(`/api/suppliers/${existing.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(supplierPayload),
+        })
+      } else {
+        await fetch('/api/suppliers', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(supplierPayload),
+        })
+      }
+    } catch {
+      // non-critical -- never block the PO save flow if this fails
+    }
+  }
 
   async function savePO() {
     setSaving('saving')
@@ -114,6 +169,7 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
       }
       const saved = await res.json()
       setPoNumber(saved.doc.poNumber)
+      await upsertSupplierRecord()
       setSaving('saved')
     } catch (err: any) {
       setSaving('error')
@@ -127,6 +183,9 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-6 bg-[#fdfffc]">
+      {pickerOpen && (
+        <SupplierPickerModal onSelect={handleSelectSupplier} onSkip={() => setPickerOpen(false)} />
+      )}
       {/* Print setup: page sizing + force background colors to print + scale down for one-page fit */}
       <style>{`
         @media print {
@@ -148,6 +207,14 @@ export default function SupplierPOGenerator({ initial }: { initial?: SupplierPOI
       {/* ===== FORM (hidden when printing) ===== */}
       <div className="print:hidden">
         <div className="mb-8">
+          {showBackToList && (
+            <Link
+              href="/admin-dashboard/supplier-po"
+              className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.1em] text-[#01172f]/50 hover:text-[#149911] transition-colors mb-4"
+            >
+              &larr; Back to Supplier Purchase Orders
+            </Link>
+          )}
           <div className="w-8 h-[3px] bg-[#149911] mb-4" />
           <h1 className="text-2xl font-black uppercase tracking-tight text-[#01172f] mb-2">
             {isEditing ? 'Edit Supplier Purchase Order' : 'Supplier Purchase Order'}

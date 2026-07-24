@@ -17,6 +17,7 @@ import { WeightCalcProducts } from './collections/WeightCalcProducts'
 import { Suppliers } from './collections/Suppliers'
 import { Categories } from './collections/Categories'
 import { Deliveries } from './collections/Deliveries'
+import { Clients } from './collections/Clients'
 import { ClientQuotations } from './collections/ClientQuotations'
 import { SupplierPurchaseOrders } from './collections/SupplierPurchaseOrders'
 import { AboutPage } from './globals/AboutPage'
@@ -53,6 +54,7 @@ export default buildConfig({
     Suppliers,
     Categories,
     Deliveries,
+    Clients,
     ClientQuotations,
     SupplierPurchaseOrders,
   ],

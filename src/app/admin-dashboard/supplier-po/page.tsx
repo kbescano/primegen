@@ -29,15 +29,31 @@ const peso = (n: number) =>
 export default async function SupplierPOPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; id?: string; new?: string; status?: string }>
+  searchParams: Promise<{ from?: string; id?: string; new?: string; status?: string; supplierId?: string }>
 }) {
-  const { from, id, new: isNew, status } = await searchParams
+  const { from, id, new: isNew, status, supplierId } = await searchParams
 
   // ===== GENERATOR MODE =====
-  if (id || from || isNew) {
+  if (id || from || isNew || supplierId) {
     let initial: SupplierPOInitial | undefined
+    // Picker modal only makes sense when creating fresh with no supplier already chosen --
+    // not when editing an existing PO, and not when a specific supplier was already selected.
+    const showSupplierPicker = Boolean((from || isNew) && !supplierId && !id)
 
-    if (id) {
+    if (supplierId) {
+      try {
+        const payload = await getPayloadClient()
+        const s: any = await payload.findByID({ collection: 'suppliers', id: supplierId })
+        if (s) {
+          initial = {
+            supplierName: s.name,
+            supplierAddress: [s.company, s.address].filter(Boolean).join('\n'),
+          }
+        }
+      } catch {
+        // fall through to a blank form
+      }
+    } else if (id) {
       try {
         const payload = await getPayloadClient()
         const po: any = await payload.findByID({ collection: 'supplier-purchase-orders', id })
@@ -82,7 +98,7 @@ export default async function SupplierPOPage({
       }
     }
 
-    return <SupplierPOGenerator initial={initial} />
+    return <SupplierPOGenerator initial={initial} showSupplierPicker={showSupplierPicker} showBackToList={Boolean(from)} />
   }
 
   // ===== LIST MODE (default -- merged Manage POs view) =====
@@ -112,6 +128,15 @@ export default async function SupplierPOPage({
             All purchase orders saved from the generator. Update status inline, or open an entry to
             view, edit, or reprint it.
           </p>
+          <Link
+            href="/admin-dashboard/suppliers"
+            className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.1em] text-[#103900] hover:text-[#149911] transition-colors mt-3"
+          >
+            View or Add Suppliers
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </Link>
         </div>
         <Link
           href="/admin-dashboard/supplier-po?new=true"

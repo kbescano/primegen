@@ -1,31 +1,31 @@
 import { getPayloadClient } from '@/lib/getPayloadClient'
-import AddSupplierForm from '@/components/AddSupplierForm'
-import SupplierCard from '@/components/SupplierCard'
+import AddClientForm from '@/components/AddClientForm'
+import ClientCard from '@/components/ClientCard'
 
-export default async function SuppliersPage() {
+export default async function ClientsPage() {
   const payload = await getPayloadClient()
   const { docs } = await payload.find({
-    collection: 'suppliers',
+    collection: 'clients',
     sort: 'name',
     limit: 200,
   })
 
   return (
     <div>
-      <h1 style={{ fontSize: 26, marginBottom: 8, color: '#0d0d0d' }}>Suppliers</h1>
+      <h1 style={{ fontSize: 26, marginBottom: 8, color: '#0d0d0d' }}>Clients</h1>
       <p style={{ marginBottom: 20, color: '#0d0d0d', opacity: 0.65 }}>
-        Your supplier directory.
+        Your client directory.
       </p>
-      <AddSupplierForm />
+      <AddClientForm />
 
       {docs.length === 0 ? (
         <div className="facet-card" style={{ padding: 32, textAlign: 'center' }}>
-          <p>No suppliers added yet.</p>
+          <p>No clients added yet.</p>
         </div>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
-          {docs.map((s: any) => (
-            <SupplierCard key={s.id} supplier={s} />
+          {docs.map((c: any) => (
+            <ClientCard key={c.id} client={c} />
           ))}
         </div>
       )}

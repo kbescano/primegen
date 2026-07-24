@@ -104,7 +104,14 @@ export default async function ClientQuotationPage({
     }
     // isNew with no id/from -> initial stays undefined -> blank form
 
-    return <QuotationGenerator initial={initial} />
+    const showClientPicker = Boolean((from || isNew) && !id)
+    return (
+      <QuotationGenerator
+        initial={initial}
+        showBackToList={Boolean(from)}
+        showClientPicker={showClientPicker}
+      />
+    )
   }
 
   // ===== LIST MODE (default -- merged Manage Quotations view) =====
@@ -134,6 +141,15 @@ export default async function ClientQuotationPage({
             All quotations saved from the generator. Update status inline, or open an entry to view,
             edit, or reprint it.
           </p>
+          <Link
+            href="/admin-dashboard/clients"
+            className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.1em] text-[#103900] hover:text-[#149911] transition-colors mt-3"
+          >
+            View or Add Clients
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </Link>
         </div>
         <Link
           href="/admin-dashboard/client-quotation?new=true"
