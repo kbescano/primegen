@@ -12,17 +12,19 @@ export const Users: CollectionConfig = {
   },
   fields: [
     {
-      name: 'name',
-      type: 'text',
-    },
-    {
       name: 'role',
       type: 'select',
-      defaultValue: 'admin',
+      defaultValue: 'user',
+      required: true,
+      saveToJWT: true,
       options: [
-        { label: 'Admin (client)', value: 'admin' },
-        { label: 'Super Admin (agency/you)', value: 'super-admin' },
+        { label: 'User', value: 'user' },
+        { label: 'Admin', value: 'admin' },
       ],
+    },
+    {
+      name: 'name',
+      type: 'text',
     },
   ],
 }

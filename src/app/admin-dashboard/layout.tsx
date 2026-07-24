@@ -11,13 +11,13 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
   const headers = await getHeaders()
   const { user } = await payload.auth({ headers })
   if (!user) {
-    redirect('/admin/login?redirect=/admin-dashboard')
+    redirect('/admin-login?redirect=/admin-dashboard')
   }
 
   return (
     <html lang="en">
       <body style={{ margin: 0, fontFamily: 'Inter, sans-serif', background: '#ffffff' }}>
-        <AdminSidebar>{children}</AdminSidebar>
+        <AdminSidebar user={{ name: (user as any).name, email: user.email, role: (user as any).role }}>{children}</AdminSidebar>
       </body>
     </html>
   )

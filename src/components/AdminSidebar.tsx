@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import NotificationBell from '@/components/NotificationBell'
 
 const NAV_ITEMS = [
@@ -12,9 +12,30 @@ const NAV_ITEMS = [
   { href: '/admin-dashboard/reports', label: 'Reports' },
 ]
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+type AdminUser = { name?: string; email: string; role?: string }
+
+export default function AdminLayout({
+  children,
+  user,
+}: {
+  children: React.ReactNode
+  user?: AdminUser
+}) {
   const pathname = usePathname()
+  const router = useRouter()
   const [open, setOpen] = useState(false)
+
+  const displayName = user?.name?.trim() || user?.email
+
+  async function handleLogout() {
+    try {
+      await fetch('/api/users/logout', { method: 'POST', credentials: 'include' })
+    } catch {
+      // proceed to redirect regardless -- worst case the cookie just expires naturally
+    }
+    router.push('/admin-login')
+    router.refresh()
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -74,6 +95,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </header>
 
+      {/* ===== User bar -- sits below the nav, not inside it ===== */}
+      {user && (
+        <div className="admin-header bg-[#f4f6f2] border-b border-[#01172f]/10">
+          <div className="flex items-center justify-between px-4 sm:px-6 md:px-10 h-11">
+            <span className="flex items-center gap-2 text-[12px] font-bold text-[#01172f]/60 truncate">
+              Signed in as {displayName}
+              {user.role && (
+                <span className="text-[9px] font-bold uppercase tracking-wide px-1.5 py-0.5 bg-[#149911]/10 text-[#103900] flex-shrink-0">
+                  {user.role}
+                </span>
+              )}
+            </span>
+            <button
+              onClick={handleLogout}
+              className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#01172f]/40 hover:text-red-600 transition-colors flex-shrink-0"
+            >
+              Logout
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ===== Mobile full-screen overlay -- sibling of header, not nested ===== */}
       {open && (
         <div className="admin-header md:hidden fixed inset-0 bg-white z-50 flex flex-col px-6 pt-8 pb-10 overflow-y-auto">
@@ -87,6 +130,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </svg>
             </button>
           </div>
+
           <nav className="flex flex-col gap-1">
             {NAV_ITEMS.map((item) => {
               const isActive = pathname === item.href
