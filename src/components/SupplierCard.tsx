@@ -55,9 +55,9 @@ export default function SupplierCard({ supplier }: { supplier: Supplier }) {
 
   if (editing) {
     return (
-      <div className="facet-card" style={{ padding: 20 }}>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-[13px] font-black uppercase tracking-wide text-[#01172f]">Edit Supplier</h3>
+      <div className="bg-white border border-[#149911]/40 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-[12px] font-black uppercase tracking-wide text-[#01172f]">Edit Supplier</h3>
           <button onClick={() => setEditing(false)} className="text-gray-400 hover:text-red-600 text-lg leading-none" aria-label="Cancel">
             &times;
           </button>
@@ -105,36 +105,33 @@ export default function SupplierCard({ supplier }: { supplier: Supplier }) {
   }
 
   return (
-    <div className="facet-card" style={{ padding: 20, opacity: supplier.status === 'inactive' ? 0.5 : 1 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+    <div
+      className="group relative bg-white border border-[#01172f]/10 p-6 transition-all duration-300 hover:border-[#149911]/40 hover:shadow-[0_16px_40px_-16px_rgba(1,23,47,0.15)]"
+      style={{ opacity: supplier.status === 'inactive' ? 0.5 : 1 }}
+    >
+      <div className="flex justify-between items-start gap-3 mb-3">
         <div>
-          <h3 style={{ fontSize: 16, color: '#0d0d0d', marginBottom: 2 }}>{supplier.name}</h3>
-          {supplier.company && <p style={{ fontSize: 13, color: '#0d0d0d', opacity: 0.6, margin: 0 }}>{supplier.company}</p>}
+          <h3 className="text-[16px] font-bold text-[#01172f]">{supplier.name}</h3>
+          {supplier.company && <p className="text-[13px] text-[#01172f]/50 font-medium">{supplier.company}</p>}
         </div>
         <span
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            padding: '2px 8px',
-            borderRadius: 4,
-            background: supplier.status === 'inactive' ? '#f0f0f0' : '#eaf5ee',
-            color: supplier.status === 'inactive' ? '#0d0d0d' : '#1f5c34',
-          }}
+          className={`text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 flex-shrink-0 ${
+            supplier.status === 'inactive' ? 'bg-gray-100 text-gray-500' : 'bg-[#149911]/10 text-[#103900]'
+          }`}
         >
           {supplier.status}
         </span>
       </div>
-      <p style={{ fontSize: 14, margin: '4px 0' }}>{supplier.phone}</p>
-      {supplier.email && <p style={{ fontSize: 14, margin: '4px 0' }}>{supplier.email}</p>}
-      {supplier.address && (
-        <p style={{ fontSize: 13, color: '#0d0d0d', opacity: 0.6, marginTop: 8, whiteSpace: 'pre-line' }}>
-          {supplier.address}
-        </p>
-      )}
+      <div className="border-t border-[#01172f]/10 pt-3 flex flex-col gap-1">
+        {supplier.phone && <p className="text-[13px] text-[#01172f] font-medium">{supplier.phone}</p>}
+        {supplier.email && <p className="text-[13px] text-[#01172f]/70">{supplier.email}</p>}
+        {supplier.address && (
+          <p className="text-[12px] text-[#01172f]/50 whitespace-pre-line mt-1">{supplier.address}</p>
+        )}
+      </div>
       <button
         onClick={() => setEditing(true)}
-        className="mt-3 text-[11px] font-bold uppercase tracking-[0.1em] text-[#103900] hover:text-[#149911] transition-colors"
+        className="mt-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#103900] hover:text-[#149911] transition-colors"
       >
         Edit
       </button>

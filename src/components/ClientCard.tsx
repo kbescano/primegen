@@ -55,9 +55,9 @@ export default function ClientCard({ client }: { client: Client }) {
 
   if (editing) {
     return (
-      <div className="facet-card" style={{ padding: 20 }}>
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-[13px] font-black uppercase tracking-wide text-[#01172f]">Edit Client</h3>
+      <div className="bg-white border border-[#149911]/40 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-[12px] font-black uppercase tracking-wide text-[#01172f]">Edit Client</h3>
           <button onClick={() => setEditing(false)} className="text-gray-400 hover:text-red-600 text-lg leading-none" aria-label="Cancel">
             &times;
           </button>
@@ -105,36 +105,33 @@ export default function ClientCard({ client }: { client: Client }) {
   }
 
   return (
-    <div className="facet-card" style={{ padding: 20, opacity: client.status === 'inactive' ? 0.5 : 1 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+    <div
+      className="group relative bg-white border border-[#01172f]/10 p-6 transition-all duration-300 hover:border-[#149911]/40 hover:shadow-[0_16px_40px_-16px_rgba(1,23,47,0.15)]"
+      style={{ opacity: client.status === 'inactive' ? 0.5 : 1 }}
+    >
+      <div className="flex justify-between items-start gap-3 mb-3">
         <div>
-          <h3 style={{ fontSize: 16, color: '#0d0d0d', marginBottom: 2 }}>{client.name}</h3>
-          {client.company && <p style={{ fontSize: 13, color: '#0d0d0d', opacity: 0.6, margin: 0 }}>{client.company}</p>}
+          <h3 className="text-[16px] font-bold text-[#01172f]">{client.name}</h3>
+          {client.company && <p className="text-[13px] text-[#01172f]/50 font-medium">{client.company}</p>}
         </div>
         <span
-          style={{
-            fontSize: 11,
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            padding: '2px 8px',
-            borderRadius: 4,
-            background: client.status === 'inactive' ? '#f0f0f0' : '#eaf5ee',
-            color: client.status === 'inactive' ? '#0d0d0d' : '#1f5c34',
-          }}
+          className={`text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 flex-shrink-0 ${
+            client.status === 'inactive' ? 'bg-gray-100 text-gray-500' : 'bg-[#149911]/10 text-[#103900]'
+          }`}
         >
           {client.status}
         </span>
       </div>
-      <p style={{ fontSize: 14, margin: '4px 0' }}>{client.phone}</p>
-      {client.email && <p style={{ fontSize: 14, margin: '4px 0' }}>{client.email}</p>}
-      {client.address && (
-        <p style={{ fontSize: 13, color: '#0d0d0d', opacity: 0.6, marginTop: 8, whiteSpace: 'pre-line' }}>
-          {client.address}
-        </p>
-      )}
+      <div className="border-t border-[#01172f]/10 pt-3 flex flex-col gap-1">
+        {client.phone && <p className="text-[13px] text-[#01172f] font-medium">{client.phone}</p>}
+        {client.email && <p className="text-[13px] text-[#01172f]/70">{client.email}</p>}
+        {client.address && (
+          <p className="text-[12px] text-[#01172f]/50 whitespace-pre-line mt-1">{client.address}</p>
+        )}
+      </div>
       <button
         onClick={() => setEditing(true)}
-        className="mt-3 text-[11px] font-bold uppercase tracking-[0.1em] text-[#103900] hover:text-[#149911] transition-colors"
+        className="mt-4 text-[11px] font-bold uppercase tracking-[0.1em] text-[#103900] hover:text-[#149911] transition-colors"
       >
         Edit
       </button>
