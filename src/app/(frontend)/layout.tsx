@@ -55,6 +55,15 @@ const localBusinessJsonLd = {
     postalCode: '4103',
     addressCountry: 'PH',
   },
+  geo: {
+    '@type': 'GeoCoordinates',
+    latitude: 14.4297,
+    longitude: 120.9367,
+  },
+  areaServed: {
+    '@type': 'Country',
+    name: 'Philippines',
+  },
   priceRange: '$$',
 }
 

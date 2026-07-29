@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { getPayloadClient } from '@/lib/getPayloadClient'
@@ -6,6 +7,31 @@ import RelatedMaterialsGrid from '@/components/RelatedMaterialsCarousel'
 import ScrollReveal from '@/components/ScrollReveal'
 
 export const revalidate = 60
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params
+  try {
+    const payload = await getPayloadClient()
+    const material: any = await payload.findByID({ collection: 'materials', id, depth: 1 })
+    if (!material) return { title: 'Product Not Found' }
+
+    const categoryName = material.categoryRef?.label || material.category || ''
+    const title = categoryName ? `${material.name} -- ${categoryName}` : material.name
+    const description = `${material.name} available from Primegen Trading Corporation -- trusted steel and construction materials supplier based in Imus, Cavite, delivering nationwide across the Philippines. Request a quote today.`
+
+    return {
+      title,
+      description,
+      openGraph: {
+        title,
+        description,
+        images: material.photo?.url ? [{ url: material.photo.url }] : undefined,
+      },
+    }
+  } catch {
+    return { title: 'Product' }
+  }
+}
 
 const APPLICABLE_PRODUCTS: CalcProduct[] = [
   { id: 'deformed-bar', name: 'Deformed Bar', shape: 'round-bar', density: 7850, standardLength: 6 },

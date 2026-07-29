@@ -1,6 +1,8 @@
 import type { MetadataRoute } from 'next'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 
+export const dynamic = 'force-dynamic' // must run per-request, not at build time -- the DB isn't reachable during Vercel's build step
+
 const siteUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
@@ -20,7 +22,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${siteUrl}/deliveries`, changeFrequency: 'weekly', priority: 0.4 },
   ]
 
-  const materialPages: MetadataRoute.Sitemap = productsRes.docs.map((m: any) => ({
+  const productPages: MetadataRoute.Sitemap = productsRes.docs.map((m: any) => ({
     url: `${siteUrl}/products/${m.id}`,
     lastModified: m.updatedAt ? new Date(m.updatedAt) : undefined,
     changeFrequency: 'weekly',
@@ -34,5 +36,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }))
 
-  return [...staticPages, ...materialPages, ...categoryPages]
+  return [...staticPages, ...productPages, ...categoryPages]
 }
