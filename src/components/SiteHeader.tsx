@@ -53,10 +53,10 @@ export default function SiteHeader() {
             />
 
             <div className="flex flex-col justify-center">
-              <span className={`${playfair.className} text-base md:text-lg font-black tracking-[0.05em] text-[#3D5F3B] uppercase leading-none [text-shadow:0_1px_1px_rgba(0,0,0,0.15)] transition-colors duration-300 group-hover:text-[#149911]`}>
+              <span className={`${playfair.className} text-base md:text-lg font-black tracking-[0.02em] text-[#3D5F3B] uppercase leading-none [text-shadow:0_1px_1px_rgba(0,0,0,0.15)] transition-colors duration-300 group-hover:text-[#149911]`}>
                 Primegen
               </span>
-              <span className="text-[7px] md:text-[8px] font-bold uppercase tracking-[0.25em] text-[#000] mt-1">
+              <span className="text-[7px] md:text-[8px] font-bold uppercase tracking-[0.25em] text-[#000] ">
                 Trading Corporation
               </span>
             </div>
