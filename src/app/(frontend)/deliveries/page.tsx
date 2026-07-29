@@ -188,7 +188,7 @@ export default async function DeliveriesPage({
                   {/* Post header -- logo + page name + date, mimicking a Facebook post's top row */}
                   <div className="flex items-center gap-3 px-4 pt-4 pb-3">
                     <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-[#f4f6f2]">
-                      <Image src="/branding/primegen-logo.jpg" alt="Primegen Trading Corporation" fill className="object-contain p-1" />
+                      <Image src="/branding/primegen_trading_logo.png" alt="Primegen Trading Corporation" fill className="object-contain p-1" />
                     </div>
                     <div>
                       <p className="text-[14px] font-bold text-[#01172f] leading-tight">

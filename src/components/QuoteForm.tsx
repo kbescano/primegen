@@ -165,7 +165,7 @@ export default function QuoteForm({ products }: { products: Product[] }) {
             return (
               <div
                 key={index}
-                className="flex flex-col sm:flex-row gap-3 sm:gap-2 sm:items-center bg-slate-50/60 sm:bg-transparent p-3.5 sm:p-0 border border-slate-200/70 sm:border-none rounded-xl sm:rounded-none shadow-xs sm:shadow-none"
+                className="flex flex-col sm:flex-row gap-3 sm:gap-2 sm:items-center bg-slate-50/60 sm:bg-transparent p-3.5 sm:p-0 border border-slate-200/70 sm:border-none shadow-xs sm:shadow-none"
               >
                 <select
                   value={item.materialId}
@@ -203,7 +203,7 @@ export default function QuoteForm({ products }: { products: Product[] }) {
                     onClick={() => removeItem(index)}
                     aria-label="Remove item"
                     disabled={items.length === 1}
-                    className="w-9 h-9 sm:w-7 sm:h-7 flex items-center justify-center flex-shrink-0 text-[#01172f]/40 hover:text-red-600 disabled:opacity-0 disabled:pointer-events-none transition-colors text-xl sm:text-lg rounded-lg sm:rounded-none bg-slate-200/40 sm:bg-transparent"
+                    className="w-9 h-9 sm:w-7 sm:h-7 flex items-center justify-center flex-shrink-0 text-[#01172f]/40 hover:text-red-600 disabled:opacity-0 disabled:pointer-events-none transition-colors text-xl sm:text-lg bg-slate-200/40 sm:bg-transparent"
                   >
                     &times;
                   </button>

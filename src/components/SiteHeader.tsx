@@ -4,6 +4,9 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import { Playfair_Display } from "next/font/google";
+
+const playfair = Playfair_Display({ subsets: ["latin"], weight: ["700", "900"] });
 
 const NAV_LINKS = [
   { href: "/products", label: "Products" },
@@ -20,254 +23,128 @@ export default function SiteHeader() {
 
   useEffect(() => {
     setIsMounted(true);
-  }, []);
+    // Lock body scroll when mobile menu is open
+    if (open) document.body.style.overflow = 'hidden';
+    else document.body.style.overflow = 'unset';
+    
+    return () => { document.body.style.overflow = 'unset'; }
+  }, [open]);
 
   return (
     <>
-      <header className="bg-white backdrop-blur-md py-2 md:py-3.5 sticky top-0 z-50 border-b border-green/15 overflow-hidden">
-        <div
-          className={`max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-20 flex items-center justify-between relative transition-all duration-700 ease-out
-            ${isMounted ? "translate-x-0 opacity-100" : "-translate-x-8 opacity-0"}
-          `}
-        >
-          <Link
-            href="/"
-            className="flex flex-row items-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base font-bold tracking-tight bg-gradient-to-tr from-[#051d00] via-[#3D5F3B] to-[#52b788] bg-clip-text text-transparent mr-2"
-            onClick={() => setOpen(false)}
-          >
+      
+
+      {/* Main Header */}
+      <header 
+        className={`sticky top-0 z-[65] bg-white/80 backdrop-blur-2xl border-b border-[#3D5F3B]/5 transition-all duration-1000 ease-out delay-100
+          ${isMounted ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"}
+        `}
+      >
+        <div className="max-w-[1360px] mx-auto px-6 lg:px-16 h-20 md:h-24 flex items-center justify-between">
+          
+          {/* Logo & Brand Identity */}
+          <Link href="/" className="group flex items-center gap-3 z-[60]" onClick={() => setOpen(false)}>
             <Image
               src="/branding/primegen_trading_logo.png"
               alt="Primegen Logo"
-              width={60}
-              height={60}
-              className="w-8 h-8 sm:w-10 sm:h-10 md:w-[60px] md:h-[60px] object-contain shrink-0"
+              width={90}
+              height={90}
+              className="w-14 h-14 md:w-20 md:h-20 object-contain transition-transform duration-500 group-hover:scale-105"
             />
-            Primegen Trading Corporation
+
+            <div className="flex flex-col justify-center">
+              <span className={`${playfair.className} text-base md:text-lg font-black tracking-[0.05em] text-[#3D5F3B] uppercase leading-none [text-shadow:0_1px_1px_rgba(0,0,0,0.15)] transition-colors duration-300 group-hover:text-[#149911]`}>
+                Primegen
+              </span>
+              <span className="text-[7px] md:text-[8px] font-bold uppercase tracking-[0.25em] text-[#000] mt-1">
+                Trading Corporation
+              </span>
+            </div>
           </Link>
 
-          <button
-            className="flex md:hidden flex-col justify-center gap-1.5 w-6 h-[17px] bg-transparent border-none cursor-pointer shrink-0"
-            aria-label={open ? "Close menu" : "Open menu"}
-            onClick={() => setOpen((v) => !v)}
-          >
-            <span
-              className={`block h-0.5 w-full bg-black rounded transition-transform ${open ? "translate-y-[7.5px] rotate-45" : ""}`}
-            />
-            <span
-              className={`block h-0.5 w-full bg-black rounded transition-opacity ${open ? "opacity-0" : ""}`}
-            />
-            <span
-              className={`block h-0.5 w-full bg-black rounded transition-transform ${open ? "-translate-y-[7.5px] -rotate-45" : ""}`}
-            />
-          </button>
-
-          <nav className="hidden md:flex items-center gap-7">
-            {NAV_LINKS.map((link) => (
-              <span key={link.href} className="flex items-center gap-7">
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center gap-10">
+            {NAV_LINKS.map((link) => {
+              const isActive = pathname === link.href;
+              return (
                 <Link
+                  key={link.href}
                   href={link.href}
-                  className={`relative text-xs font-medium text-[#01172f] pb-1 border-b-2 ${pathname === link.href ? "border-sage" : "border-transparent hover:border-[#149911]"} transition-colors`}
+                  className={`group relative text-[10px] uppercase tracking-[0.2em] font-bold transition-colors duration-500 py-2 outline-none
+                    ${isActive ? "text-[#3D5F3B]" : "text-[#3D5F3B]/90 hover:text-[#3D5F3B]"}
+                  `}
                 >
                   {link.label}
+                  {/* Underline -- shows for the active page and on keyboard focus */}
+                  <span
+                    className={`absolute bottom-0 left-0 w-full h-[1px] bg-[#149911] origin-center transition-all duration-300 group-focus-visible:opacity-100 group-focus-visible:scale-x-100
+                      ${isActive ? "opacity-100 scale-x-100" : "opacity-0 scale-x-0"}
+                    `}
+                  />
                 </Link>
-              </span>
-            ))}
+              );
+            })}
+            
+            {/* Minimalist Solid CTA */}
             <Link
               href="/quote"
-              className="inline-flex items-center justify-center px-7 py-3.5 border-2 border-[#149911] bg-[#fdfffc] text-[#149911] font-bold text-xs hover:bg-[#149911] hover:text-[#fdfffc] transition-colors"
+              className="ml-6 px-8 py-3.5 bg-[#149911] text-white text-[10px] uppercase tracking-[0.2em] font-medium hover:bg-[#3D5F3B] transition-all duration-500 hover:shadow-xl hover:shadow-[#149911]/10"
             >
-              Request a Quote
+              Request Quote
             </Link>
           </nav>
+
+          {/* Mobile Menu Toggle (Minimalist Lines) */}
+          <button
+            className="md:hidden flex flex-col justify-center items-end gap-[5px] w-8 h-8 z-[60]"
+            onClick={() => setOpen(!open)}
+            aria-label="Toggle menu"
+          >
+            <span 
+              className={`block h-[1px] bg-[#3D5F3B] transition-all duration-500 ease-in-out origin-center
+                ${open ? 'w-6 rotate-45 translate-y-[3px]' : 'w-6'}
+              `}
+            />
+            <span 
+              className={`block h-[1px] bg-[#3D5F3B] transition-all duration-500 ease-in-out origin-center
+                ${open ? 'w-6 -rotate-45 -translate-y-[3px]' : 'w-4'}
+              `}
+            />
+          </button>
         </div>
       </header>
-      {/* Desktop Contact Sub-header (Hidden on mobile to save vertical viewport space) */}{" "}
-      <div className="hidden md:block bg-[#fdfffc] text-[#01172f] py-2.5 border-b border-green/15 text-xs">
-        {" "}
-        <div className="max-w-[1360px] mx-auto px-6 lg:px-20 flex items-center justify-between gap-4">
-          {" "}
-          <div className="flex items-center gap-3">
-            {" "}
-            <span className="text-slate-400 font-normal">Phone:</span>{" "}
-            <a
-              href="tel:09171859127"
-              className="font-medium hover:text-[#149911] transition-colors duration-200"
-            >
-              {" "}
-              0917-185-9127{" "}
-            </a>{" "}
-            <span className="text-slate-300">|</span>{" "}
-            <a
-              href="tel:09171339515"
-              className="font-medium hover:text-[#149911] transition-colors duration-200"
-            >
-              {" "}
-              0917-133-9515{" "}
-            </a>{" "}
-          </div>{" "}
-          <div className="flex items-center gap-2">
-            {" "}
-            <span className="text-slate-400 font-normal">Email:</span>{" "}
-            <a
-              href="mailto:sales@primegentradingcorp.com"
-              className="font-medium hover:text-[#149911] transition-colors duration-200"
-            >
-              {" "}
-              sales@primegentradingcorp.com{" "}
-            </a>{" "}
-          </div>{" "}
-        </div>{" "}
-      </div>
-      {/* Mobile Floating Contact Button & Popover Card */}
-      <div className="md:hidden fixed bottom-6 right-6 z-40 flex flex-col items-end">
-        {contactOpen && (
-          <div className="mb-3 p-5 bg-white border border-[#3D5F3B]/15 shadow-[0_20px_50px_-15px_rgba(1,23,47,0.25)] w-72 text-xs text-[#01172f] transition-all duration-200">
-            <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#3D5F3B]/10">
-              <span className="font-black uppercase tracking-tight text-sm text-[#01172f]">
-                Direct Contact
-              </span>
-              <button
-                onClick={() => setContactOpen(false)}
-                className="text-[#01172f]/30 hover:text-red-600 transition-colors p-1"
-                aria-label="Close contact details"
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.5"
-                >
-                  <path d="M18 6L6 18M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-4">
-              <div>
-                <span className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#3D5F3B]/40 mb-2">
-                  Phone Numbers
-                </span>
-                <div className="flex flex-col gap-2">
-                  <a
-                    href="tel:09171859127"
-                    className="flex items-center gap-2.5 font-bold hover:text-[#149911] transition-colors"
-                  >
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className="flex-shrink-0"
-                    >
-                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                    </svg>
-                    0917-185-9127
-                  </a>
-                  <a
-                    href="tel:09171339515"
-                    className="flex items-center gap-2.5 font-bold hover:text-[#149911] transition-colors"
-                  >
-                    <svg
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      className="flex-shrink-0"
-                    >
-                      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-                    </svg>
-                    0917-133-9515
-                  </a>
-                </div>
-              </div>
-
-              <div className="pt-3 border-t border-[#3D5F3B]/10">
-                <span className="block text-[10px] font-bold uppercase tracking-[0.15em] text-[#3D5F3B]/40 mb-2">
-                  Email Address
-                </span>
-                <a
-                  href="mailto:sales@primegentradingcorp.com"
-                  className="flex items-center gap-2.5 font-bold hover:text-[#149911] transition-colors break-all"
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    className="flex-shrink-0"
-                  >
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                    <path d="M22 6l-10 7L2 6" />
-                  </svg>
-                  sales@primegentradingcorp.com
-                </a>
-              </div>
-            </div>
+      {/* Premium Top Bar (Contact Info) - Desktop Only */}
+      <div 
+        className={`hidden md:block bg-[#F8F9F8] border-b border-[#3D5F3B]/5 transition-all duration-1000 ease-out
+          ${isMounted ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"}
+        `}
+      >
+        <div className="max-w-[1360px] mx-auto px-8 lg:px-16 flex items-center justify-between h-9 text-[10px] uppercase tracking-[0.2em] text-[#3D5F3B] font-bold">
+          <div className="flex items-center gap-8">
+            <a href="tel:09171859127" className="hover:text-[#149911] transition-colors duration-300">0917-185-9127</a>
+            <a href="tel:09171339515" className="hover:text-[#149911] transition-colors duration-300">0917-133-9515</a>
           </div>
-        )}
-
-        {/* Floating Action Button -- circular is the right pattern for a FAB, kept as-is */}
-        <button
-          onClick={() => setContactOpen((prev) => !prev)}
-          className="flex items-center justify-center w-13 h-13 p-3.5 bg-[#149911] text-white rounded-full shadow-lg hover:bg-[#103900] active:scale-95 transition-all duration-200"
-          aria-label="Open contact options"
-        >
-          {contactOpen ? (
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            >
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          ) : (
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
-            </svg>
-          )}
-        </button>
+          <a href="mailto:sales@primegentradingcorp.com" className="hover:text-[#149911] transition-colors duration-300">
+            sales@primegentradingcorp.com
+          </a>
+        </div>
       </div>
-      {open && (
-        <div className="md:hidden fixed inset-0 bg-white z-[999] p-7 overflow-y-auto flex flex-col">
-          <button
-            onClick={() => setOpen(false)}
-            aria-label="Close menu"
-            className="self-end p-2 mb-6"
-          >
-            <svg
-              width="22"
-              height="22"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-            >
-              <path d="M18 6L6 18M6 6l12 12" />
-            </svg>
-          </button>
-          {NAV_LINKS.map((link) => (
+
+      {/* Mobile Fullscreen Menu */}
+      <div 
+        className={`fixed inset-0 z-[55] bg-white/95 backdrop-blur-xl flex flex-col justify-center transition-all duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]
+          ${open ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}
+        `}
+      >
+        <nav className="flex flex-col px-10 gap-8 max-w-sm mx-auto w-full">
+          {NAV_LINKS.map((link, i) => (
             <Link
               key={link.href}
               href={link.href}
-              className="block py-3.5 text-xl font-black uppercase tracking-tight text-[#01172f]"
+              className={`text-2xl font-light tracking-[0.1em] text-[#3D5F3B] transition-all duration-700
+                ${open ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}
+              `}
+              style={{ transitionDelay: `${open ? i * 100 + 200 : 0}ms` }}
               onClick={() => setOpen(false)}
             >
               {link.label}
@@ -275,13 +152,73 @@ export default function SiteHeader() {
           ))}
           <Link
             href="/quote"
-            className="block py-3.5 text-xl font-black uppercase tracking-tight text-[#149911]"
+            className={`mt-4 py-4 border-t border-[#3D5F3B]/10 text-sm uppercase tracking-[0.2em] font-medium text-[#149911] flex items-center justify-between group transition-all duration-700
+              ${open ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}
+            `}
+            style={{ transitionDelay: `${open ? NAV_LINKS.length * 100 + 200 : 0}ms` }}
             onClick={() => setOpen(false)}
           >
             Request a Quote
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="transition-transform duration-500 group-hover:translate-x-2">
+              <path d="M5 12h14M12 5l7 7-7 7"/>
+            </svg>
           </Link>
+        </nav>
+      </div>
+
+      {/* Mobile Floating Contact (Sleek FAB) */}
+      <div className="md:hidden fixed bottom-6 right-6 z-40 flex flex-col items-end">
+        {/* Glassmorphic Contact Card */}
+        <div 
+          className={`mb-4 p-6 bg-white/95 backdrop-blur-lg border border-[#3D5F3B]/5 shadow-2xl rounded-xl w-[260px] origin-bottom-right transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]
+            ${contactOpen ? 'opacity-100 scale-100 pointer-events-auto' : 'opacity-0 scale-95 pointer-events-none'}
+          `}
+        >
+          <div className="flex flex-col gap-5">
+            <div>
+              <span className="block text-[8px] uppercase tracking-[0.25em] text-[#3D5F3B]/40 mb-3 font-medium">Direct Lines</span>
+              <div className="flex flex-col gap-3">
+                <a href="tel:09171859127" className="text-sm tracking-widest text-[#3D5F3B] hover:text-[#149911] transition-colors">0917-185-9127</a>
+                <a href="tel:09171339515" className="text-sm tracking-widest text-[#3D5F3B] hover:text-[#149911] transition-colors">0917-133-9515</a>
+              </div>
+            </div>
+            <div className="pt-5 border-t border-[#3D5F3B]/5">
+              <span className="block text-[8px] uppercase tracking-[0.25em] text-[#3D5F3B]/40 mb-3 font-medium">Email</span>
+              <a href="mailto:sales@primegentradingcorp.com" className="text-[11px] tracking-wide text-[#3D5F3B] hover:text-[#149911] transition-colors break-all">
+                sales@primegentradingcorp.com
+              </a>
+            </div>
+          </div>
         </div>
-      )}
+
+        {/* Minimal Toggle Button */}
+        <button
+          onClick={() => setContactOpen(!contactOpen)}
+          className={`w-12 h-12 rounded-full flex items-center justify-center shadow-lg transition-all duration-500 ease-out
+            ${contactOpen ? 'bg-white text-[#3D5F3B] border border-[#3D5F3B]/10' : 'bg-[#3D5F3B] text-white hover:bg-[#149911]'}
+          `}
+          aria-label="Contact options"
+        >
+          <div className="relative w-5 h-5">
+            {/* Phone Icon */}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
+              className={`absolute inset-0 transition-all duration-500
+                ${contactOpen ? 'opacity-0 rotate-90 scale-50' : 'opacity-100 rotate-0 scale-100'}
+              `}
+            >
+              <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+            </svg>
+            {/* Close Icon */}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"
+              className={`absolute inset-0 transition-all duration-500
+                ${contactOpen ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-50'}
+              `}
+            >
+              <path d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+        </button>
+      </div>
     </>
   );
 }

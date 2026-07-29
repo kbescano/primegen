@@ -110,26 +110,26 @@ export default async function ProductsPage({ searchParams }: Props) {
                     className="group sm:col-span-2 lg:col-span-3 relative flex flex-col overflow-hidden bg-[#fdfffc] outline-none cursor-pointer border border-[#3D5F3B]/10 transition-all duration-500 hover:border-[#149911]/30"
                   >
                     {/* Text Section */}
-                    <div className="pt-14 md:pt-20 pb-11 md:pb-14 px-8 md:px-14 text-left relative z-10">
-                      <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#149911] mb-5">
+                    <div className="pt-7 md:pt-20 pb-5 md:pb-14 px-6 md:px-14 text-left relative z-10">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#149911] mb-3 md:mb-5">
                         Featured Capability
                       </p>
 
-                      <div className="w-14 h-[2px] bg-[#149911] mb-7 origin-left scale-x-100 transition-transform duration-500 ease-out group-hover:scale-x-150"></div>
+                      <div className="w-14 h-[2px] bg-[#149911] mb-4 md:mb-7 origin-left scale-x-100 transition-transform duration-500 ease-out group-hover:scale-x-150"></div>
 
-                      <h3 className="text-[34px] md:text-[52px] font-black text-[#3D5F3B] tracking-tighter uppercase leading-[0.92]">
+                      <h3 className="text-[26px] md:text-[52px] font-black text-[#3D5F3B] tracking-tighter uppercase leading-[0.92]">
                         {label}.
                       </h3>
 
                       {cat?.description && (
-                        <p className="mt-6 text-[15px] md:text-[17px] text-[#3D5F3B]/60 font-medium max-w-[560px] leading-relaxed">
+                        <p className="mt-3 md:mt-6 text-[13px] md:text-[17px] text-[#3D5F3B]/60 font-medium max-w-[560px] leading-relaxed">
                           {cat.description}
                         </p>
                       )}
                     </div>
 
                     {/* Video Section */}
-                    <div className="relative w-full aspect-video md:aspect-[21/9] bg-[#3D5F3B] overflow-hidden">
+                    <div className="relative w-full aspect-[4/3] md:aspect-[21/9] bg-[#3D5F3B] overflow-hidden">
                       <video
                         src={featuredVideo}
                         autoPlay
