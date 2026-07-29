@@ -24,7 +24,7 @@ export default function SiteHeader() {
 
   return (
     <>
-      <header className="bg-white backdrop-blur-md py-2 md:py-3.5 sticky top-0 z-50 border-b border-[#3D5F3B]/15 overflow-hidden">
+      <header className="bg-white backdrop-blur-md py-2 md:py-3.5 sticky top-0 z-50 border-b border-green/15 overflow-hidden">
         <div
           className={`max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-20 flex items-center justify-between relative transition-all duration-700 ease-out
             ${isMounted ? "translate-x-0 opacity-100" : "-translate-x-8 opacity-0"}
@@ -32,7 +32,7 @@ export default function SiteHeader() {
         >
           <Link
             href="/"
-            className="flex flex-row items-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base font-black tracking-tight text-[#3D5F3B] mr-2"
+            className="flex flex-row items-center gap-1.5 sm:gap-2 text-xs sm:text-sm md:text-base font-bold tracking-tight bg-gradient-to-tr from-[#051d00] via-[#3D5F3B] to-[#52b788] bg-clip-text text-transparent mr-2"
             onClick={() => setOpen(false)}
           >
             <Image
@@ -51,13 +51,13 @@ export default function SiteHeader() {
             onClick={() => setOpen((v) => !v)}
           >
             <span
-              className={`block h-0.5 w-full bg-[#01172f] rounded transition-transform ${open ? "translate-y-[7.5px] rotate-45" : ""}`}
+              className={`block h-0.5 w-full bg-black rounded transition-transform ${open ? "translate-y-[7.5px] rotate-45" : ""}`}
             />
             <span
-              className={`block h-0.5 w-full bg-[#01172f] rounded transition-opacity ${open ? "opacity-0" : ""}`}
+              className={`block h-0.5 w-full bg-black rounded transition-opacity ${open ? "opacity-0" : ""}`}
             />
             <span
-              className={`block h-0.5 w-full bg-[#01172f] rounded transition-transform ${open ? "-translate-y-[7.5px] -rotate-45" : ""}`}
+              className={`block h-0.5 w-full bg-black rounded transition-transform ${open ? "-translate-y-[7.5px] -rotate-45" : ""}`}
             />
           </button>
 
@@ -66,11 +66,7 @@ export default function SiteHeader() {
               <span key={link.href} className="flex items-center gap-7">
                 <Link
                   href={link.href}
-                  className={`relative text-xs font-bold uppercase tracking-[0.1em] text-[#01172f] pb-1 border-b-2 transition-colors duration-200 ${
-                    pathname === link.href
-                      ? "border-[#149911]"
-                      : "border-transparent hover:border-[#149911]/40"
-                  }`}
+                  className={`relative text-xs font-medium text-[#01172f] pb-1 border-b-2 ${pathname === link.href ? "border-sage" : "border-transparent hover:border-[#149911]"} transition-colors`}
                 >
                   {link.label}
                 </Link>
@@ -78,7 +74,7 @@ export default function SiteHeader() {
             ))}
             <Link
               href="/quote"
-              className="inline-flex items-center justify-center px-7 py-3.5 border-2 border-[#149911] bg-[#fdfffc] text-[#149911] font-bold text-xs uppercase tracking-[0.1em] transition-all duration-300 hover:bg-[#149911] hover:text-[#fdfffc] hover:-translate-y-0.5 hover:shadow-[0_10px_30px_-10px_rgba(20,153,17,0.4)]"
+              className="inline-flex items-center justify-center px-7 py-3.5 border-2 border-[#149911] bg-[#fdfffc] text-[#149911] font-bold text-xs hover:bg-[#149911] hover:text-[#fdfffc] transition-colors"
             >
               Request a Quote
             </Link>
