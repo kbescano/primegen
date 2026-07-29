@@ -14,8 +14,6 @@ export const metadata = {
 
 const STAGGER_STEP = 60; // ms between each card's reveal
 const STAGGER_CAP = 480; // ms max delay, so long lists don't take forever to fully reveal
-const STEEL_FABRICATION_VIDEO =
-  "https://www.pexels.com/download/video/30456101/";
 
 type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
@@ -27,7 +25,7 @@ export default async function ProductsPage({ searchParams }: Props) {
   const resolvedParams = await searchParams;
   const q = typeof resolvedParams?.q === "string" ? resolvedParams.q : "";
 
-  const [categoriesRes, materialsRes] = await Promise.all([
+  const [categoriesRes, materialsRes, featuredSlideRes] = await Promise.all([
     payload.find({
       collection: "categories",
       sort: "order",
@@ -40,7 +38,14 @@ export default async function ProductsPage({ searchParams }: Props) {
       depth: 2,
       ...(q ? { where: { name: { contains: q } } } : {}),
     }),
+    payload.find({
+      collection: "hero-slides",
+      where: { showInFeaturedCarousel: { equals: true } },
+      limit: 1,
+    }),
   ]);
+
+  const featuredVideo = featuredSlideRes.docs[0]?.video as string | undefined;
 
   const categoryDocs = categoriesRes.docs as any[];
 
@@ -123,7 +128,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                     {/* Video Section */}
                     <div className="relative w-full aspect-video md:aspect-[21/9] bg-[#01172f] overflow-hidden">
                       <video
-                        src={STEEL_FABRICATION_VIDEO}
+                        src={featuredVideo}
                         autoPlay
                         loop
                         muted

@@ -12,13 +12,13 @@ type Category = {
   image?: { url?: string; alt?: string };
 };
 
-const STEEL_FABRICATION_VIDEO =
-  "https://www.pexels.com/download/video/30456101/";
 
 export default function FeaturedCarousel({
   categories,
+  featuredVideo,
 }: {
   categories: Category[];
+  featuredVideo?: string;
 }) {
   const [revealed, setRevealed] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -87,7 +87,7 @@ export default function FeaturedCarousel({
               {/* Video Section */}
               <div className="relative w-full aspect-video md:aspect-[21/9] bg-[#01172f] overflow-hidden">
                 <video
-                  src={STEEL_FABRICATION_VIDEO}
+                  src={featuredVideo}
                   autoPlay
                   loop
                   muted

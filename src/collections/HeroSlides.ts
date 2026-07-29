@@ -47,6 +47,15 @@ export const HeroSlides: CollectionConfig = {
       admin: { description: 'Direct video file URL (.mp4) or local path like /videos/hero-1.mp4' },
     },
     {
+      name: 'showInFeaturedCarousel',
+      type: 'checkbox',
+      defaultValue: false,
+      admin: {
+        description:
+          'Check this to show this slide as the special wide video card in the Featured Carousel (homepage + Products page) instead of the rotating hero section.',
+      },
+    },
+    {
       name: 'order',
       type: 'number',
       defaultValue: 0,

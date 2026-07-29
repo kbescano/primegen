@@ -58,15 +58,27 @@ const VALUE_PROPS = [
 export default async function HomePage() {
   const payload = await getPayloadClient();
 
-  const [heroSlides, categories] = await Promise.all([
+  const [heroSlides, categories, featuredSlideRes] = await Promise.all([
     payload.find({
       collection: "hero-slides",
-      where: { enabled: { equals: true } },
+      where: {
+        and: [
+          { enabled: { equals: true } },
+          { showInFeaturedCarousel: { not_equals: true } },
+        ],
+      },
       sort: "order",
       limit: 10,
     }),
     payload.find({ collection: "categories", sort: "order", limit: 100 }),
+    payload.find({
+      collection: "hero-slides",
+      where: { showInFeaturedCarousel: { equals: true } },
+      limit: 1,
+    }),
   ]);
+
+  const featuredVideo = featuredSlideRes.docs[0]?.video as string | undefined;
 
   const slides: HeroSlide[] =
     heroSlides.docs.length > 0
@@ -128,7 +140,7 @@ export default async function HomePage() {
           </h2>
 
           <div className="mt-10">
-            <FeaturedCarousel categories={categories.docs as any} />
+            <FeaturedCarousel categories={categories.docs as any} featuredVideo={featuredVideo} />
           </div>
         </div>
       </section>
