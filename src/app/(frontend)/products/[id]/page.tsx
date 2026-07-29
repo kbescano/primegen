@@ -12,7 +12,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params
   try {
     const payload = await getPayloadClient()
-    const material: any = await payload.findByID({ collection: 'materials', id, depth: 1 })
+    const material: any = await payload.findByID({ collection: 'products', id, depth: 1 })
     if (!material) return { title: 'Product Not Found' }
 
     const categoryName = material.categoryRef?.label || material.category || ''
