@@ -89,7 +89,7 @@ export default async function ProductsPage({ searchParams }: Props) {
 
         {/* Categories Grid (Top Section) -- full-bleed hero panels, each stagger in individually */}
         {orderedSlugs.length > 0 && !q && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mb-24 lg:mb-36">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-24 lg:mb-36">
             {orderedSlugs.map((slug, index) => {
               const cat = categoryBySlug[slug];
               const label = cat?.label || slug;
@@ -99,7 +99,7 @@ export default async function ProductsPage({ searchParams }: Props) {
               const isSteelFabrication =
                 label.trim().toLowerCase() === "steel fabrication";
 
-              // Special wide video hero card -- only renders for the "Steel Fabrication" category
+              // Special wide video hero card -- spans the full grid width regardless of column count
               if (isSteelFabrication) {
                 return (
                   <ScrollReveal
@@ -107,26 +107,29 @@ export default async function ProductsPage({ searchParams }: Props) {
                     as="a"
                     href={`#${slug}`}
                     style={{ transitionDelay: `${delay}ms` }}
-                    className="group md:col-span-2 relative flex flex-col overflow-hidden bg-white outline-none cursor-pointer border border-[#01172f]/10 transition-all duration-700 hover:shadow-[0_20px_60px_-15px_rgba(1,23,47,0.12)]"
+                    className="group sm:col-span-2 lg:col-span-3 relative flex flex-col overflow-hidden bg-[#fdfffc] outline-none cursor-pointer border border-[#3D5F3B]/10 transition-all duration-500 hover:border-[#149911]/30"
                   >
                     {/* Text Section */}
-                    <div className="pt-12 md:pt-16 pb-10 px-8 md:px-12 text-left relative z-10">
-                      {/* Bold Accent Line */}
-                      <div className="w-12 h-[4px] bg-[#01172f] mb-6 transform origin-left transition-transform duration-500 ease-out group-hover:scale-x-150"></div>
+                    <div className="pt-14 md:pt-20 pb-11 md:pb-14 px-8 md:px-14 text-left relative z-10">
+                      <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#149911] mb-5">
+                        Featured Capability
+                      </p>
 
-                      <h3 className="text-[32px] md:text-[48px] font-black text-[#01172f] tracking-tighter uppercase leading-none">
+                      <div className="w-14 h-[2px] bg-[#149911] mb-7 origin-left scale-x-100 transition-transform duration-500 ease-out group-hover:scale-x-150"></div>
+
+                      <h3 className="text-[34px] md:text-[52px] font-black text-[#3D5F3B] tracking-tighter uppercase leading-[0.92]">
                         {label}.
                       </h3>
 
                       {cat?.description && (
-                        <p className="mt-5 text-[15px] md:text-[17px] text-[#01172f]/70 font-medium max-w-[560px] leading-relaxed">
+                        <p className="mt-6 text-[15px] md:text-[17px] text-[#3D5F3B]/60 font-medium max-w-[560px] leading-relaxed">
                           {cat.description}
                         </p>
                       )}
                     </div>
 
                     {/* Video Section */}
-                    <div className="relative w-full aspect-video md:aspect-[21/9] bg-[#01172f] overflow-hidden">
+                    <div className="relative w-full aspect-video md:aspect-[21/9] bg-[#3D5F3B] overflow-hidden">
                       <video
                         src={featuredVideo}
                         autoPlay
@@ -136,12 +139,12 @@ export default async function ProductsPage({ searchParams }: Props) {
                         className="absolute inset-0 w-full h-full object-cover transition-transform duration-[1.5s] ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
                       />
 
-                      {/* Subtle Cinematic Overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/10 pointer-events-none transition-opacity duration-700 group-hover:opacity-50" />
+                      {/* Tinted duotone overlay -- brand green, not neutral black */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#3D5F3B]/50 via-[#3D5F3B]/5 to-transparent pointer-events-none transition-opacity duration-700 group-hover:opacity-60" />
 
-                      {/* Premium Sharp Button Overlay */}
+                      {/* Glass CTA badge */}
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-                        <span className="flex items-center gap-4 text-[12px] font-bold uppercase tracking-[0.25em] text-white bg-white/10 backdrop-blur-md px-8 py-4 border border-white/20 transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:bg-white group-hover:text-[#01172f] group-hover:border-white shadow-2xl scale-95 group-hover:scale-100">
+                        <span className="flex items-center gap-4 text-[12px] font-bold uppercase tracking-[0.25em] text-[#fdfffc] bg-[#fdfffc]/10 backdrop-blur-md px-8 py-4 border border-[#fdfffc]/20 transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:bg-[#fdfffc] group-hover:text-[#3D5F3B] group-hover:border-[#fdfffc] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.4)] scale-95 group-hover:scale-100">
                           Explore
                           <svg
                             width="16"
@@ -169,7 +172,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                   as="a"
                   href={`#${slug}`}
                   style={{ transitionDelay: `${delay}ms` }}
-                  className="group relative flex items-end aspect-[4/5] md:aspect-[3/4] overflow-hidden bg-[#f8f9f7] outline-none cursor-pointer"
+                  className="group relative flex items-end aspect-[4/5] overflow-hidden bg-[#f8f9f7] outline-none cursor-pointer border border-[#3D5F3B]/10 transition-colors duration-500 hover:border-[#149911]/30"
                 >
                   {cardImage ? (
                     <Image
@@ -177,39 +180,37 @@ export default async function ProductsPage({ searchParams }: Props) {
                       alt={label}
                       fill
                       className="object-cover transition-transform duration-[1.5s] ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
-                      sizes="(max-width: 768px) 100vw, 50vw"
+                      sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     />
                   ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-[#01172f]/20 text-[10px] font-medium uppercase tracking-widest">
+                    <div className="absolute inset-0 flex items-center justify-center text-[#3D5F3B]/20 text-[10px] font-medium uppercase tracking-widest">
                       No Image
                     </div>
                   )}
 
-                  {/* Gradient so white text stays legible over any photo */}
-                  <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />
+                  {/* Tinted duotone scrim -- brand green, not neutral black */}
+                  <div className="absolute inset-x-0 bottom-0 h-3/4 bg-gradient-to-t from-[#3D5F3B]/85 via-[#3D5F3B]/25 to-transparent pointer-events-none" />
 
-                  {/* Eyebrow + bold header + Discover link, bottom-left */}
-                  <div className="relative z-10 p-6 md:p-10 flex flex-col gap-2 md:gap-3 text-white">
-                    <h3 className="text-[#fdfffc] text-[28px] md:text-[36px] font-bold uppercase tracking-tight leading-[1.05]">
+                  {/* Eyebrow + bold header + glass Browse badge, bottom-left */}
+                  <div className="relative z-10 p-5 md:p-7 flex flex-col gap-2.5 md:gap-3 text-[#fdfffc]">
+                    <h3 className="text-[20px] md:text-[26px] font-black uppercase tracking-tight leading-[1.0]">
                       {label}
                     </h3>
-                    <span className="mt-2 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-[0.15em]">
-                      Explore
-                      <span className="flex items-center justify-center w-7 h-7 rounded-full border border-white/50 transition-colors duration-300 group-hover:bg-white group-hover:text-black">
-                        <svg
-                          width="12"
-                          height="12"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="2"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          className="transition-transform duration-300 group-hover:translate-x-0.5"
-                        >
-                          <path d="M9 18l6-6-6-6" />
-                        </svg>
-                      </span>
+                    <span className="inline-flex items-center gap-2.5 w-fit text-[10px] font-bold uppercase tracking-[0.18em] bg-[#fdfffc]/10 backdrop-blur-md px-3.5 py-2 border border-[#fdfffc]/20 transition-all duration-300 group-hover:bg-[#fdfffc] group-hover:text-[#3D5F3B] group-hover:border-[#fdfffc]">
+                      Browse
+                      <svg
+                        width="11"
+                        height="11"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="transition-transform duration-300 group-hover:translate-x-0.5"
+                      >
+                        <path d="M9 18l6-6-6-6" />
+                      </svg>
                     </span>
                   </div>
                 </ScrollReveal>
