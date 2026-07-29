@@ -119,7 +119,7 @@ export default function SiteHeader() {
           ${isMounted ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"}
         `}
       >
-        <div className="max-w-[1360px] mx-auto px-8 lg:px-16 flex items-center justify-between h-9 text-[10px] uppercase tracking-[0.2em] text-[#3D5F3B] font-bold">
+        <div className="max-w-[1360px] mx-auto px-8 lg:px-16 flex items-center justify-between h-9 text-[8px] uppercase tracking-[0.2em] text-[#3D5F3B] font-bold">
           <div className="flex items-center gap-8">
             <a href="tel:09171859127" className="hover:text-[#149911] transition-colors duration-300">0917-185-9127</a>
             <a href="tel:09171339515" className="hover:text-[#149911] transition-colors duration-300">0917-133-9515</a>
