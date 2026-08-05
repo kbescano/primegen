@@ -18,6 +18,7 @@ import { Suppliers } from './collections/Suppliers'
 import { Categories } from './collections/Categories'
 import { Deliveries } from './collections/Deliveries'
 import { Clients } from './collections/Clients'
+import { Orders } from './collections/Orders'
 import { ClientQuotations } from './collections/ClientQuotations'
 import { SupplierPurchaseOrders } from './collections/SupplierPurchaseOrders'
 import { AboutPage } from './globals/AboutPage'
@@ -55,6 +56,7 @@ export default buildConfig({
     Categories,
     Deliveries,
     Clients,
+    Orders,
     ClientQuotations,
     SupplierPurchaseOrders,
   ],

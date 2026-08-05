@@ -61,7 +61,7 @@ export default function QuoteForm({ products }: { products: Product[] }) {
       source: "website",
       items: items
         .filter((i) => i.materialId)
-        .map((i) => ({ product: i.materialId, quantity: i.quantity })),
+        .map((i) => ({ material: i.materialId, quantity: i.quantity })),
     };
     try {
       const res = await fetch("/api/quotation-requests", {

@@ -19,7 +19,7 @@ async function seed() {
         email: 'admin@sturdybuild.example',
         password: 'ChangeMe123!',
         name: 'Admin',
-        role: 'super-admin',
+        role: 'admin',
       },
     })
     console.log('Created admin user: admin@sturdybuild.example / ChangeMe123!')

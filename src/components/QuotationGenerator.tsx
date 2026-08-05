@@ -2,14 +2,16 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import ClientPickerModal from '@/components/ClientPickerModal'
 
 type LineItem = {
   qty: number
   unit: string
   description: string
-  unitPrice: number
+  unitCost: number
+  marginAmount: number
   imageDataUrl?: string
 }
 
@@ -26,14 +28,19 @@ export type QuotationInitial = {
   discountAmount?: number
   deliveryFee?: number
   sourceRequestId?: string
-  items?: LineItem[]
+  status?: string
+  items?: Array<{ qty: number; unit: string; description: string; unitCost?: number; marginAmount?: number; marginPercent?: number; unitPrice?: number }>
 }
 
 const peso = (n: number) =>
   n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
+function unitPriceOf(item: LineItem): number {
+  return item.unitCost + item.marginAmount
+}
+
 const BASE_TERMS = [
-  '', // dynamic -- filled in at render time based on the VAT checkbox
+  '', 
   'This quotation is valid for 7 days from the date of issue. Prices and availability are subject to change without prior notice after this period.',
   'Full Payment before Delivery; Delivery will be arranged upon confirmation of full payment.',
   'Delivery timelines are estimates and depend on product availability and logistics. We shall not be held liable for delays due to causes beyond our control, including but not limited to supplier delays, transportation issues, or force majeure events.',
@@ -48,11 +55,16 @@ export default function QuotationGenerator({
   initial,
   showBackToList = false,
   showClientPicker = false,
+  products = [],
 }: {
   initial?: QuotationInitial
   showBackToList?: boolean
   showClientPicker?: boolean
+  products?: { id: string | number; name: string; unit?: string }[]
 }) {
+  const router = useRouter()
+  const isEditing = Boolean(initial?.id)
+
   const [quotationNumber, setQuotationNumber] = useState(initial?.quotationNumber ?? '')
   const [quotationDate, setQuotationDate] = useState(initial?.quotationDate ?? new Date().toISOString().slice(0, 10))
   const [customerName, setCustomerName] = useState(initial?.customerName ?? '')
@@ -60,24 +72,62 @@ export default function QuotationGenerator({
   const [address, setAddress] = useState(initial?.address ?? '')
   const [contactNumber, setContactNumber] = useState(initial?.contactNumber ?? '')
   const [salesPerson, setSalesPerson] = useState(initial?.salesPerson ?? '')
+  const [docStatus, setDocStatus] = useState<string>(initial?.status ?? '')
   const [items, setItems] = useState<LineItem[]>(
     initial?.items && initial.items.length > 0
-      ? initial.items
-      : [{ qty: 1, unit: 'pcs', description: '', unitPrice: 0 }]
+      ? initial.items.map((i) => {
+          const unitCost = i.unitCost ?? i.unitPrice ?? 0
+          const marginAmount =
+            i.marginAmount ?? (i.marginPercent ? unitCost * (i.marginPercent / 100) : 0)
+          return {
+            qty: i.qty,
+            unit: i.unit,
+            description: i.description,
+            unitCost,
+            marginAmount,
+          }
+        })
+      : [{ qty: 1, unit: 'pcs', description: '', unitCost: 0, marginAmount: 0 }]
   )
   const [hasVat, setHasVat] = useState((initial?.vatRate ?? 12) > 0)
   const [vatRate, setVatRate] = useState(initial?.vatRate && initial.vatRate > 0 ? initial.vatRate : 12)
-  const [discountAmount, setDiscountAmount] = useState(initial?.discountAmount ?? 0) // flat peso amount, not a percentage
+  const [discountAmount, setDiscountAmount] = useState(initial?.discountAmount ?? 0)
   const [deliveryFee, setDeliveryFee] = useState(initial?.deliveryFee ?? 0)
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveErrorDetail, setSaveErrorDetail] = useState('')
   const [pickerOpen, setPickerOpen] = useState(showClientPicker)
-  const sourceRequestId = initial?.sourceRequestId // set once at creation time, never user-editable
+  const [reminderOpen, setReminderOpen] = useState(false)
+  const [confirmApprovalOpen, setConfirmApprovalOpen] = useState(false)
+  const [pendingStatus, setPendingStatus] = useState<string>('draft')
+  const sourceRequestId = initial?.sourceRequestId 
 
-  const subtotal = useMemo(() => items.reduce((sum, i) => sum + i.qty * i.unitPrice, 0), [items])
+  useEffect(() => {
+    if (isEditing) {
+      fetch(`/api/client-quotations/${initial?.id}?depth=0`, { credentials: 'include' })
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.status) {
+            setDocStatus(data.status)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [isEditing, initial?.id])
+
+  // 👇 Locks the form inputs when quotation is formally approved
+  const isLocked = docStatus === 'quotation_approved' || docStatus === 'order_confirmed'
+
+  const subtotal = useMemo(
+    () => items.reduce((sum, i) => sum + i.qty * unitPriceOf(i), 0),
+    [items]
+  )
+  const totalMarkup = useMemo(
+    () => items.reduce((sum, i) => sum + i.qty * i.marginAmount, 0),
+    [items]
+  )
   const hasDiscount = discountAmount > 0
   const hasDeliveryFee = deliveryFee > 0
-  // Order: Subtotal -> less Discount -> plus Delivery Fee -> VAT applied to that combined figure -> Total
+  
   const netAfterDiscount = subtotal - discountAmount
   const netWithDelivery = netAfterDiscount + deliveryFee
   const vat = useMemo(() => (hasVat ? netWithDelivery * (vatRate / 100) : 0), [netWithDelivery, vatRate, hasVat])
@@ -92,10 +142,12 @@ export default function QuotationGenerator({
   }, [hasVat])
 
   function updateItem(index: number, patch: Partial<LineItem>) {
+    if (isLocked) return
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)))
   }
 
   function handleImageSelect(index: number, file: File | null) {
+    if (isLocked) return
     if (!file) {
       updateItem(index, { imageDataUrl: undefined })
       return
@@ -107,9 +159,8 @@ export default function QuotationGenerator({
     reader.readAsDataURL(file)
   }
 
-  const isEditing = Boolean(initial?.id)
-
   function handleSelectClient(c: { name: string; company?: string; address?: string; phone?: string }) {
+    if (isLocked) return
     setCustomerName(c.name)
     setCompany(c.company ?? '')
     setAddress(c.address ?? '')
@@ -149,11 +200,28 @@ export default function QuotationGenerator({
         })
       }
     } catch {
-      // non-critical -- never block the quotation save flow if this fails
+      // non-critical
     }
   }
 
-  async function saveQuotation() {
+  function getMissingFields(): string[] {
+    const missing: string[] = []
+    if (!customerName.trim()) missing.push('Customer Name')
+    if (!company.trim()) missing.push('Company')
+    if (!address.trim()) missing.push('Address')
+    if (!contactNumber.trim()) missing.push('Contact Number')
+    if (!salesPerson.trim()) missing.push('Sales Person')
+    items.forEach((item, i) => {
+      const label = item.description.trim() || `Item ${i + 1}`
+      if (!item.description.trim()) missing.push(`Item ${i + 1} -- Description`)
+      if (!item.unitCost) missing.push(`${label} -- Supplier Cost`)
+      if (!item.marginAmount) missing.push(`${label} -- Margin Amount`)
+    })
+    return missing
+  }
+
+  async function saveQuotation(targetStatus: string = 'draft') {
+    if (isLocked) return
     setSaving('saving')
     try {
       const url = isEditing ? `/api/client-quotations/${initial?.id}` : '/api/client-quotations'
@@ -169,12 +237,15 @@ export default function QuotationGenerator({
           address,
           contactNumber,
           salesPerson,
-          items: items.map(({ imageDataUrl, ...rest }) => rest),
+          items: items.map(({ imageDataUrl, ...rest }) => ({
+            ...rest,
+            unitPrice: unitPriceOf(rest as LineItem),
+          })),
           vatRate: hasVat ? vatRate : 0,
           discountAmount,
           deliveryFee,
           sourceRequestId,
-          status: 'draft',
+          status: targetStatus,
         }),
       })
       if (!res.ok) {
@@ -187,8 +258,14 @@ export default function QuotationGenerator({
       }
       const saved = await res.json()
       setQuotationNumber(saved.doc.quotationNumber)
+      setDocStatus(targetStatus)
       await upsertClientRecord()
       setSaving('saved')
+
+      if (sourceRequestId) {
+        router.push(`/admin-dashboard/pipeline/${sourceRequestId}?step=confirmation`)
+      }
+      
     } catch (err: any) {
       setSaving('error')
       setSaveErrorDetail(err?.message || 'Unknown error')
@@ -196,29 +273,110 @@ export default function QuotationGenerator({
   }
 
   const inputClass =
-    'w-full px-3.5 py-2.5 border border-gray-300 rounded text-sm text-[#01172f] placeholder:text-gray-400 hover:border-[#01172f]/30 focus:outline-none focus:border-[#149911] focus:ring-1 focus:ring-[#149911]/25 transition-all duration-200'
+    'w-full px-3.5 py-2.5 border border-gray-300 rounded text-sm text-[#01172f] placeholder:text-gray-400 hover:border-[#01172f]/30 focus:outline-none focus:border-[#149911] focus:ring-1 focus:ring-[#149911]/25 transition-all duration-200 disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed'
   const labelClass = 'block text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1.5'
 
   return (
     <div className="max-w-5xl mx-auto p-4 md:p-6 bg-[#fdfffc]">
-      {pickerOpen && (
+      {pickerOpen && !isLocked && (
         <ClientPickerModal onSelect={handleSelectClient} onSkip={() => setPickerOpen(false)} />
       )}
+      
+      {reminderOpen && !isLocked && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white max-w-md w-full p-6 shadow-[0_30px_80px_-20px_rgba(1,23,47,0.35)]">
+            <div className={`w-8 h-[3px] mb-3 ${pendingStatus === 'pending_approval' ? 'bg-red-600' : 'bg-amber-500'}`} />
+            <h2 className="text-base font-black uppercase tracking-tight text-[#01172f] mb-1">
+              {pendingStatus === 'pending_approval' ? 'Missing Required Fields' : 'A few fields look empty'}
+            </h2>
+            <p className="text-sm text-gray-500 mb-4">
+              {pendingStatus === 'pending_approval'
+                ? 'You cannot send this quotation for approval until all required fields are filled out:'
+                : 'You can still save this as a draft, but double-check these first:'}
+            </p>
+            <ul className="flex flex-col gap-1.5 mb-6 max-h-[220px] overflow-y-auto">
+              {getMissingFields().map((f, i) => (
+                <li key={i} className="flex items-center gap-2 text-sm text-[#01172f]">
+                  <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${pendingStatus === 'pending_approval' ? 'bg-red-600' : 'bg-amber-500'}`} />
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setReminderOpen(false)}
+                className={`flex-1 py-2.5 border-2 font-bold text-sm uppercase tracking-wide transition-colors ${
+                  pendingStatus === 'pending_approval'
+                    ? 'border-red-600 text-red-600 hover:bg-red-600 hover:text-white'
+                    : 'border-[#3D5F3B] text-[#3D5F3B] hover:bg-[#3D5F3B] hover:text-white'
+                }`}
+              >
+                Go Back and Fix
+              </button>
+              
+              {pendingStatus !== 'pending_approval' && (
+                <button
+                  onClick={() => {
+                    setReminderOpen(false)
+                    saveQuotation(pendingStatus)
+                  }}
+                  className="flex-1 py-2.5 bg-[#149911] text-white font-bold text-sm uppercase tracking-wide hover:bg-[#103900] transition-colors"
+                >
+                  Save Anyway
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmApprovalOpen && !isLocked && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white max-w-md w-full p-6 shadow-[0_30px_80px_-20px_rgba(1,23,47,0.35)] animate-in fade-in zoom-in-95 duration-200">
+            <div className="w-8 h-[3px] bg-[#d97706] mb-3" />
+            <h2 className="text-base font-black uppercase tracking-tight text-[#01172f] mb-1">
+              Confirm Approval Request
+            </h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Are you sure you want to send this quotation for approval? Please verify that all client details, items, costs, and margins are correct before proceeding.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmApprovalOpen(false)}
+                className="flex-1 py-2.5 border-2 border-gray-300 text-gray-600 font-bold text-sm uppercase tracking-wide hover:border-gray-400 hover:text-gray-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setConfirmApprovalOpen(false)
+                  saveQuotation('pending_approval')
+                }}
+                disabled={saving === 'saving'}
+                className="flex-1 py-2.5 bg-[#d97706] text-white font-bold text-sm uppercase tracking-wide hover:bg-[#b45309] transition-colors disabled:opacity-50"
+              >
+                {saving === 'saving' ? 'Sending...' : 'Confirm & Send'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @media print {
-    @page {
-      size: A4;
-      margin: 8mm;
-    }
-    * {
-      -webkit-print-color-adjust: exact !important;
-      print-color-adjust: exact !important;
-      color-adjust: exact !important;
-    }
-    .quotation-print-doc {
-      zoom: 0.8;
-    }
-  }
+          @page {
+            size: A4;
+            margin: 8mm;
+          }
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+          .quotation-print-doc {
+            zoom: 0.8;
+          }
+        }
       `}</style>
 
       {/* ===== FORM (hidden when printing) ===== */}
@@ -226,10 +384,10 @@ export default function QuotationGenerator({
         <div className="mb-8">
           {showBackToList && (
             <Link
-              href="/admin-dashboard/client-quotation"
+              href={sourceRequestId ? `/admin-dashboard/pipeline/${sourceRequestId}?step=confirmation` : '/admin-dashboard/client-quotation'}
               className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.1em] text-[#01172f]/50 hover:text-[#149911] transition-colors mb-4"
             >
-              &larr; Back to Client Quotations
+              &larr; Back to Pipeline
             </Link>
           )}
           <div className="w-8 h-[3px] bg-[#149911] mb-4" />
@@ -237,10 +395,24 @@ export default function QuotationGenerator({
             {isEditing ? 'Edit Client Quotation' : 'Client Quotation Generator'}
           </h1>
           <p className="text-sm text-gray-500 max-w-[560px]">
-            Fill in the details below. Save to auto-generate the quotation number, then use Print /
-            Save as PDF to send to the client.
+            {isLocked 
+              ? 'This quotation has been approved. It is locked and cannot be edited unless an admin changes its status back to draft.'
+              : 'Fill in the details below. Save to auto-generate the quotation number, then use Print / Save as PDF to send to the client.'}
           </p>
         </div>
+
+        {isLocked && (
+          <p className="flex items-start gap-2.5 text-xs text-blue-800 bg-blue-50 border border-blue-200 rounded px-4 py-3 mb-8">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0 mt-0.5">
+              <circle cx="12" cy="12" r="10" />
+              <line x1="12" y1="16" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12.01" y2="8" />
+            </svg>
+            <span>
+              <strong>Quotation Approved:</strong> Editing is disabled for this quotation. You may use the Print / Save as PDF button below.
+            </span>
+          </p>
+        )}
 
         <p className="flex items-start gap-2.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-4 py-3 mb-8">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0 mt-0.5">
@@ -263,15 +435,15 @@ export default function QuotationGenerator({
               className={inputClass}
               value={quotationDate}
               onChange={(e) => setQuotationDate(e.target.value)}
+              disabled={isLocked}
             />
           </div>
           <div>
             <label className={labelClass}>Quotation #</label>
             <input
-              className={`${inputClass} font-mono`}
-              value={quotationNumber}
-              onChange={(e) => setQuotationNumber(e.target.value)}
-              placeholder="Auto-generated on save (YYYY-#####)"
+              className={`${inputClass} font-mono bg-gray-50 text-gray-500 cursor-not-allowed`}
+              value={quotationNumber || 'Auto-generated on save'}
+              readOnly
             />
           </div>
           <div>
@@ -281,6 +453,7 @@ export default function QuotationGenerator({
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
               placeholder="e.g. Melai / Melanie"
+              disabled={isLocked}
             />
           </div>
           <div>
@@ -290,6 +463,7 @@ export default function QuotationGenerator({
               value={company}
               onChange={(e) => setCompany(e.target.value)}
               placeholder="Client's company"
+              disabled={isLocked}
             />
           </div>
           <div>
@@ -299,6 +473,7 @@ export default function QuotationGenerator({
               value={address}
               onChange={(e) => setAddress(e.target.value)}
               placeholder="e.g. Caloocan City"
+              disabled={isLocked}
             />
           </div>
           <div>
@@ -308,6 +483,7 @@ export default function QuotationGenerator({
               value={contactNumber}
               onChange={(e) => setContactNumber(e.target.value)}
               placeholder="+639..."
+              disabled={isLocked}
             />
           </div>
           <div>
@@ -317,102 +493,171 @@ export default function QuotationGenerator({
               value={salesPerson}
               onChange={(e) => setSalesPerson(e.target.value)}
               placeholder="e.g. Nira"
+              disabled={isLocked}
             />
           </div>
         </div>
 
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3 mb-1">
           <h2 className="text-base font-black uppercase tracking-tight text-[#01172f]">Line Items</h2>
           <span className="text-xs font-mono text-gray-400">{items.length}</span>
         </div>
+        <p className="text-xs text-gray-500 mb-4">
+          Enter supplier cost and margin -- client price is calculated automatically and is the
+          <span className="font-bold"> only</span> figure that ever appears on the printed quotation.
+        </p>
         <div className="flex flex-col gap-3 mb-2">
-          {items.map((item, index) => (
-            <div
-              key={index}
-              className="border border-gray-200 rounded-lg p-3 md:p-4 transition-shadow duration-300 hover:shadow-[0_8px_24px_-8px_rgba(1,23,47,0.1)] hover:border-gray-300"
-            >
-              <div className="grid grid-cols-2 md:grid-cols-[70px_90px_1fr_120px_120px_36px] gap-2 items-center">
-                <input
-                  type="text"
-                  className={inputClass}
-                  value={item.qty}
-                  onChange={(e) => updateItem(index, { qty: Number(e.target.value) || 0 })}
-                  placeholder="Qty"
-                />
-                <input
-                  className={inputClass}
-                  value={item.unit}
-                  onChange={(e) => updateItem(index, { unit: e.target.value })}
-                  placeholder="Unit"
-                />
-                <input
-                  className={`${inputClass} col-span-2 md:col-span-1`}
-                  value={item.description}
-                  onChange={(e) => updateItem(index, { description: e.target.value })}
-                  placeholder="Description"
-                />
-                <input
-                  type="text"
-                  className={inputClass}
-                  value={item.unitPrice}
-                  onChange={(e) => updateItem(index, { unitPrice: Number(e.target.value) || 0 })}
-                  placeholder="Unit price"
-                />
-                <div className="text-sm text-right font-mono text-[#01172f] font-medium">
-                  {peso(item.qty * item.unitPrice)}
-                </div>
-                <button
-                  onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
-                  disabled={items.length === 1}
-                  className="col-span-2 md:col-span-1 text-gray-400 hover:text-red-600 disabled:opacity-0 disabled:pointer-events-none transition-colors text-lg justify-self-end md:justify-self-auto"
-                  aria-label="Remove line item"
-                >
-                  &times;
-                </button>
-              </div>
+          {items.map((item, index) => {
+            const computedPrice = unitPriceOf(item)
+            return (
+              <div
+                key={index}
+                className="border border-gray-200 rounded-lg p-3 md:p-4 transition-shadow duration-300 hover:shadow-[0_8px_24px_-8px_rgba(1,23,47,0.1)] hover:border-gray-300"
+              >
+                {products.length > 0 && !isLocked && (
+                  <select
+                    onChange={(e) => {
+                      const p = products.find((prod) => String(prod.id) === e.target.value)
+                      if (p) updateItem(index, { description: p.name, unit: p.unit || item.unit })
+                      e.target.value = ''
+                    }}
+                    defaultValue=""
+                    className={`${inputClass} mb-2 text-xs text-gray-500`}
+                  >
+                    <option value="" disabled>
+                      -- Quick-pick a product (optional) --
+                    </option>
+                    {products.map((p) => (
+                      <option key={p.id} value={String(p.id)}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
 
-              <div className="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-gray-100">
-                <label className="text-xs text-gray-500 flex items-center gap-2 cursor-pointer">
+                <div className="grid grid-cols-2 md:grid-cols-[70px_90px_1fr_36px] gap-2 items-center mb-3">
                   <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => handleImageSelect(index, e.target.files?.[0] ?? null)}
+                    type="text"
+                    className={inputClass}
+                    value={item.qty}
+                    onChange={(e) => updateItem(index, { qty: Number(e.target.value) || 0 })}
+                    placeholder="Qty"
+                    disabled={isLocked}
                   />
-                  <span className="px-3 py-1.5 border border-dashed border-gray-300 rounded text-[#3D5F3B] hover:border-[#149911] hover:bg-[#149911]/[0.03] transition-all duration-200 whitespace-nowrap">
-                    {item.imageDataUrl ? 'Change spec image' : '+ Add spec image (optional)'}
-                  </span>
-                </label>
-                {item.imageDataUrl && (
-                  <>
-                    <img
-                      src={item.imageDataUrl}
-                      alt=""
-                      className="h-10 w-10 object-contain border border-gray-200 rounded flex-shrink-0"
-                    />
+                  <input
+                    className={inputClass}
+                    value={item.unit}
+                    onChange={(e) => updateItem(index, { unit: e.target.value })}
+                    placeholder="Unit"
+                    disabled={isLocked}
+                  />
+                  <input
+                    className={`${inputClass} col-span-2 md:col-span-1`}
+                    value={item.description}
+                    onChange={(e) => updateItem(index, { description: e.target.value })}
+                    placeholder="Description"
+                    disabled={isLocked}
+                  />
+                  {!isLocked && (
                     <button
-                      type="button"
-                      onClick={() => handleImageSelect(index, null)}
-                      className="text-xs text-red-600 hover:text-red-700"
+                      onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
+                      disabled={items.length === 1}
+                      className="col-span-2 md:col-span-1 text-gray-400 hover:text-red-600 disabled:opacity-0 disabled:pointer-events-none transition-colors text-lg justify-self-end md:justify-self-auto"
+                      aria-label="Remove line item"
                     >
-                      Remove
+                      &times;
                     </button>
-                  </>
+                  )}
+                </div>
+
+                <div className="bg-amber-50/60 border border-amber-100 rounded-md p-2.5">
+                  <p className="text-[9px] font-bold uppercase tracking-wide text-amber-700 mb-2">
+                    Internal only -- never printed
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 items-center">
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-1">Supplier Cost (₱)</label>
+                      <input
+                        type="text"
+                        className={inputClass}
+                        value={item.unitCost}
+                        onChange={(e) => updateItem(index, { unitCost: Number(e.target.value) || 0 })}
+                        placeholder="0.00"
+                        disabled={isLocked}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-1">Margin Amount (₱)</label>
+                      <input
+                        type="text"
+                        className={inputClass}
+                        value={item.marginAmount}
+                        onChange={(e) => updateItem(index, { marginAmount: Number(e.target.value) || 0 })}
+                        placeholder="0.00"
+                        disabled={isLocked}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-1">Client Price (computed)</label>
+                      <div className="w-full px-3.5 py-2.5 border border-gray-200 rounded text-sm bg-gray-50 text-[#3D5F3B] font-bold font-mono">
+                        {peso(computedPrice)}
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] text-gray-500 mb-1">Line Total</label>
+                      <div className="w-full px-3.5 py-2.5 border border-gray-200 rounded text-sm bg-gray-50 text-[#01172f] font-bold font-mono">
+                        {peso(item.qty * computedPrice)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {!isLocked && (
+                  <div className="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-gray-100">
+                    <label className="text-xs text-gray-500 flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => handleImageSelect(index, e.target.files?.[0] ?? null)}
+                      />
+                      <span className="px-3 py-1.5 border border-dashed border-gray-300 rounded text-[#3D5F3B] hover:border-[#149911] hover:bg-[#149911]/[0.03] transition-all duration-200 whitespace-nowrap">
+                        {item.imageDataUrl ? 'Change spec image' : '+ Add spec image (optional)'}
+                      </span>
+                    </label>
+                    {item.imageDataUrl && (
+                      <>
+                        <img
+                          src={item.imageDataUrl}
+                          alt=""
+                          className="h-10 w-10 object-contain border border-gray-200 rounded flex-shrink-0"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleImageSelect(index, null)}
+                          className="text-xs text-red-600 hover:text-red-700"
+                        >
+                          Remove
+                        </button>
+                      </>
+                    )}
+                  </div>
                 )}
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
-        <button
-          onClick={() =>
-            setItems((prev) => [...prev, { qty: 1, unit: 'pcs', description: '', unitPrice: 0 }])
-          }
-          className="text-sm text-[#3D5F3B] border border-dashed border-gray-300 rounded px-4 py-2.5 mb-8 hover:border-[#149911] hover:bg-[#149911]/[0.03] transition-all duration-200"
-        >
-          + Add line item
-        </button>
+        {!isLocked && (
+          <button
+            onClick={() =>
+              setItems((prev) => [...prev, { qty: 1, unit: 'pcs', description: '', unitCost: 0, marginAmount: 0 }])
+            }
+            className="text-sm text-[#3D5F3B] border border-dashed border-gray-300 rounded px-4 py-2.5 mb-8 hover:border-[#149911] hover:bg-[#149911]/[0.03] transition-all duration-200"
+          >
+            + Add line item
+          </button>
+        )}
 
-        {/* Discount + Delivery Fee + VAT controls */}
         <div className="grid sm:grid-cols-3 gap-4 mb-8 max-w-[660px]">
           <div>
             <label className={labelClass}>Discount (₱)</label>
@@ -422,6 +667,7 @@ export default function QuotationGenerator({
               value={discountAmount}
               onChange={(e) => setDiscountAmount(Number(e.target.value) || 0)}
               placeholder="0.00"
+              disabled={isLocked}
             />
           </div>
           <div>
@@ -432,6 +678,7 @@ export default function QuotationGenerator({
               value={deliveryFee}
               onChange={(e) => setDeliveryFee(Number(e.target.value) || 0)}
               placeholder="0.00"
+              disabled={isLocked}
             />
           </div>
           <div>
@@ -443,6 +690,7 @@ export default function QuotationGenerator({
                   checked={hasVat}
                   onChange={(e) => setHasVat(e.target.checked)}
                   className="w-3.5 h-3.5 accent-[#149911] cursor-pointer"
+                  disabled={isLocked}
                 />
                 Apply
               </label>
@@ -452,29 +700,71 @@ export default function QuotationGenerator({
               className={`${inputClass} ${!hasVat ? 'opacity-40 pointer-events-none' : ''}`}
               value={vatRate}
               onChange={(e) => setVatRate(Number(e.target.value) || 0)}
-              disabled={!hasVat}
+              disabled={!hasVat || isLocked}
             />
           </div>
         </div>
 
+        <div className="bg-[#f4f6f2] border border-[#149911]/20 rounded-lg px-5 py-4 mb-4 flex flex-col gap-2.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wide text-[#01172f]/60">
+              Total 
+            </span>
+            <span className="text-lg font-black text-[#01172f] font-mono">{peso(total)}</span>
+          </div>
+          <div className="flex items-center justify-between pt-2.5 border-t border-[#149911]/15">
+            <span className="text-xs font-bold uppercase tracking-wide text-[#01172f]/60">
+              Mark up 
+            </span>
+            <span className="text-lg font-black text-[#149911] font-mono">{peso(totalMarkup)}</span>
+          </div>
+        </div>
+
         <div className="flex flex-col sm:flex-row gap-3 mb-4 [&>button]:w-full sm:[&>button]:w-auto">
-          <button
-            onClick={saveQuotation}
-            disabled={saving === 'saving'}
-            className={`px-8 py-3 rounded border-2 font-bold disabled:opacity-50 transition-all duration-300 hover:-translate-y-0.5 ${
-              saving === 'saved'
-                ? 'border-[#149911] text-[#149911]'
-                : 'border-[#3D5F3B] text-[#3D5F3B] hover:shadow-[0_10px_30px_-10px_rgba(16,57,0,0.4)]'
-            }`}
-          >
-            {saving === 'saving' ? 'Saving...' : saving === 'saved' ? 'Saved ✓' : isEditing ? 'Update Quotation' : 'Save Quotation'}
-          </button>
-          <button
-            onClick={() => window.print()}
-            className="px-8 py-3 rounded bg-[#3D5F3B] text-white font-bold hover:bg-[#01172f] hover:-translate-y-0.5 hover:shadow-[0_10px_30px_-10px_rgba(1,23,47,0.4)] transition-all duration-300"
-          >
-            Print / Save as PDF
-          </button>
+          {!isLocked ? (
+            <>
+              <button
+                onClick={() => {
+                  if (getMissingFields().length > 0) {
+                    setPendingStatus('draft')
+                    setReminderOpen(true)
+                  } else {
+                    saveQuotation('draft')
+                  }
+                }}
+                disabled={saving === 'saving'}
+                className={`px-8 py-3 rounded border-2 font-bold disabled:opacity-50 transition-all duration-300 hover:-translate-y-0.5 ${
+                  saving === 'saved'
+                    ? 'border-[#149911] text-[#149911]'
+                    : 'border-[#3D5F3B] text-[#3D5F3B] hover:shadow-[0_10px_30px_-10px_rgba(16,57,0,0.4)]'
+                }`}
+              >
+                {saving === 'saving' ? 'Saving...' : saving === 'saved' ? 'Saved ✓' : isEditing ? 'Update Quotation' : 'Save Quotation'}
+              </button>
+
+              <button
+                onClick={() => {
+                  if (getMissingFields().length > 0) {
+                    setPendingStatus('pending_approval')
+                    setReminderOpen(true)
+                  } else {
+                    setConfirmApprovalOpen(true) 
+                  }
+                }}
+                disabled={saving === 'saving'}
+                className="px-8 py-3 rounded border-2 font-bold disabled:opacity-50 transition-all duration-300 hover:-translate-y-0.5 border-[#d97706] text-[#d97706] hover:bg-[#fffbeb] hover:shadow-[0_10px_30px_-10px_rgba(217,119,6,0.2)]"
+              >
+                Send for Approval
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => window.print()}
+              className="px-8 py-3 rounded bg-[#3D5F3B] text-white font-bold hover:bg-[#01172f] hover:-translate-y-0.5 hover:shadow-[0_10px_30px_-10px_rgba(1,23,47,0.4)] transition-all duration-300"
+            >
+              Print / Save as PDF
+            </button>
+          )}
         </div>
         {saving === 'error' && (
           <p className="text-sm text-red-600 mb-8">
@@ -489,10 +779,9 @@ export default function QuotationGenerator({
         </div>
       </div>
 
-      {/* ===== FORMAL QUOTATION DOCUMENT -- True WYSIWYG Print Preview ===== */}
+      {/* ===== FORMAL QUOTATION DOCUMENT ===== */}
       <div className="w-full overflow-x-auto pb-4">
         <div className="quotation-print-doc bg-white border border-gray-200 rounded p-8 print:border-0 print:p-0 print:rounded-none text-[#01172f] min-w-[794px] shadow-[0_20px_60px_-20px_rgba(1,23,47,0.15)] print:shadow-none">
-          {/* Header: logo + company block, title + date/number */}
           <div className="flex flex-row justify-between items-start gap-3 mb-4">
             <div className="flex gap-1.5 items-center">
               <div className="relative w-44 h-44 flex-shrink-0 overflow-hidden">
@@ -543,7 +832,6 @@ export default function QuotationGenerator({
             </div>
           </div>
 
-          {/* Customer block */}
           <div className="mb-3">
             <div className="bg-[#3D5F3B] text-white text-xs font-bold uppercase tracking-wide px-3 py-1">
               Customer
@@ -568,7 +856,6 @@ export default function QuotationGenerator({
             </div>
           </div>
 
-          {/* Line items table */}
           <div>
             <table className="w-full text-xs mb-2 border-collapse">
               <thead>
@@ -598,10 +885,10 @@ export default function QuotationGenerator({
                       </div>
                     </td>
                     <td className="py-1.5 px-2 border-b border-gray-100 text-right font-mono">
-                      {peso(item.unitPrice)}
+                      {peso(unitPriceOf(item))}
                     </td>
                     <td className="py-1.5 px-2 border-b border-gray-100 text-right font-mono">
-                      {peso(item.qty * item.unitPrice)}
+                      {peso(item.qty * unitPriceOf(item))}
                     </td>
                   </tr>
                 ))}
@@ -609,7 +896,6 @@ export default function QuotationGenerator({
             </table>
           </div>
 
-          {/* Totals -- Discount, Delivery Fee, and VAT rows are conditional */}
           <div className="flex justify-end mt-10 mb-4">
             <table className="text-xs w-full max-w-[280px]">
               <tbody>
@@ -645,7 +931,6 @@ export default function QuotationGenerator({
             </table>
           </div>
 
-          {/* Terms & signature */}
           <div className="grid grid-cols-[1fr_260px] gap-4 mt-10 mb-2 text-[9px] leading-snug break-inside-avoid">
             <div>
               <p className="font-bold text-[10px] uppercase tracking-wide mb-1">Terms &amp; Condition</p>
@@ -665,7 +950,6 @@ export default function QuotationGenerator({
             </div>
           </div>
 
-          {/* Bank details */}
           <div className="border-t border-black pt-1 break-inside-avoid mt-10">
             <p className="text-center font-bold text-[10px] uppercase tracking-wide mb-2">
               Bank Transfer Details

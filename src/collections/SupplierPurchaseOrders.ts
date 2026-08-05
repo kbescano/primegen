@@ -49,7 +49,14 @@ export const SupplierPurchaseOrders: CollectionConfig = {
     { name: 'project', type: 'text', label: 'Project Name / Site' },
     { name: 'deliveryDate', type: 'text', label: 'Delivery / Service Date' },
     { name: 'supplierName', type: 'text' },
+    { name: 'supplierCompany', type: 'text', label: 'Supplier Company' },
     { name: 'supplierAddress', type: 'textarea' },
+    { name: 'supplierPhone', type: 'text', label: 'Supplier Phone' },
+    {
+      name: 'sourceOrderId',
+      type: 'text',
+      admin: { readOnly: true, description: 'Internal: links back to the Order this PO was created from, if any. An order can have multiple POs.' },
+    },
     { name: 'preparedBy', type: 'text', label: 'Prepared By (Name)' },
     { name: 'preparedByRole', type: 'text', label: 'Prepared By (Role)', defaultValue: 'Sales Rep.' },
     {
@@ -59,7 +66,7 @@ export const SupplierPurchaseOrders: CollectionConfig = {
       fields: [
         { name: 'description', type: 'text', required: true },
         { name: 'qty', type: 'number', required: true, defaultValue: 1 },
-        { name: 'uom', type: 'text', defaultValue: 'pcs', label: 'UOM' },
+        { name: 'unit', type: 'text', defaultValue: 'pcs', label: 'Unit' },
         { name: 'unitPrice', type: 'number', required: true, defaultValue: 0 },
       ],
     },

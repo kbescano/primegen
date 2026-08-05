@@ -2,21 +2,22 @@
   "name": "construction-products-site",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "payload": "payload",
-    "generate:types": "payload generate:types"
+    "generate:types": "PAYLOAD_CONFIG_PATH=src/payload.config.ts payload generate:types"
   },
   "dependencies": {
-    "@payloadcms/db-postgres": "3.85.2",
-    "@payloadcms/next": "3.85.2",
-    "@payloadcms/richtext-lexical": "3.85.2",
-    "@payloadcms/ui": "^3.85.2",
+    "@payloadcms/db-postgres": "3.86.0",
+    "@payloadcms/next": "3.86.0",
+    "@payloadcms/richtext-lexical": "3.86.0",
+    "@payloadcms/ui": "3.86.0",
     "graphql": "^16.14.2",
     "next": "15.4.11",
-    "payload": "3.85.2",
+    "payload": "3.86.0",
     "payload-storage-cloudinary": "^1.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

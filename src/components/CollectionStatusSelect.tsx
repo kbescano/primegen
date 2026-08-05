@@ -11,12 +11,18 @@ export default function CollectionStatusSelect({
   status,
   options,
   colorClassMap,
+  fieldName = 'status',
+  disabled = false,
+  disabledReason,
 }: {
   collection: string
   id: string | number
   status: string
   options: Option[]
   colorClassMap: Record<string, string>
+  fieldName?: string
+  disabled?: boolean
+  disabledReason?: string
 }) {
   const router = useRouter()
   const [value, setValue] = useState(status)
@@ -32,7 +38,7 @@ export default function CollectionStatusSelect({
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ status: next }),
+        body: JSON.stringify({ [fieldName]: next }),
       })
       if (!res.ok) throw new Error('Update failed')
       router.refresh()
@@ -47,7 +53,8 @@ export default function CollectionStatusSelect({
     <select
       value={value}
       onChange={handleChange}
-      disabled={saving}
+      disabled={saving || disabled}
+      title={disabled ? disabledReason : undefined}
       className={`text-[10px] font-bold uppercase tracking-wide px-3 py-1.5 border-none outline-none cursor-pointer disabled:opacity-50 transition-colors ${
         colorClassMap[value] || 'bg-gray-100 text-gray-600'
       }`}

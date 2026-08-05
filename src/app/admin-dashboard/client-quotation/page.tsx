@@ -3,28 +3,31 @@ import QuotationGenerator, { type QuotationInitial } from '@/components/Quotatio
 import CollectionStatusSelect from '@/components/CollectionStatusSelect'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 
-const STATUSES = ['draft', 'sent', 'accepted', 'expired'] as const
+const STATUSES = ['draft', 'pending_approval', 'quotation_approved', 'order_confirmed', 'cancelled'] as const
 const STATUS_OPTIONS = [
   { value: 'draft', label: 'Draft' },
-  { value: 'sent', label: 'Sent' },
-  { value: 'accepted', label: 'Accepted' },
-  { value: 'expired', label: 'Expired' },
+  { value: 'pending_approval', label: 'Pending Approval' },
+  { value: 'quotation_approved', label: 'Quotation Approved' },
+  { value: 'order_confirmed', label: 'Order Confirmed' },
+  { value: 'cancelled', label: 'Cancelled' },
 ]
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Draft',
-  sent: 'Sent',
-  accepted: 'Accepted',
-  expired: 'Expired',
+  pending_approval: 'Pending Approval',
+  quotation_approved: 'Quotation Approved',
+  order_confirmed: 'Order Confirmed',
+  cancelled: 'Cancelled',
 }
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-600',
-  sent: 'bg-[#149911]/10 text-[#3D5F3B]',
-  accepted: 'bg-[#149911] text-white',
-  expired: 'bg-red-50 text-red-600',
+  pending_approval: 'bg-amber-50 text-amber-700',
+  quotation_approved: 'bg-[#149911]/10 text-[#149911]',
+  order_confirmed: 'bg-[#149911]/10 text-[#149911]',
+  cancelled: 'bg-red-50 text-red-600',
 }
 
 const peso = (n: number) =>
-  n.toLocaleString('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 })
+  '\u20B1' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 function mapDocToInitial(q: any): QuotationInitial {
   return {
@@ -41,7 +44,14 @@ function mapDocToInitial(q: any): QuotationInitial {
     deliveryFee: q.deliveryFee,
     sourceRequestId: q.sourceRequestId,
     items: Array.isArray(q.items)
-      ? q.items.map((i: any) => ({ qty: i.qty, unit: i.unit, description: i.description, unitPrice: i.unitPrice }))
+      ? q.items.map((i: any) => ({ 
+          qty: i.qty, 
+          unit: i.unit, 
+          unitCost: i.unitCost, 
+          marginAmount: i.marginAmount,   
+          description: i.description, 
+          unitPrice: i.unitPrice 
+        }))
       : undefined,
   }
 }
@@ -53,9 +63,16 @@ export default async function ClientQuotationPage({
 }) {
   const { from, id, new: isNew, status } = await searchParams
 
-  // ===== GENERATOR MODE: creating new, prefilling from a request, or editing an existing one =====
   if (id || from || isNew) {
     let initial: QuotationInitial | undefined
+    const payloadForProducts = await getPayloadClient()
+    const productsRes = await payloadForProducts.find({
+      collection: 'products',
+      limit: 500,
+      sort: 'name',
+      depth: 0,
+    })
+    const products = (productsRes.docs as any[]).map((p) => ({ id: p.id, name: p.name, unit: p.unit }))
 
     if (id) {
       try {
@@ -63,15 +80,11 @@ export default async function ClientQuotationPage({
         const q: any = await payload.findByID({ collection: 'client-quotations', id })
         if (q) initial = mapDocToInitial(q)
       } catch {
-        // fall through to a blank form
+        // fall through
       }
     } else if (from) {
       try {
         const payload = await getPayloadClient()
-
-        // Duplicate-proofing: if a client-quotation already exists for this request,
-        // edit that one instead of creating a second one -- even if the link that got us
-        // here is stale (e.g. an old tab, a double-click, a cached page).
         const existingForRequest = await payload.find({
           collection: 'client-quotations',
           where: { sourceRequestId: { equals: from } },
@@ -88,33 +101,36 @@ export default async function ClientQuotationPage({
               customerName: reqDoc.customerName || '',
               contactNumber: reqDoc.phone || '',
               items: Array.isArray(reqDoc.items)
-                ? reqDoc.items.map((item: any) => ({
-                    qty: item.quantity || 1,
-                    unit: typeof item.material === 'object' ? item.material?.unit || 'pcs' : 'pcs',
-                    description: typeof item.material === 'object' ? item.material?.name || '' : String(item.material || ''),
-                    unitPrice: 0,
-                  }))
+                ? reqDoc.items.map((item: any) => {
+                    const mat = item.material
+                    const isPopulated = mat && typeof mat === 'object'
+                    return {
+                      qty: item.quantity || 1,
+                      unit: isPopulated ? mat.unit || 'pcs' : 'pcs',
+                      description: isPopulated ? mat.name || '(product no longer exists)' : String(mat || ''),
+                      unitPrice: 0,
+                    }
+                  })
                 : undefined,
             }
           }
         }
       } catch {
-        // fall through to a blank form
+        // fall through
       }
     }
-    // isNew with no id/from -> initial stays undefined -> blank form
 
     const showClientPicker = Boolean((from || isNew) && !id)
     return (
       <QuotationGenerator
         initial={initial}
-        showBackToList={Boolean(from)}
+        showBackToList={Boolean(from || id)}
         showClientPicker={showClientPicker}
+        products={products}
       />
     )
   }
 
-  // ===== LIST MODE (default -- merged Manage Quotations view) =====
   const activeStatus = STATUSES.includes(status as any) ? status : undefined
 
   const payload = await getPayloadClient()
@@ -125,124 +141,220 @@ export default async function ClientQuotationPage({
     where: activeStatus ? { status: { equals: activeStatus } } : undefined,
   })
 
+  const quotationIds = docs.map((d: any) => String(d.id))
+  const ordersRes = quotationIds.length > 0
+    ? await payload.find({
+        collection: 'orders',
+        where: { sourceQuotationId: { in: quotationIds } },
+        limit: 200,
+      })
+    : { docs: [] as any[] }
+  const orderIdByQuotationId: Record<string, string> = {}
+  for (const o of ordersRes.docs as any[]) {
+    if (o.sourceQuotationId) orderIdByQuotationId[o.sourceQuotationId] = o.id
+  }
+
   function buildHref(s?: string) {
     return s ? `/admin-dashboard/client-quotation?status=${s}` : '/admin-dashboard/client-quotation'
   }
 
+  const filterPills = [
+    { value: '', label: 'All' },
+    ...STATUS_OPTIONS,
+  ]
+
   return (
-    <div className="max-w-[1200px] mx-auto">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
+    <div className="max-w-[1000px] mx-auto py-6">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div>
-          <div className="w-10 h-[3px] bg-[#149911] mb-5" />
-          <h1 className="text-[26px] md:text-[32px] font-black uppercase tracking-tight text-[#01172f] leading-none mb-3">
+          <h1 className="text-2xl font-black uppercase tracking-tight text-[#01172f] mb-1">
             Client Quotations
           </h1>
-          <p className="text-[14px] text-[#01172f]/50 font-medium max-w-[560px]">
-            All quotations saved from the generator. Update status inline, or open an entry to view,
-            edit, or reprint it.
+          <p className="text-xs text-gray-500 font-medium">
+            Manage saved client quotations, update statuses inline, or open an entry to review and print.
           </p>
+        </div>
+        <div className="flex items-center gap-3">
           <Link
             href="/admin-dashboard/clients"
-            className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.1em] text-[#103900] hover:text-[#149911] transition-colors mt-3"
+            className="text-[10px] font-bold uppercase tracking-wider text-[#103900] hover:text-[#149911] transition-colors"
           >
-            View or Add Clients
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <path d="M9 18l6-6-6-6" />
-            </svg>
+            &larr; View Clients
+          </Link>
+          <Link
+            href="/admin-dashboard/client-quotation?new=true"
+            className="text-[10px] font-bold uppercase tracking-wider px-4 py-2 bg-[#01172f] text-white rounded hover:bg-[#149911] transition-colors"
+          >
+            + Create New
           </Link>
         </div>
-        <Link
-          href="/admin-dashboard/client-quotation?new=true"
-          className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.1em] px-5 py-3 bg-[#3D5F3B] text-white hover:bg-[#01172f] transition-colors duration-300 w-fit flex-shrink-0"
-        >
-          + Create New Quotation
-        </Link>
       </div>
 
-      <div className="flex gap-2 flex-wrap mb-10">
-        <FilterLink label="All" active={!activeStatus} href={buildHref(undefined)} />
-        {STATUSES.map((s) => (
-          <FilterLink key={s} label={STATUS_LABELS[s]} active={activeStatus === s} href={buildHref(s)} />
-        ))}
-      </div>
-
-      <div className="flex flex-col gap-4">
-        {docs.map((q: any) => {
-          const subtotal = (q.items || []).reduce((sum: number, i: any) => sum + i.qty * i.unitPrice, 0)
-          const vat = subtotal * ((q.vatRate || 0) / 100)
-          const total = subtotal + vat
-
+      <div className="flex flex-wrap gap-1.5 mb-6">
+        {filterPills.map((pill) => {
+          const isActive = (activeStatus || '') === pill.value
+          const href = buildHref(pill.value || undefined)
           return (
-            <div
-              key={q.id}
-              className="bg-white border border-[#01172f]/10 p-5 md:p-6 transition-all duration-300 hover:border-[#149911]/40 hover:shadow-[0_16px_40px_-16px_rgba(1,23,47,0.15)]"
+            <Link
+              key={pill.value || 'all'}
+              href={href}
+              className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded transition-all ${
+                isActive
+                  ? 'bg-[#01172f] text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
             >
-              <div className="flex justify-between items-start gap-3 flex-wrap">
-                <div>
-                  <p className="text-[11px] font-mono text-[#01172f]/40 mb-1">{q.quotationNumber}</p>
-                  <h3 className="text-[16px] font-bold text-[#01172f]">{q.customerName || 'Untitled'}</h3>
-                  <p className="text-[13px] text-[#01172f]/50 font-medium">{q.company}</p>
-                  {q.salesPerson && (
-                    <p className="text-[11px] font-bold uppercase tracking-wide text-[#149911] mt-1">
-                      {q.salesPerson}
-                    </p>
-                  )}
-                </div>
-                <CollectionStatusSelect
-                  collection="client-quotations"
-                  id={q.id}
-                  status={q.status}
-                  options={STATUS_OPTIONS}
-                  colorClassMap={STATUS_COLORS}
-                />
-              </div>
-              <div className="flex justify-between items-center mt-4 pt-4 border-t border-[#01172f]/10">
-                <p className="text-[12px] text-[#01172f]/40 font-medium">
-                  {q.quotationDate
-                    ? new Date(q.quotationDate).toLocaleDateString('en-PH', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                      })
-                    : ''}
-                </p>
-                <div className="flex items-center gap-5">
-                  <p className="text-[15px] font-bold text-[#01172f] font-mono">{peso(total)}</p>
-                  <Link
-                    href={`/admin-dashboard/client-quotation?id=${q.id}`}
-                    className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#3D5F3B] hover:text-[#149911] transition-colors"
-                  >
-                    View / Edit &rarr;
-                  </Link>
-                </div>
-              </div>
-            </div>
+              {pill.label}
+            </Link>
           )
         })}
-
-        {docs.length === 0 && (
-          <div className="border border-dashed border-[#01172f]/15 py-16 text-center">
-            <p className="text-[14px] text-[#01172f]/40 font-medium">
-              No quotations{activeStatus ? ` with status "${STATUS_LABELS[activeStatus]}"` : ''} yet.
-            </p>
-          </div>
-        )}
       </div>
-    </div>
-  )
-}
 
-function FilterLink({ label, active, href }: { label: string; active?: boolean; href: string }) {
-  return (
-    <Link
-      href={href}
-      className={`text-[11px] font-bold uppercase tracking-[0.1em] px-4 py-2 border transition-all duration-200 ${
-        active
-          ? 'bg-[#01172f] border-[#01172f] text-white'
-          : 'bg-white border-[#01172f]/15 text-[#01172f]/60 hover:border-[#01172f]/40 hover:text-[#01172f]'
-      }`}
-    >
-      {label}
-    </Link>
-  )
+      {docs.length === 0 ? (
+        <div className="border border-dashed border-gray-200 py-12 text-center rounded">
+          <p className="text-xs text-gray-400 font-medium">
+            No quotations{activeStatus ? ` with status "${STATUS_LABELS[activeStatus]}"` : ''} found.
+          </p>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-5">
+          {docs.map((q: any) => {
+            const supplierCostTotal = (q.items || []).reduce((sum: number, i: any) => sum + (i.qty || 0) * (i.unitCost || 0), 0)
+            const markupTotal = (q.items || []).reduce((sum: number, i: any) => sum + (i.qty || 0) * (i.marginAmount || 0), 0)
+            const subtotal = (q.items || []).reduce((sum: number, i: any) => sum + (i.qty || 0) * (i.unitPrice || 0), 0)
+            const vat = subtotal * ((q.vatRate || 0) / 100)
+            const total = subtotal + vat
+            
+            const existingOrderId = orderIdByQuotationId[String(q.id)]
+            const availableOptions = STATUS_OPTIONS
+
+            const date = q.quotationDate
+              ? new Date(q.quotationDate).toLocaleDateString('en-PH', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })
+              : ''
+
+            return (
+              <div
+                key={q.id}
+                className="bg-white border border-gray-200 rounded p-5 transition-all hover:border-gray-300"
+              >
+                {/* Top Bar: Quotation #, Date & Status Dropdown */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-gray-100">
+                  <div className="flex items-center gap-3">
+                    <span className="font-mono text-xs font-bold text-[#01172f]">
+                      {q.quotationNumber}
+                    </span>
+                    <span className="text-[10px] text-gray-400">{date}</span>
+                  </div>
+                  
+                  <div className="w-full sm:w-auto">
+                    <CollectionStatusSelect
+                      collection="client-quotations"
+                      id={q.id}
+                      status={q.status}
+                      options={availableOptions}
+                      colorClassMap={STATUS_COLORS}
+                    />
+                  </div>
+                </div>
+
+                {/* Core Info & Financial Summary */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-5 pb-5 border-b border-gray-100">
+                  <div>
+                    <h3 className="text-sm font-black uppercase text-[#01172f] mb-0.5">
+                      {q.customerName || 'Untitled'}
+                      <span className="font-normal text-gray-500 ml-2">({q.company || 'No Company'})</span>
+                    </h3>
+                    <p className="text-[11px] text-gray-400">
+                      Sales Agent: <span className="text-[#149911] font-bold">{q.salesPerson || '--'}</span>
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
+                    <div className="text-right">
+                      <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Total Value</p>
+                      <p className="text-[14px] font-black font-mono text-[#01172f]">
+                        {peso(total)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Items & Financial Breakdown - SIDE BY SIDE ROW */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+                  
+                  {/* Left Column: Request Items */}
+                  <div>
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-3">
+                      Request Items ({(q.items || []).length})
+                    </p>
+                    <div className="flex flex-col gap-2.5">
+                      {(q.items || []).map((item: any, i: number) => (
+                        <div key={i} className="flex items-start justify-between gap-3 text-[11px] text-gray-700">
+                          <p className="leading-snug truncate">
+                            <span className="font-mono text-gray-400 font-bold inline-block min-w-[35px] pr-2">
+                              {item.qty} {item.unit || 'pcs'}
+                            </span>
+                            {item.description || 'Unnamed item'}
+                          </p>
+                          <p className="font-mono font-bold text-[#01172f] flex-shrink-0">
+                            {peso((item.qty || 0) * (item.unitPrice || 0))}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Right Column: Mini Financial Breakdown */}
+                  <div>
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-3">
+                      Financial Breakdown
+                    </p>
+                    <div className="bg-gray-50 p-3 rounded border border-gray-100 flex flex-col gap-1.5 text-[11px]">
+                      <div className="flex justify-between text-gray-500">
+                        <span>Supplier Cost</span>
+                        <span className="font-mono">{peso(supplierCostTotal)}</span>
+                      </div>
+                      <div className="flex justify-between text-gray-500">
+                        <span>Markup Total</span>
+                        <span className="font-mono font-bold text-[#149911]">{peso(markupTotal)}</span>
+                      </div>
+                      <div className="flex justify-between text-gray-500 border-t border-gray-200 pt-1 mt-0.5">
+                        <span>Subtotal</span>
+                        <span className="font-mono">{peso(subtotal)}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Bottom Action Footer */}
+                <div className="mt-5 pt-3 border-t border-gray-50 flex items-center justify-between">
+                  <Link
+                    href={`/admin-dashboard/client-quotation?id=${q.id}`}
+                    className="text-[9px] font-bold uppercase tracking-wider text-blue-600 hover:text-blue-800 transition-colors"
+                  >
+                    View Quotation &rarr;
+                  </Link>
+
+                  {existingOrderId && (
+                    <Link
+                      href={`/admin-dashboard/orders?id=${existingOrderId}`}
+                      className="text-[9px] font-bold uppercase tracking-wider px-3 py-1 bg-[#01172f] text-white rounded hover:bg-[#149911] transition-colors"
+                    >
+                      View Converted Order &rarr;
+                    </Link>
+                  )}
+                </div>
+              </div>
+            )
+          })
+        }
+      </div>
+    )}
+  </div>
+)
 }

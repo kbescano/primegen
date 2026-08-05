@@ -7,9 +7,11 @@ export async function POST() {
 
   // Build a slug -> categoryId lookup
   const cats = await payload.find({ collection: 'categories', limit: 100 })
-  const catBySlug: Record<string, string | number> = {}
+  const catBySlug: Record<string, number> = {}
   for (const c of cats.docs) {
-    catBySlug[c.slug as string] = c.id
+    if (typeof c.id === 'number') {
+      catBySlug[c.slug as string] = c.id
+    }
   }
 
   // Walk every material and link categoryRef based on its existing category string
@@ -30,7 +32,7 @@ export async function POST() {
     await payload.update({
       collection: 'products',
       id: m.id,
-      data: { categoryRef: catId },
+      data: { categoryRef: catId || null },
     })
     results.push(`linked: ${m.name} -> ${slug}`)
   }

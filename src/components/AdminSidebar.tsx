@@ -7,9 +7,10 @@ import NotificationBell from '@/components/NotificationBell'
 
 const NAV_ITEMS = [
   { href: '/admin-dashboard', label: 'Quotation Inbox' },
-  { href: '/admin-dashboard/client-quotation', label: 'Client Quotation' },
-  { href: '/admin-dashboard/supplier-po', label: 'Supplier PO' },
-  { href: '/admin-dashboard/reports', label: 'Reports' },
+  // { href: '/admin-dashboard/client-quotation', label: 'Client Quotation' },
+  // { href: '/admin-dashboard/orders', label: 'Orders' },
+  // { href: '/admin-dashboard/supplier-po', label: 'Supplier PO' },
+  // { href: '/admin-dashboard/reports', label: 'Reports' },
 ]
 
 type AdminUser = { name?: string; email: string; role?: string }

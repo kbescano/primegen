@@ -4,6 +4,7 @@ import { getPayloadClient } from "@/lib/getPayloadClient";
 import SearchBar from "@/components/SearchBar";
 import ScrollReveal from "@/components/ScrollReveal";
 import SectionHeader from "@/components/SectionHeader";
+import MobileCategoryJump from "@/components/MobileCategoryJump";
 
 export const dynamic = "force-dynamic";
 
@@ -216,6 +217,39 @@ export default async function ProductsPage({ searchParams }: Props) {
                 </ScrollReveal>
               );
             })}
+          </div>
+        )}
+
+        {/* Sticky jump-nav -- mobile gets a compact dropdown, desktop keeps wrapping pill buttons */}
+        {orderedSlugs.length > 1 && !q && (
+          <div className="sticky top-20 md:top-28 z-30 bg-[#fdfffc]/95 backdrop-blur-md border-y border-[#3D5F3B]/10 -mx-6 lg:-mx-12 xl:-mx-20 px-6 lg:px-12 xl:px-20 mb-16 py-3">
+            <div className="max-w-[1360px] mx-auto">
+              {/* Mobile: compact native dropdown -- no scrolling, no stacked buttons */}
+              <div className="sm:hidden">
+                <MobileCategoryJump
+                  categories={orderedSlugs.map((slug) => ({
+                    slug,
+                    label: categoryBySlug[slug]?.label || slug,
+                  }))}
+                />
+              </div>
+              {/* Desktop: wrapping pill buttons */}
+              <div className="hidden sm:flex flex-wrap gap-2">
+                {orderedSlugs.map((slug) => {
+                  const cat = categoryBySlug[slug];
+                  const label = cat?.label || slug;
+                  return (
+                    <a
+                      key={slug}
+                      href={`#${slug}`}
+                      className="text-[11px] font-bold uppercase tracking-[0.1em] px-4 py-2 border border-[#3D5F3B]/15 text-[#3D5F3B]/70 hover:border-[#149911] hover:text-[#149911] transition-colors duration-200"
+                    >
+                      {label}
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
 

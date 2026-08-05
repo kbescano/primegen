@@ -221,7 +221,7 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
 
             {/* Extraordinary Animated CTA Button */}
             <a
-              href={`/quote?material=${material.id}`}
+              href={`/quote?product=${material.id}`}
               className="relative flex items-center justify-center w-full text-[#3D5F3B] py-5 mt-auto overflow-hidden group cursor-pointer border border-[#01172f]"
             >
               {/* Liquid Hover Fill */}

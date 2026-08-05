@@ -1,16 +1,16 @@
 'use client'
 
 import Image from 'next/image'
-import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import SupplierPickerModal from '@/components/SupplierPickerModal'
+import { useRouter } from 'next/navigation'
 
 type LineItem = {
   description: string
   qty: number
   unit: string
   unitPrice: number
-  imageDataUrl?: string // client-side only -- never sent to the API, never saved
+  imageDataUrl?: string 
 }
 
 export type SupplierPOInitial = {
@@ -18,11 +18,15 @@ export type SupplierPOInitial = {
   poNumber?: string
   poDate?: string
   supplierName?: string
+  supplierCompany?: string
   supplierAddress?: string
+  supplierPhone?: string
   preparedBy?: string
   preparedByRole?: string
   project?: string
   items?: LineItem[]
+  sourceOrderId?: string
+  sourceRequestId?: string 
 }
 
 const peso = (n: number) =>
@@ -49,22 +53,48 @@ const TERMS = [
   'This PO and these Terms constitute the entire agreement between Buyer and Seller and supersede all prior communications.',
 ]
 
+// Accurately finds the true Pipeline ID by tracing the database relationships 
+// (Order -> Quotation -> Pipeline/Request)
+async function getDeepPipelineId(oid: string): Promise<string | undefined> {
+  try {
+    const oRes = await fetch(`/api/orders/${oid}`, { credentials: 'include' })
+    if (!oRes.ok) return undefined
+    const oData = await oRes.json()
+
+    const qId = oData?.sourceQuotationId
+    if (!qId) return undefined
+
+    const qRes = await fetch(`/api/client-quotations/${qId}`, { credentials: 'include' })
+    if (!qRes.ok) return undefined
+    const qData = await qRes.json()
+    const reqId = qData?.sourceRequestId
+    if (reqId) return String(reqId)
+  } catch (e) {}
+  return undefined
+}
+
 export default function SupplierPOGenerator({
   initial,
   showSupplierPicker = false,
   showBackToList = false,
+  products = [],
+  orderSalesPerson = '', 
 }: {
   initial?: SupplierPOInitial
   showSupplierPicker?: boolean
   showBackToList?: boolean
+  products?: { id: string | number; name: string; unit?: string }[]
+  orderSalesPerson?: string
 }) {
+  const router = useRouter() 
   const [poNumber, setPoNumber] = useState(initial?.poNumber ?? '')
   const [poDate, setPoDate] = useState(initial?.poDate ?? new Date().toISOString().slice(0, 10))
   const [supplierName, setSupplierName] = useState(initial?.supplierName ?? '')
-  const [companyName, setCompanyName] = useState('')
+  const [companyName, setCompanyName] = useState(initial?.supplierCompany ?? '')
   const [streetAddress, setStreetAddress] = useState(initial?.supplierAddress ?? '')
-  const [phone, setPhone] = useState('')
-  const [preparedBy, setPreparedBy] = useState(initial?.preparedBy ?? '')
+  const [phone, setPhone] = useState(initial?.supplierPhone ?? '')
+  
+  const [preparedBy, setPreparedBy] = useState(initial?.preparedBy ?? orderSalesPerson)
   const [preparedByRole, setPreparedByRole] = useState(initial?.preparedByRole ?? 'Sales Rep.')
   const [items, setItems] = useState<LineItem[]>(
     initial?.items && initial.items.length > 0
@@ -74,6 +104,38 @@ export default function SupplierPOGenerator({
   const [saving, setSaving] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle')
   const [saveErrorDetail, setSaveErrorDetail] = useState('')
   const [pickerOpen, setPickerOpen] = useState(showSupplierPicker)
+  const [reminderOpen, setReminderOpen] = useState(false)
+  
+  const [pipelineId, setPipelineId] = useState<string | undefined>(initial?.sourceRequestId)
+  const [isPrintMode, setIsPrintMode] = useState(false)
+
+  // STRICT ROUTING FIX: Rely solely on the actual Order ID to lookup the correct Pipeline.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const urlParams = new URLSearchParams(window.location.search)
+    
+    // Auto-lock the form if opened from Step 4
+    if (urlParams.get('mode') === 'print') {
+      setIsPrintMode(true)
+    }
+
+    const uOrderId = urlParams.get('orderId') || initial?.sourceOrderId
+    const uReqId = urlParams.get('pipelineId') || urlParams.get('requestId') || initial?.sourceRequestId
+
+    if (uReqId) {
+      setPipelineId(String(uReqId))
+      return
+    }
+
+    if (uOrderId) {
+      getDeepPipelineId(String(uOrderId)).then(res => {
+        if (res) {
+          setPipelineId(res)
+        }
+      })
+    }
+  }, [initial])
 
   const subtotal = useMemo(() => items.reduce((sum, i) => sum + i.qty * i.unitPrice, 0), [items])
   const total = subtotal
@@ -135,14 +197,34 @@ export default function SupplierPOGenerator({
           body: JSON.stringify(supplierPayload),
         })
       }
-    } catch {
-      // non-critical -- never block the PO save flow if this fails
-    }
+    } catch {}
+  }
+
+  function getMissingFields(): string[] {
+    const missing: string[] = []
+    if (!supplierName.trim()) missing.push('Supplier Name')
+    if (!companyName.trim()) missing.push('Company Name')
+    if (!streetAddress.trim()) missing.push('Street Address')
+    if (!phone.trim()) missing.push('Phone')
+    if (!preparedBy.trim()) missing.push('Prepared By')
+    items.forEach((item, i) => {
+      const label = item.description.trim() || `Item ${i + 1}`
+      if (!item.description.trim()) missing.push(`Item ${i + 1} -- Description`)
+      if (!item.unitPrice) missing.push(`${label} -- Price`)
+    })
+    return missing
   }
 
   async function savePO() {
     setSaving('saving')
     try {
+      const targetOrderId = initial?.sourceOrderId || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('orderId') : null)
+      let finalPipelineId = pipelineId
+
+      if (!finalPipelineId && targetOrderId) {
+        finalPipelineId = await getDeepPipelineId(targetOrderId)
+      }
+
       const url = isEditing ? `/api/supplier-purchase-orders/${initial?.id}` : '/api/supplier-purchase-orders'
       const method = isEditing ? 'PATCH' : 'POST'
       const res = await fetch(url, {
@@ -152,13 +234,18 @@ export default function SupplierPOGenerator({
         body: JSON.stringify({
           poDate,
           supplierName,
-          supplierAddress: [companyName, streetAddress, phone].filter(Boolean).join('\n'),
+          supplierAddress: streetAddress,
+          supplierCompany: companyName,
+          supplierPhone: phone,
           preparedBy,
           preparedByRole,
-          items: items.map(({ imageDataUrl, ...rest }) => rest), // strip client-only image before saving
+          items: items.map(({ imageDataUrl, ...rest }) => rest), 
           status: 'draft',
+          sourceOrderId: targetOrderId,
+          sourceRequestId: finalPipelineId, 
         }),
       })
+      
       if (!res.ok) {
         let detail = `HTTP ${res.status}`
         try {
@@ -167,10 +254,20 @@ export default function SupplierPOGenerator({
         } catch {}
         throw new Error(detail)
       }
+      
       const saved = await res.json()
       setPoNumber(saved.doc.poNumber)
       await upsertSupplierRecord()
       setSaving('saved')
+      
+      router.refresh()
+
+      if (finalPipelineId && finalPipelineId !== 'undefined' && finalPipelineId !== 'null') { 
+        router.push(`/admin-dashboard/pipeline/${finalPipelineId}?step=supplierPO`)
+      } else {
+        router.back() 
+      }
+      
     } catch (err: any) {
       setSaving('error')
       setSaveErrorDetail(err?.message || 'Unknown error')
@@ -178,220 +275,312 @@ export default function SupplierPOGenerator({
   }
 
   const inputClass =
-    'w-full px-3.5 py-2.5 border border-gray-300 rounded text-sm text-[#01172f] placeholder:text-gray-400 hover:border-[#01172f]/30 focus:outline-none focus:border-[#149911] focus:ring-1 focus:ring-[#149911]/25 transition-all duration-200'
-  const labelClass = 'block text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1.5'
+    'w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[13px] text-gray-900 placeholder:text-gray-400 focus:bg-white focus:border-gray-300 focus:ring-4 focus:ring-gray-100/50 transition-all outline-none'
+  const labelClass = 'block text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-2'
 
   return (
-    <div className="max-w-5xl mx-auto p-4 md:p-6 bg-[#fdfffc]">
+    <div className="max-w-[1000px] mx-auto p-4 md:p-8 bg-[#fbfbfd] min-h-screen antialiased print:min-h-0 print:p-0 print:m-0 print:bg-white">
       {pickerOpen && (
         <SupplierPickerModal onSelect={handleSelectSupplier} onSkip={() => setPickerOpen(false)} />
       )}
-      {/* Print setup: page sizing + force background colors to print + scale down for one-page fit */}
+
+      {reminderOpen && (
+        <div className="fixed inset-0 bg-[#1d1d1f]/40 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white max-w-md w-full p-8 rounded-[2rem] shadow-2xl">
+            <h2 className="text-[18px] font-semibold tracking-tight text-gray-900 mb-2">
+              Missing Information
+            </h2>
+            <p className="text-[13px] text-gray-500 mb-5">
+              You can still save, but double-check these empty fields:
+            </p>
+            <ul className="flex flex-col gap-2 mb-6 max-h-[200px] overflow-y-auto">
+              {getMissingFields().map((f, i) => (
+                <li key={i} className="flex items-center gap-3 text-[13px] text-gray-700 font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 flex-shrink-0" />
+                  {f}
+                </li>
+              ))}
+            </ul>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setReminderOpen(false)}
+                className="flex-1 py-3 rounded-full border border-gray-200 text-gray-700 font-medium text-[12px] hover:bg-gray-50 transition-colors shadow-sm"
+              >
+                Go Back
+              </button>
+              <button
+                onClick={() => {
+                  setReminderOpen(false)
+                  savePO()
+                }}
+                className="flex-1 py-3 rounded-full bg-[#149911] text-white font-medium text-[12px] hover:bg-[#103900] transition-colors shadow-sm"
+              >
+                Save Anyway
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style>{`
         @media print {
-          @page {
-            size: A4;
-            margin: 8mm;
-          }
-          * {
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-            color-adjust: exact !important;
-          }
-          .po-print-doc {
-            zoom: 0.8;
-          }
+          @page { size: A4; margin: 12mm; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+          html, body { height: auto !important; min-height: auto !important; overflow: visible !important; background: white !important; }
+          .po-print-doc { zoom: 0.85; page-break-inside: avoid; margin: 0 !important; }
         }
       `}</style>
 
       {/* ===== FORM (hidden when printing) ===== */}
       <div className="print:hidden">
-        <div className="mb-8">
+        <div className="mb-8 md:mb-10">
           {showBackToList && (
-            <Link
-              href="/admin-dashboard/supplier-po"
-              className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.1em] text-[#01172f]/50 hover:text-[#149911] transition-colors mb-4"
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                if (pipelineId && pipelineId !== 'undefined' && pipelineId !== 'null') {
+                  // Direct back to Step 4 (Order Fulfilled) if in print mode, otherwise Step 3
+                  router.push(`/admin-dashboard/pipeline/${pipelineId}?step=${isPrintMode ? 'fulfilled' : 'supplierPO'}`)
+                } else {
+                  router.back()
+                }
+              }}
+              className="inline-flex items-center gap-1.5 text-[12px] font-medium text-gray-400 hover:text-gray-900 transition-colors mb-6 focus:outline-none"
             >
-              &larr; Back to Supplier Purchase Orders
-            </Link>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+              Back to Pipeline
+            </button>
           )}
-          <div className="w-8 h-[3px] bg-[#149911] mb-4" />
-          <h1 className="text-2xl font-black uppercase tracking-tight text-[#01172f] mb-2">
-            {isEditing ? 'Edit Supplier Purchase Order' : 'Supplier Purchase Order'}
+          <h1 className="text-[26px] md:text-[32px] font-semibold tracking-tight text-gray-900 mb-2">
+            {isPrintMode ? 'Print Purchase Order' : isEditing ? 'Edit Purchase Order' : 'New Purchase Order'}
           </h1>
-          <p className="text-sm text-gray-500 max-w-[560px]">
-            Fill in the details below. Save to auto-generate the PO number, then use Print / Save as
-            PDF to send to the supplier.
+          <p className="text-[14px] text-gray-500 font-medium max-w-[560px]">
+            {isPrintMode ? 'Review the final document below and click Print to issue this PO.' : 'Fill in the details below. Save to auto-generate the PO number, then use Print / Save as PDF to send to the supplier.'}
           </p>
         </div>
 
-        <p className="flex items-start gap-2.5 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded px-4 py-3 mb-8">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="flex-shrink-0 mt-0.5">
+        <p className="flex items-start gap-3 text-[12px] text-amber-800 bg-amber-50/50 border border-amber-200/60 rounded-2xl px-5 py-4 mb-8 font-medium">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="flex-shrink-0 mt-0.5 text-amber-500">
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
           <span>
             Before printing: in the print dialog, open &quot;More settings&quot; and uncheck
-            &quot;Headers and footers&quot; -- that removes the browser&apos;s own URL/date/page-number
-            strip, which can&apos;t be controlled from the page itself.
+            &quot;Headers and footers&quot; to remove the browser&apos;s default URL/date markings.
           </span>
         </p>
 
-        <div className="grid md:grid-cols-2 gap-4 mb-8">
-          <div>
-            <label className={labelClass}>PO Date</label>
-            <input type="date" className={inputClass} value={poDate} onChange={(e) => setPoDate(e.target.value)} />
-          </div>
-          <div>
-            <label className={labelClass}>PO #</label>
-            <input className={`${inputClass} font-mono`} value={poNumber} onChange={(e) => setPoNumber(e.target.value)} placeholder="Auto-generated on save (YYYY-#########)" />
-          </div>
-          <div>
-            <label className={labelClass}>Supplier Name</label>
-            <input className={inputClass} value={supplierName} onChange={(e) => setSupplierName(e.target.value)} placeholder="e.g. NORTHMETAL" />
-          </div>
-          <div>
-            <label className={labelClass}>Company Name</label>
-            <input className={inputClass} value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="e.g. NORTHMETAL" />
-          </div>
-          <div>
-            <label className={labelClass}>Street Address</label>
-            <input className={inputClass} value={streetAddress} onChange={(e) => setStreetAddress(e.target.value)} placeholder="e.g. Caloocan" />
-          </div>
-          <div>
-            <label className={labelClass}>Phone</label>
-            <input className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+639..." />
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 mb-4">
-          <h2 className="text-base font-black uppercase tracking-tight text-[#01172f]">Line Items</h2>
-          <span className="text-xs font-mono text-gray-400">{items.length}</span>
-        </div>
-        <div className="flex flex-col gap-3 mb-2">
-          {items.map((item, index) => (
-            <div
-              key={index}
-              className="border border-gray-200 rounded-lg p-3 md:p-4 transition-shadow duration-300 hover:shadow-[0_8px_24px_-8px_rgba(1,23,47,0.1)] hover:border-gray-300"
-            >
-              <div className="grid grid-cols-2 md:grid-cols-[1fr_70px_90px_120px_120px_36px] gap-2 items-center">
-                <input
-                  className={`${inputClass} col-span-2 md:col-span-1`}
-                  value={item.description}
-                  onChange={(e) => updateItem(index, { description: e.target.value })}
-                  placeholder="Description"
-                />
-                <input
-                  type="text"
-                  className={inputClass}
-                  value={item.qty}
-                  onChange={(e) => updateItem(index, { qty: Number(e.target.value) || 0 })}
-                  placeholder="Qty"
-                />
-                <input
-                  className={inputClass}
-                  value={item.unit}
-                  onChange={(e) => updateItem(index, { unit: e.target.value })}
-                  placeholder="Unit"
-                />
-                <input
-                  type="text"
-                  className={inputClass}
-                  value={item.unitPrice}
-                  onChange={(e) => updateItem(index, { unitPrice: Number(e.target.value) || 0 })}
-                  placeholder="Price"
-                />
-                <div className="text-sm text-right font-mono text-[#01172f] font-medium">{peso(item.qty * item.unitPrice)}</div>
-                <button
-                  onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
-                  disabled={items.length === 1}
-                  className="col-span-2 md:col-span-1 text-gray-400 hover:text-red-600 disabled:opacity-0 disabled:pointer-events-none transition-colors text-lg justify-self-end md:justify-self-auto"
-                  aria-label="Remove line item"
-                >
-                  &times;
-                </button>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-gray-100">
-                <label className="text-xs text-gray-500 flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => handleImageSelect(index, e.target.files?.[0] ?? null)}
-                  />
-                  <span className="px-3 py-1.5 border border-dashed border-gray-300 rounded text-[#3D5F3B] hover:border-[#149911] hover:bg-[#149911]/[0.03] transition-all duration-200 whitespace-nowrap">
-                    {item.imageDataUrl ? 'Change spec image' : '+ Add spec image (optional)'}
-                  </span>
-                </label>
-                {item.imageDataUrl && (
-                  <>
-                    <img src={item.imageDataUrl} alt="" className="h-10 w-10 object-contain border border-gray-200 rounded flex-shrink-0" />
-                    <button type="button" onClick={() => handleImageSelect(index, null)} className="text-xs text-red-600 hover:text-red-700">
-                      Remove
-                    </button>
-                  </>
-                )}
-              </div>
+        <div className={`bg-white rounded-[2rem] border border-gray-100/80 p-6 md:p-8 shadow-[0_4px_32px_rgba(0,0,0,0.02)] mb-8 ${isPrintMode ? 'opacity-50 pointer-events-none' : ''}`}>
+          
+          <div className="grid md:grid-cols-2 gap-5 mb-8">
+            <div>
+              <label className={labelClass}>PO Date</label>
+              <input type="date" className={inputClass} value={poDate} onChange={(e) => setPoDate(e.target.value)} />
             </div>
-          ))}
-        </div>
-        <button
-          onClick={() => setItems((prev) => [...prev, { description: '', qty: 1, unit: 'pcs', unitPrice: 0 }])}
-          className="text-sm text-[#3D5F3B] border border-dashed border-gray-300 rounded px-4 py-2.5 mb-8 hover:border-[#149911] hover:bg-[#149911]/[0.03] transition-all duration-200"
-        >
-          + Add line item
-        </button>
+            <div>
+              <label className={labelClass}>PO #</label>
+              <input className={`${inputClass} bg-gray-100/50 text-gray-400 cursor-not-allowed`} value={poNumber || 'Auto-generated on save'} readOnly />
+            </div>
 
-        <div className="grid md:grid-cols-2 gap-4 mb-8">
-          <div>
-            <label className={labelClass}>Prepared By (Name)</label>
-            <input className={inputClass} value={preparedBy} onChange={(e) => setPreparedBy(e.target.value)} placeholder="e.g. Nira" />
-          </div>
-          <div>
-            <label className={labelClass}>Prepared By (Role)</label>
-            <input className={inputClass} value={preparedByRole} onChange={(e) => setPreparedByRole(e.target.value)} />
-          </div>
-        </div>
+            <div className="md:col-span-2 mt-4 pt-6 border-t border-gray-100 flex items-center justify-between">
+              <h2 className="text-[15px] font-semibold text-gray-900">Supplier Details</h2>
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                className="text-[11px] font-semibold px-4 py-2 bg-[#149911]/10 text-[#149911] hover:bg-[#149911]/20 rounded-full transition-colors"
+              >
+                Select or Add Supplier
+              </button>
+            </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 mb-4 [&>button]:w-full sm:[&>button]:w-auto">
+            <div>
+              <label className={labelClass}>Supplier Name</label>
+              <input className={inputClass} value={supplierName} onChange={(e) => setSupplierName(e.target.value)} placeholder="e.g. NORTHMETAL" />
+            </div>
+            <div>
+              <label className={labelClass}>Company Name</label>
+              <input className={inputClass} value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="e.g. NORTHMETAL" />
+            </div>
+            <div className="md:col-span-2">
+              <label className={labelClass}>Street Address</label>
+              <input className={inputClass} value={streetAddress} onChange={(e) => setStreetAddress(e.target.value)} placeholder="e.g. Caloocan" />
+            </div>
+            <div>
+              <label className={labelClass}>Phone</label>
+              <input className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+639..." />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between mb-4 pt-6 border-t border-gray-100">
+            <h2 className="text-[15px] font-semibold tracking-tight text-gray-900">Line Items</h2>
+            <span className="text-[11px] font-medium bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">{items.length}</span>
+          </div>
+
+          <div className="flex flex-col gap-4 mb-6">
+            {items.map((item, index) => (
+              <div
+                key={index}
+                className="bg-gray-50/50 border border-gray-100 rounded-2xl p-4 md:p-5 transition-shadow hover:shadow-sm"
+              >
+                {products.length > 0 && (
+                  <select
+                    onChange={(e) => {
+                      const p = products.find((prod) => String(prod.id) === e.target.value)
+                      if (p) updateItem(index, { description: p.name, unit: p.unit || item.unit })
+                      e.target.value = ''
+                    }}
+                    defaultValue=""
+                    className="w-full mb-4 px-3 py-2 text-[12px] font-medium bg-white border border-gray-200 rounded-lg text-gray-500 outline-none focus:ring-2 focus:ring-gray-200 cursor-pointer"
+                  >
+                    <option value="" disabled>-- Quick-pick a product (optional) --</option>
+                    {products.map((p) => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
+                  </select>
+                )}
+
+                <div className="grid grid-cols-2 md:grid-cols-[1fr_70px_90px_120px_120px_36px] gap-3 items-center">
+                  <input
+                    className={`${inputClass} col-span-2 md:col-span-1`}
+                    value={item.description}
+                    onChange={(e) => updateItem(index, { description: e.target.value })}
+                    placeholder="Description"
+                  />
+                  <input
+                    type="text"
+                    className={inputClass}
+                    value={item.qty}
+                    onChange={(e) => updateItem(index, { qty: Number(e.target.value) || 0 })}
+                    placeholder="Qty"
+                  />
+                  <input
+                    className={inputClass}
+                    value={item.unit}
+                    onChange={(e) => updateItem(index, { unit: e.target.value })}
+                    placeholder="Unit"
+                  />
+                  <input
+                    type="text"
+                    className={inputClass}
+                    value={item.unitPrice}
+                    onChange={(e) => updateItem(index, { unitPrice: Number(e.target.value) || 0 })}
+                    placeholder="Price"
+                  />
+                  <div className="text-[13px] text-right font-mono text-gray-900 font-medium">{peso(item.qty * item.unitPrice)}</div>
+                  <button
+                    onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
+                    disabled={items.length === 1}
+                    className="col-span-2 md:col-span-1 text-gray-400 hover:text-red-500 disabled:opacity-0 disabled:pointer-events-none transition-colors text-lg justify-self-end md:justify-self-center"
+                    aria-label="Remove line item"
+                  >
+                    &times;
+                  </button>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-gray-200/60">
+                  <label className="text-[11px] font-medium text-gray-500 flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => handleImageSelect(index, e.target.files?.[0] ?? null)}
+                    />
+                    <span className="px-4 py-2 border border-dashed border-gray-300 rounded-lg text-[#149911] hover:border-[#149911] hover:bg-[#149911]/5 transition-all duration-200">
+                      {item.imageDataUrl ? 'Change spec image' : '+ Add spec image'}
+                    </span>
+                  </label>
+                  {item.imageDataUrl && (
+                    <div className="flex items-center gap-3">
+                      <img src={item.imageDataUrl} alt="" className="h-10 w-10 object-contain border border-gray-200 bg-white rounded-lg flex-shrink-0" />
+                      <button type="button" onClick={() => handleImageSelect(index, null)} className="text-[11px] font-medium text-red-500 hover:text-red-600">
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
           <button
-            onClick={savePO}
-            disabled={saving === 'saving'}
-            className={`px-8 py-3 rounded border-2 font-bold disabled:opacity-50 transition-all duration-300 hover:-translate-y-0.5 ${
-              saving === 'saved'
-                ? 'border-[#149911] text-[#149911]'
-                : 'border-[#3D5F3B] text-[#3D5F3B] hover:shadow-[0_10px_30px_-10px_rgba(16,57,0,0.4)]'
-            }`}
+            onClick={() => setItems((prev) => [...prev, { description: '', qty: 1, unit: 'pcs', unitPrice: 0 }])}
+            className="text-[12px] font-medium text-[#149911] border border-dashed border-gray-300 rounded-xl px-5 py-3 mb-8 hover:border-[#149911] hover:bg-[#149911]/5 transition-all w-full md:w-auto"
           >
-            {saving === 'saving' ? 'Saving...' : saving === 'saved' ? 'Saved ✓' : isEditing ? 'Update PO' : 'Save PO'}
+            + Add Line Item
           </button>
+
+          <div className="grid md:grid-cols-2 gap-5 pt-6 border-t border-gray-100">
+            <div>
+              <label className={labelClass}>Prepared By (Name)</label>
+              <input className={inputClass} value={preparedBy} onChange={(e) => setPreparedBy(e.target.value)} placeholder="e.g. Nira" />
+            </div>
+            <div>
+              <label className={labelClass}>Prepared By (Role)</label>
+              <input className={inputClass} value={preparedByRole} onChange={(e) => setPreparedByRole(e.target.value)} />
+            </div>
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row gap-3 mb-8">
+          {/* Hide Save Purchase Order button if in Print Mode */}
+          {!isPrintMode && (
+            <button
+              onClick={() => {
+                if (getMissingFields().length > 0) {
+                  setReminderOpen(true)
+                } else {
+                  savePO()
+                }
+              }}
+              disabled={saving === 'saving'}
+              className={`px-8 py-3.5 rounded-full font-medium text-[13px] disabled:opacity-50 transition-all duration-300 shadow-sm ${
+                saving === 'saved'
+                  ? 'bg-[#149911] text-white'
+                  : 'bg-[#1d1d1f] text-white hover:bg-gray-800'
+              }`}
+            >
+              {saving === 'saving' ? 'Saving...' : saving === 'saved' ? 'Saved ✓' : isEditing ? 'Update Purchase Order' : 'Save Purchase Order'}
+            </button>
+          )}
+          
           <button
-            onClick={() => window.print()}
-            className="px-8 py-3 rounded bg-[#3D5F3B] text-white font-bold hover:bg-[#01172f] hover:-translate-y-0.5 hover:shadow-[0_10px_30px_-10px_rgba(1,23,47,0.4)] transition-all duration-300"
+            type="button"
+            onClick={async () => {
+              // Auto-update status to "Issued" when printed
+              if (initial?.id && isPrintMode) {
+                try {
+                  await fetch(`/api/supplier-purchase-orders/${initial.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ status: 'issued' })
+                  })
+                } catch(e) {}
+              }
+              window.print()
+            }}
+            className="px-8 py-3.5 rounded-full bg-[#149911] border border-transparent text-white font-medium text-[13px] hover:bg-[#103900] transition-all duration-300 shadow-sm"
           >
             Print / Save as PDF
           </button>
         </div>
+        
         {saving === 'error' && (
-          <p className="text-sm text-red-600 mb-8">
-            Save failed: {saveErrorDetail || "please check you're logged in and try again."}
+          <p className="text-[13px] font-medium text-red-500 mb-8">
+            Save failed: {saveErrorDetail || "Please try again."}
           </p>
         )}
 
-        <hr className="my-12 border-gray-200" />
-        <div className="flex items-center gap-3 mb-6">
-          <span className="text-xs uppercase tracking-wide font-bold text-gray-400">Preview</span>
-          <div className="flex-1 h-px bg-gray-200" />
+        <div className="flex items-center gap-4 mb-8 pt-6 border-t border-gray-200">
+          <span className="text-[11px] uppercase tracking-wider font-semibold text-gray-400">Document Preview</span>
         </div>
       </div>
 
-      {/* ===== FORMAL PURCHASE ORDER DOCUMENT -- untouched from the working, print-tested version ===== */}
-      <div className="po-print-doc bg-white border border-gray-200 rounded p-5 md:p-10 print:border-0 print:p-0 print:rounded-none text-[#01172f] shadow-[0_20px_60px_-20px_rgba(1,23,47,0.15)] print:shadow-none">
+      {/* ===== FORMAL PURCHASE ORDER DOCUMENT ===== */}
+      <div className="po-print-doc bg-white border border-gray-200 rounded-3xl p-6 md:p-10 print:border-0 print:p-10 print:rounded-none text-[#01172f] shadow-sm print:shadow-none print:w-full print:max-w-none">
 
-        {/* Header: logo + company block, PO banner + PO#/date box */}
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-6 print:gap-3 mb-6 print:mb-3">
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-6 print:gap-3 mb-6 print:mb-4">
           <div className="flex gap-1.5 items-center">
             <div className="relative w-44 h-44 flex-shrink-0 overflow-hidden">
               <Image src="/branding/primegen_trading_logo.png" alt="Primegen Trading Corporation" fill className="object-contain scale-[1.1]" />
@@ -412,7 +601,7 @@ export default function SupplierPOGenerator({
           </div>
 
           <div className="text-left sm:text-right w-full sm:w-auto">
-            <span className="inline-block bg-[#3D5F3B] text-white text-sm print:text-xs font-bold tracking-wide px-4 print:px-3 py-1.5 print:py-1 mb-3 print:mb-2">
+            <span className="inline-block bg-[#3D5F3B] text-white text-sm print:text-[11px] font-bold tracking-wide px-4 print:px-3 py-1.5 print:py-1 mb-3 print:mb-2">
               PURCHASE ORDER
             </span>
             <table className="text-sm print:text-xs ml-0 sm:ml-auto mt-2 sm:mt-0">
@@ -430,12 +619,11 @@ export default function SupplierPOGenerator({
           </div>
         </div>
 
-        {/* Supplier block */}
-        <div className="mb-6 print:mb-3">
+        <div className="mb-6 print:mb-4">
           <div className="bg-[#3D5F3B] text-white text-xs font-bold uppercase tracking-wide px-3 py-1 print:py-0.5">
             Supplier
           </div>
-          <div className="text-sm print:text-xs flex flex-col gap-0.5 py-2 print:py-1">
+          <div className="text-sm print:text-[11px] flex flex-col gap-0.5 py-2 print:py-1">
             <p>NAME: {supplierName || '________'}</p>
             <p>COMPANY NAME: {companyName || '________'}</p>
             <p>STREET ADDRESS: {streetAddress || '________'}</p>
@@ -443,11 +631,10 @@ export default function SupplierPOGenerator({
           </div>
         </div>
 
-        {/* Line items table -- Description first, no VAT */}
         <div className="overflow-x-auto print:overflow-visible">
           <table className="w-full text-sm print:text-xs mb-2 border-collapse min-w-[600px] md:min-w-full print:min-w-0">
             <thead>
-              <tr className="bg-[#3D5F3B] text-white text-xs uppercase tracking-wide">
+              <tr className="bg-[#3D5F3B] text-white text-xs print:text-[10px] uppercase tracking-wide">
                 <th className="py-3.5 print:py-1.5 px-4 print:px-2 text-left">Description</th>
                 <th className="py-3.5 print:py-1.5 px-4 print:px-2 text-right w-[70px]">Qty.</th>
                 <th className="py-3.5 print:py-1.5 px-4 print:px-2 text-right w-[120px]">Price</th>
@@ -474,8 +661,7 @@ export default function SupplierPOGenerator({
           </table>
         </div>
 
-        {/* Totals -- Subtotal + Total only, no VAT */}
-        <div className="flex justify-end mt-10 mb-10">
+        <div className="flex justify-end mt-10 print:mt-10 mb-10 print:mb-10">
           <table className="text-sm print:text-xs w-full max-w-[280px]">
             <tbody>
               <tr>
@@ -483,16 +669,15 @@ export default function SupplierPOGenerator({
                 <td className="py-2.5 print:py-1 px-4 print:px-2 bg-[#e8f0e5] text-right font-mono">₱{peso(subtotal)}</td>
               </tr>
               <tr className="border-t-2 border-[#3D5F3B]">
-                <td className="py-3.5 print:py-1.5 px-4 print:px-2 font-bold text-base print:text-sm bg-[#e8f0e5]">TOTAL</td>
-                <td className="py-3.5 print:py-1.5 px-4 print:px-2 font-bold text-base print:text-sm text-right font-mono bg-[#e8f0e5]">₱{peso(total)}</td>
+                <td className="py-3.5 print:py-1.5 px-4 print:px-2 font-bold text-base print:text-[13px] bg-[#e8f0e5]">TOTAL</td>
+                <td className="py-3.5 print:py-1.5 px-4 print:px-2 font-bold text-base print:text-[13px] text-right font-mono bg-[#e8f0e5]">₱{peso(total)}</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        {/* Terms and Condition */}
-        <div className="mt-10 mb-10 print:mb-4 text-[11px] print:text-[9px] leading-relaxed print:leading-snug print:break-inside-avoid">
-          <div className="bg-[#3D5F3B] text-white text-xs print:text-[10px] font-bold uppercase tracking-wide px-3 py-1.5 print:py-1 mb-3 print:mb-2">
+        <div className="mt-10 print:mt-4 mb-10 print:mb-4 text-[11px] print:text-[8px] leading-relaxed print:leading-tight print:break-inside-avoid">
+          <div className="bg-[#3D5F3B] text-white text-xs print:text-[9px] font-bold uppercase tracking-wide px-3 py-1.5 print:py-1 mb-3 print:mb-1.5">
             Terms and Condition
           </div>
           <ol className="list-decimal pl-4 flex flex-col gap-1.5 print:gap-0.5 text-gray-700">
@@ -502,12 +687,11 @@ export default function SupplierPOGenerator({
           </ol>
         </div>
 
-        {/* Prepared By */}
-        <div className="text-sm print:text-xs print:break-inside-avoid mt-10 ">
+        <div className="text-sm print:text-[11px] print:break-inside-avoid mt-10 print:mt-6">
           <p className="font-bold mb-8 print:mb-4">PREPARED BY:</p>
           <div className="border-t border-black w-[220px] mb-1" />
           <p className="font-bold">{preparedBy || '________'}</p>
-          <p className="text-gray-600 text-xs print:text-[10px] uppercase tracking-wide">{preparedByRole}</p>
+          <p className="text-gray-600 text-xs print:text-[9px] uppercase tracking-wide">{preparedByRole}</p>
         </div>
       </div>
     </div>

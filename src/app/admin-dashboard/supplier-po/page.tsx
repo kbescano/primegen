@@ -26,54 +26,130 @@ const STATUS_COLORS: Record<string, string> = {
 const peso = (n: number) =>
   n.toLocaleString('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 })
 
+function extractId(val: any): string | undefined {
+  if (!val) return undefined
+  if (typeof val === 'object') {
+    if (val.id) return String(val.id)
+    if (val.value) return String(val.value)
+    return undefined
+  }
+  return String(val)
+}
+
 export default async function SupplierPOPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; id?: string; new?: string; status?: string; supplierId?: string }>
+  searchParams: Promise<{ from?: string; id?: string; new?: string; status?: string; supplierId?: string; orderId?: string; requestId?: string }>
 }) {
-  const { from, id, new: isNew, status, supplierId } = await searchParams
+  const { from, id, new: isNew, status, supplierId, orderId, requestId } = await searchParams
 
   // ===== GENERATOR MODE =====
-  if (id || from || isNew || supplierId) {
+  if (id || from || isNew || supplierId || orderId || requestId) {
     let initial: SupplierPOInitial | undefined
-    // Picker modal only makes sense when creating fresh with no supplier already chosen --
-    // not when editing an existing PO, and not when a specific supplier was already selected.
-    const showSupplierPicker = Boolean((from || isNew) && !supplierId && !id)
+    const showSupplierPicker = Boolean((from || isNew || orderId || requestId) && !supplierId && !id)
 
-    if (supplierId) {
-      try {
-        const payload = await getPayloadClient()
-        const s: any = await payload.findByID({ collection: 'suppliers', id: supplierId })
-        if (s) {
-          initial = {
-            supplierName: s.name,
-            supplierAddress: [s.company, s.address].filter(Boolean).join('\n'),
-          }
-        }
-      } catch {
-        // fall through to a blank form
-      }
-    } else if (id) {
+    const payloadForProducts = await getPayloadClient()
+    const productsRes = await payloadForProducts.find({
+      collection: 'products',
+      limit: 500,
+      sort: 'name',
+      depth: 0,
+    })
+    const products = (productsRes.docs as any[]).map((p) => ({ id: p.id, name: p.name, unit: p.unit }))
+
+    let resolvedRequestId = extractId(requestId) || extractId(from)
+    let resolvedOrderId = extractId(orderId)
+
+    if (id) {
       try {
         const payload = await getPayloadClient()
         const po: any = await payload.findByID({ collection: 'supplier-purchase-orders', id })
         if (po) {
+          if (!resolvedRequestId) resolvedRequestId = extractId(po.sourceRequestId) || extractId(po.request)
+          if (!resolvedOrderId) resolvedOrderId = extractId(po.sourceOrderId) || extractId(po.order)
+
+          // Deep lookup: if requestId not directly on PO, trace up through parent Order -> Quotation Request
+          if (!resolvedRequestId && resolvedOrderId) {
+            try {
+              const parentOrder: any = await payload.findByID({ collection: 'orders', id: resolvedOrderId })
+              if (parentOrder) {
+                resolvedRequestId = extractId(parentOrder.sourceRequestId) || extractId(parentOrder.request)
+                if (!resolvedRequestId && parentOrder.quotation) {
+                  const qId = extractId(parentOrder.quotation)
+                  if (qId) {
+                    const q: any = await payload.findByID({ collection: 'client-quotations', id: qId })
+                    resolvedRequestId = extractId(q?.sourceRequestId)
+                  }
+                }
+              }
+            } catch {}
+          }
+
           initial = {
             id: po.id,
             poNumber: po.poNumber,
             poDate: po.poDate ? String(po.poDate).slice(0, 10) : undefined,
             supplierName: po.supplierName,
             supplierAddress: po.supplierAddress,
+            supplierCompany: po.supplierCompany,
+            supplierPhone: po.supplierPhone,
             preparedBy: po.preparedBy,
             preparedByRole: po.preparedByRole,
+            sourceOrderId: resolvedOrderId,
+            sourceRequestId: resolvedRequestId,
             items: Array.isArray(po.items)
               ? po.items.map((i: any) => ({ description: i.description, qty: i.qty, unit: i.unit, unitPrice: i.unitPrice }))
               : undefined,
           }
         }
-      } catch {
-        // fall through to a blank form
-      }
+      } catch {}
+    } else if (orderId) {
+      try {
+        const payload = await getPayloadClient()
+        const o: any = await payload.findByID({ collection: 'orders', id: orderId })
+        if (o) {
+          if (!resolvedRequestId) {
+            resolvedRequestId = extractId(o.sourceRequestId) || extractId(o.request)
+            if (!resolvedRequestId && o.quotation) {
+              const qId = extractId(o.quotation)
+              if (qId) {
+                try {
+                  const q: any = await payload.findByID({ collection: 'client-quotations', id: qId })
+                  resolvedRequestId = extractId(q?.sourceRequestId)
+                } catch {}
+              }
+            }
+          }
+
+          initial = {
+            preparedBy: o.salesPerson || '', 
+            project: `Order ${o.orderNumber || orderId} -- for ${o.customerName || 'client'}`,
+            sourceOrderId: String(orderId),
+            sourceRequestId: resolvedRequestId,
+            items: Array.isArray(o.items)
+              ? o.items.map((item: any) => ({
+                  description: item.description,
+                  qty: item.qty,
+                  unit: item.unit,
+                  unitPrice: item.unitCost || 0,
+                }))
+              : undefined,
+          }
+        }
+      } catch {}
+    } else if (supplierId) {
+      try {
+        const payload = await getPayloadClient()
+        const s: any = await payload.findByID({ collection: 'suppliers', id: supplierId })
+        if (s) {
+          initial = {
+            supplierName: s.name,
+            supplierAddress: s.address,
+            supplierCompany: s.company,
+            supplierPhone: s.phone,
+          }
+        }
+      } catch {}
     } else if (from) {
       try {
         const payload = await getPayloadClient()
@@ -93,15 +169,26 @@ export default async function SupplierPOPage({
               : undefined,
           }
         }
-      } catch {
-        // fall through to a blank form
-      }
+      } catch {}
     }
 
-    return <SupplierPOGenerator initial={initial} showSupplierPicker={showSupplierPicker} showBackToList={Boolean(from)} />
+    const mergedInitial: SupplierPOInitial = {
+      ...initial,
+      sourceOrderId: resolvedOrderId ? String(resolvedOrderId) : initial?.sourceOrderId,
+      sourceRequestId: resolvedRequestId ? String(resolvedRequestId) : initial?.sourceRequestId,
+    }
+
+    return (
+      <SupplierPOGenerator 
+        initial={mergedInitial} 
+        showSupplierPicker={showSupplierPicker} 
+        showBackToList={Boolean(from || id || orderId || requestId)} 
+        products={products} 
+      />
+    )
   }
 
-  // ===== LIST MODE (default -- merged Manage POs view) =====
+  // ===== LIST MODE =====
   const activeStatus = STATUSES.includes(status as any) ? status : undefined
 
   const payload = await getPayloadClient()
@@ -117,7 +204,7 @@ export default async function SupplierPOPage({
   }
 
   return (
-    <div className="max-w-[1200px] mx-auto">
+    <div className="max-w-[990px] mx-auto">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
         <div>
           <div className="w-10 h-[3px] bg-[#149911] mb-5" />
