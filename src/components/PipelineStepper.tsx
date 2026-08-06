@@ -134,12 +134,20 @@ function orderBreakdown(o: any) {
 
 // FIX: Aligned Gross Markup math perfectly with ReportsPage / ExportCenter
 function orderMarkupTotal(o: any): number {
-  const subtotal = (o.items || []).reduce((sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitPrice) || 0), 0);
+  const subtotal = (o.items || []).reduce(
+    (sum: number, i: any) =>
+      sum + (Number(i.qty) || 0) * (Number(i.unitPrice) || 0),
+    0,
+  );
   const discountAmount = Number(o.discountAmount) || 0;
   const deliveryFee = Number(o.deliveryFee) || 0;
   const netRevenue = subtotal - discountAmount + deliveryFee;
 
-  const cogs = (o.items || []).reduce((sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitCost) || 0), 0);
+  const cogs = (o.items || []).reduce(
+    (sum: number, i: any) =>
+      sum + (Number(i.qty) || 0) * (Number(i.unitCost) || 0),
+    0,
+  );
 
   return netRevenue - cogs;
 }
@@ -147,7 +155,11 @@ function orderMarkupTotal(o: any): number {
 // FIX: Aligned True Net Profit perfectly with ReportsPage / ExportCenter
 function orderTrueNetProfit(o: any): number {
   const markup = orderMarkupTotal(o);
-  const liquidatedOpex = (o.opex || []).reduce((sum: number, exp: any) => sum + (exp.status === "liquidated" ? Number(exp.amount) || 0 : 0), 0);
+  const liquidatedOpex = (o.opex || []).reduce(
+    (sum: number, exp: any) =>
+      sum + (exp.status === "liquidated" ? Number(exp.amount) || 0 : 0),
+    0,
+  );
   return markup - liquidatedOpex;
 }
 
@@ -289,7 +301,14 @@ export default function PipelineStepper({
           ))}
         </select>
         <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 opacity-40">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+          >
             <path d="M6 9l6 6 6-6" />
           </svg>
         </div>
@@ -307,40 +326,58 @@ export default function PipelineStepper({
       <div className="flex flex-col gap-2 w-full lg:w-[280px] bg-[#fbfbfd] p-4 rounded-xl border border-gray-100 flex-shrink-0">
         <div className="flex items-center justify-between w-full">
           <p className="text-[11px] font-medium text-gray-500">Subtotal</p>
-          <p className="text-[12px] text-gray-900 font-medium">{peso(breakdown.subtotal)}</p>
+          <p className="text-[12px] text-gray-900 font-medium">
+            {peso(breakdown.subtotal)}
+          </p>
         </div>
         {breakdown.discountAmount > 0 && (
           <div className="flex items-center justify-between w-full">
             <p className="text-[11px] font-medium text-gray-500">Discount</p>
-            <p className="text-[12px] text-gray-900 font-medium">-{peso(breakdown.discountAmount)}</p>
+            <p className="text-[12px] text-gray-900 font-medium">
+              -{peso(breakdown.discountAmount)}
+            </p>
           </div>
         )}
         {breakdown.deliveryFee > 0 && (
           <div className="flex items-center justify-between w-full">
             <p className="text-[11px] font-medium text-gray-500">Delivery</p>
-            <p className="text-[12px] text-gray-900 font-medium">{peso(breakdown.deliveryFee)}</p>
+            <p className="text-[12px] text-gray-900 font-medium">
+              {peso(breakdown.deliveryFee)}
+            </p>
           </div>
         )}
         {breakdown.vatAmount > 0 && (
           <div className="flex items-center justify-between w-full">
-            <p className="text-[11px] font-medium text-gray-500">VAT ({breakdown.vatRate}%)</p>
-            <p className="text-[12px] text-gray-900 font-medium">{peso(breakdown.vatAmount)}</p>
+            <p className="text-[11px] font-medium text-gray-500">
+              VAT ({breakdown.vatRate}%)
+            </p>
+            <p className="text-[12px] text-gray-900 font-medium">
+              {peso(breakdown.vatAmount)}
+            </p>
           </div>
         )}
         <div className="flex items-center justify-between w-full pt-2 mt-1 border-t border-gray-100">
-          <p className="text-[12px] font-semibold text-gray-900">Total Revenue</p>
-          <p className="text-[16px] font-semibold tracking-tight text-gray-900">{peso(breakdown.total)}</p>
+          <p className="text-[12px] font-semibold text-gray-900">
+            Total Revenue
+          </p>
+          <p className="text-[16px] font-semibold tracking-tight text-gray-900">
+            {peso(breakdown.total)}
+          </p>
         </div>
 
         <div className="flex items-center justify-between w-full pt-3 mt-1 border-t border-dashed border-gray-200">
           <p className="text-[11px] font-medium text-gray-500">Gross Markup</p>
-          <p className="text-[12px] font-medium text-gray-900">{peso(markup)}</p>
+          <p className="text-[12px] font-medium text-gray-900">
+            {peso(markup)}
+          </p>
         </div>
         {(breakdown.liquidatedOpex > 0 || breakdown.pendingOpex > 0) && (
           <div className="flex items-center justify-between w-full pt-1">
             <p className="text-[11px] font-medium text-gray-500">Less: OPEX</p>
             <div className="text-right">
-              <p className="text-[12px] font-medium text-red-500">-{peso(breakdown.liquidatedOpex)}</p>
+              <p className="text-[12px] font-medium text-red-500">
+                -{peso(breakdown.liquidatedOpex)}
+              </p>
               {breakdown.pendingOpex > 0 && (
                 <p className="text-[9px] text-amber-500 font-medium mt-0.5">
                   (+ {peso(breakdown.pendingOpex)} pending)
@@ -350,8 +387,12 @@ export default function PipelineStepper({
           </div>
         )}
         <div className="flex items-center justify-between w-full pt-2 mt-1 border-t border-gray-100">
-          <p className="text-[12px] font-semibold text-[#149911]">True Net Profit</p>
-          <p className="text-[16px] font-semibold tracking-tight text-[#149911]">{peso(trueNet)}</p>
+          <p className="text-[12px] font-semibold text-[#149911]">
+            True Net Profit
+          </p>
+          <p className="text-[16px] font-semibold tracking-tight text-[#149911]">
+            {peso(trueNet)}
+          </p>
         </div>
       </div>
     );
@@ -359,7 +400,6 @@ export default function PipelineStepper({
 
   return (
     <div className="w-full flex flex-col h-full relative">
-      
       {/* 🌊 APPLE-STYLE STICKY GRID STEPPER */}
       <div className="sticky top-0 z-[50] w-full bg-[#fbfbfd]/90 backdrop-blur-xl pt-3 pb-2 md:pt-4 md:pb-3 border-b border-gray-200/50 shadow-sm shrink-0">
         <div className="w-full max-w-[900px] mx-auto px-4">
@@ -367,7 +407,8 @@ export default function PipelineStepper({
             {STEPS.map((step, i) => {
               let done = completedSteps[step.key];
               if (step.key === "quotation" && quotation) done = true;
-              if (step.key === "confirmation" && isQuotationApprovedOrBeyond) done = true;
+              if (step.key === "confirmation" && isQuotationApprovedOrBeyond)
+                done = true;
 
               const isActive = activeTab === step.key;
               const isLast = i === STEPS.length - 1;
@@ -375,11 +416,18 @@ export default function PipelineStepper({
               const hideLineMobile = (i + 1) % 3 === 0;
 
               return (
-                <div key={step.key} className="relative w-full sm:flex-1 flex flex-col items-center group">
+                <div
+                  key={step.key}
+                  className="relative w-full sm:flex-1 flex flex-col items-center group"
+                >
                   {!isLast && (
                     <div
                       className={`absolute top-[10px] left-[50%] w-full h-[2px] transition-colors duration-500 z-0 ${hideLineMobile ? "hidden sm:block" : "block"} ${
-                        done ? "bg-[#149911]" : isDisabled ? "bg-gray-100" : "bg-gray-200"
+                        done
+                          ? "bg-[#149911]"
+                          : isDisabled
+                            ? "bg-gray-100"
+                            : "bg-gray-200"
                       }`}
                     />
                   )}
@@ -388,7 +436,9 @@ export default function PipelineStepper({
                     onClick={() => !isDisabled && handleTabChange(step.key)}
                     disabled={isDisabled}
                     className={`relative z-10 flex flex-col items-center gap-1.5 w-full focus:outline-none transition-all duration-300 ${
-                      isDisabled ? "cursor-not-allowed opacity-40 grayscale" : "cursor-pointer"
+                      isDisabled
+                        ? "cursor-not-allowed opacity-40 grayscale"
+                        : "cursor-pointer"
                     }`}
                   >
                     <div
@@ -401,7 +451,14 @@ export default function PipelineStepper({
                       }`}
                     >
                       {done ? (
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4">
+                        <svg
+                          width="10"
+                          height="10"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        >
                           <path d="M20 6L9 17l-5-5" />
                         </svg>
                       ) : (
@@ -410,7 +467,11 @@ export default function PipelineStepper({
                     </div>
                     <span
                       className={`text-[9px] font-medium tracking-tight text-center leading-[1.2] transition-colors w-full px-1 max-w-[90px] break-words ${
-                        isActive ? "text-[#1d1d1f] font-semibold" : done ? "text-gray-700" : "text-gray-400"
+                        isActive
+                          ? "text-[#1d1d1f] font-semibold"
+                          : done
+                            ? "text-gray-700"
+                            : "text-gray-400"
                       }`}
                     >
                       {step.label}
@@ -426,38 +487,55 @@ export default function PipelineStepper({
       {/* 📑 TAB CONTENT CONTAINER */}
       <div className="w-full flex-1 p-3 sm:p-5 md:p-6">
         <div className="bg-white rounded-2xl border border-gray-100/80 p-5 md:p-6 shadow-[0_2px_20px_rgba(0,0,0,0.02)] max-w-[1000px] mx-auto">
-          
           {/* ======================= STEP 1 ======================= */}
           {activeTab === "quotation" && (
             <TabSection title="Step 1: Create Quotation">
               {quotation ? (
                 <div className="flex flex-col gap-1.5">
-                  <SummaryRow label="Quotation #" value={quotation.quotationNumber} mono />
-                  <SummaryRow label="Status" value={quotation.status.replace("_", " ")} />
+                  <SummaryRow
+                    label="Quotation #"
+                    value={quotation.quotationNumber}
+                    mono
+                  />
+                  <SummaryRow
+                    label="Status"
+                    value={quotation.status.replace("_", " ")}
+                  />
                   <SummaryRow label="Customer" value={quotation.customerName} />
 
                   {localOrder ? (
                     (() => {
                       const subtotal = (quotation.items || []).reduce(
-                        (sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitPrice) || 0), 0
+                        (sum: number, i: any) =>
+                          sum +
+                          (Number(i.qty) || 0) * (Number(i.unitPrice) || 0),
+                        0,
                       );
-                      const discountAmount = Number(quotation.discountAmount) || 0;
+                      const discountAmount =
+                        Number(quotation.discountAmount) || 0;
                       const deliveryFee = Number(quotation.deliveryFee) || 0;
                       const netAfterDiscount = subtotal - discountAmount;
                       const netWithDelivery = netAfterDiscount + deliveryFee;
                       const hasVat = (Number(quotation.vatRate) || 0) > 0;
                       const vatRate = Number(quotation.vatRate) || 0;
-                      const vat = hasVat ? netWithDelivery * (vatRate / 100) : 0;
+                      const vat = hasVat
+                        ? netWithDelivery * (vatRate / 100)
+                        : 0;
                       const total = netWithDelivery + vat;
                       const terms = getQuotationTerms(hasVat);
                       const qDate = quotation.quotationDate
-                        ? new Date(quotation.quotationDate).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" })
+                        ? new Date(quotation.quotationDate).toLocaleDateString(
+                            "en-PH",
+                            { year: "numeric", month: "short", day: "numeric" },
+                          )
                         : "________";
 
                       return (
                         <div className="mt-6 border-t border-gray-100 pt-5">
-                          <p className="text-[11px] font-medium text-gray-500 mb-4">Confirmed Quotation Preview</p>
-                          
+                          <p className="text-[11px] font-medium text-gray-500 mb-4">
+                            Confirmed Quotation Preview
+                          </p>
+
                           <div className="w-full overflow-x-auto pb-4">
                             <div className="quotation-print-doc bg-white border border-gray-200 rounded-2xl p-6 text-[#01172f] min-w-[794px] shadow-sm">
                               <div className="flex flex-row justify-between items-start gap-3 mb-4">
@@ -471,27 +549,49 @@ export default function PipelineStepper({
                                     />
                                   </div>
                                   <div>
-                                    <h2 className="text-lg font-black leading-none text-[#103900] tracking-tight">PRIMEGEN</h2>
-                                    <p className="text-[10px] font-bold tracking-[0.2em] text-[#01172f] mt-0 mb-1.5">TRADING CORPORATION</p>
+                                    <h2 className="text-lg font-black leading-none text-[#103900] tracking-tight">
+                                      PRIMEGEN
+                                    </h2>
+                                    <p className="text-[10px] font-bold tracking-[0.2em] text-[#01172f] mt-0 mb-1.5">
+                                      TRADING CORPORATION
+                                    </p>
                                     <div className="w-full max-w-[200px] h-[2px] bg-[#149911] mb-1.5" />
                                     <p className="text-[8px] font-bold text-[#103900] leading-snug max-w-[200px] m-0">
-                                      SOUTHERN CITY HOMES, YG BUILDING, CEBU ST, 4 TANZANG LUMA, IMUS, 4103 CAVITE, PHILIPPINES
+                                      SOUTHERN CITY HOMES, YG BUILDING, CEBU ST,
+                                      4 TANZANG LUMA, IMUS, 4103 CAVITE,
+                                      PHILIPPINES
                                     </p>
-                                    <p className="text-[8px] font-bold text-[#103900] m-0 mt-1">0917-185-9127 / 0917-133-9515 / 046-8860853</p>
-                                    <p className="text-[8px] font-bold text-[#103900] m-0 mt-1">SALES@PRIMEGENTRADINGCORP.COM</p>
+                                    <p className="text-[8px] font-bold text-[#103900] m-0 mt-1">
+                                      0917-185-9127 / 0917-133-9515 /
+                                      046-8860853
+                                    </p>
+                                    <p className="text-[8px] font-bold text-[#103900] m-0 mt-1">
+                                      SALES@PRIMEGENTRADINGCORP.COM
+                                    </p>
                                   </div>
                                 </div>
                                 <div className="text-right w-auto">
-                                  <h3 className="text-lg font-bold text-[#3D5F3B] mb-1">FORMAL QUOTATION</h3>
+                                  <h3 className="text-lg font-bold text-[#3D5F3B] mb-1">
+                                    FORMAL QUOTATION
+                                  </h3>
                                   <table className="text-[10px] ml-auto mt-0">
                                     <tbody>
                                       <tr>
-                                        <td className="border border-gray-300 px-2 py-0.5 font-bold bg-gray-50">DATE</td>
-                                        <td className="border border-gray-300 px-2 py-0.5">{qDate}</td>
+                                        <td className="border border-gray-300 px-2 py-0.5 font-bold bg-gray-50">
+                                          DATE
+                                        </td>
+                                        <td className="border border-gray-300 px-2 py-0.5">
+                                          {qDate}
+                                        </td>
                                       </tr>
                                       <tr>
-                                        <td className="border border-gray-300 px-2 py-0.5 font-bold bg-gray-50">QUOTATION #</td>
-                                        <td className="border border-gray-300 px-2 py-0.5 font-mono">{quotation.quotationNumber || "________"}</td>
+                                        <td className="border border-gray-300 px-2 py-0.5 font-bold bg-gray-50">
+                                          QUOTATION #
+                                        </td>
+                                        <td className="border border-gray-300 px-2 py-0.5 font-mono">
+                                          {quotation.quotationNumber ||
+                                            "________"}
+                                        </td>
                                       </tr>
                                     </tbody>
                                   </table>
@@ -499,12 +599,28 @@ export default function PipelineStepper({
                               </div>
 
                               <div className="mb-3">
-                                <div className="bg-[#3D5F3B] text-white text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-sm">Customer</div>
+                                <div className="bg-[#3D5F3B] text-white text-[10px] font-bold uppercase tracking-wide px-2 py-1 rounded-sm">
+                                  Customer
+                                </div>
                                 <div className="text-[10px] py-1 flex flex-col gap-0.5">
-                                  <p><span className="font-bold">Name: </span>{quotation.customerName || "________"}</p>
-                                  <p><span className="font-bold">Company: </span>{quotation.company || "________"}</p>
-                                  <p><span className="font-bold">Address: </span>{quotation.address || "________"}</p>
-                                  <p><span className="font-bold">Contact Number: </span>{quotation.contactNumber || "________"}</p>
+                                  <p>
+                                    <span className="font-bold">Name: </span>
+                                    {quotation.customerName || "________"}
+                                  </p>
+                                  <p>
+                                    <span className="font-bold">Company: </span>
+                                    {quotation.company || "________"}
+                                  </p>
+                                  <p>
+                                    <span className="font-bold">Address: </span>
+                                    {quotation.address || "________"}
+                                  </p>
+                                  <p>
+                                    <span className="font-bold">
+                                      Contact Number:{" "}
+                                    </span>
+                                    {quotation.contactNumber || "________"}
+                                  </p>
                                 </div>
                               </div>
 
@@ -512,32 +628,66 @@ export default function PipelineStepper({
                                 <table className="w-full text-[10px] mb-2 border-collapse">
                                   <thead>
                                     <tr className="bg-[#3D5F3B] text-white text-[10px] uppercase tracking-wide">
-                                      <th className="py-1 px-2 text-left w-[60px]">Qty</th>
-                                      <th className="py-1 px-2 text-left w-[80px]">Unit</th>
-                                      <th className="py-1 px-2 text-left">Description</th>
-                                      <th className="py-1 px-2 text-right w-[100px]">Unit Price</th>
-                                      <th className="py-1 px-2 text-right w-[100px]">Amount</th>
+                                      <th className="py-1 px-2 text-left w-[60px]">
+                                        Qty
+                                      </th>
+                                      <th className="py-1 px-2 text-left w-[80px]">
+                                        Unit
+                                      </th>
+                                      <th className="py-1 px-2 text-left">
+                                        Description
+                                      </th>
+                                      <th className="py-1 px-2 text-right w-[100px]">
+                                        Unit Price
+                                      </th>
+                                      <th className="py-1 px-2 text-right w-[100px]">
+                                        Amount
+                                      </th>
                                     </tr>
                                   </thead>
                                   <tbody>
-                                    {(quotation.items || []).map((item: any, i: number) => {
-                                      const price = Number(item.unitPrice) || 0;
-                                      const qty = Number(item.qty) || 0;
-                                      return (
-                                        <tr key={i} className={i % 2 === 1 ? "bg-gray-50" : ""}>
-                                          <td className="py-1 px-2 border-b border-gray-100">{qty}</td>
-                                          <td className="py-1 px-2 border-b border-gray-100">{item.unit}</td>
-                                          <td className="py-1 px-2 border-b border-gray-100">
-                                            <div className="flex items-center gap-2">
-                                              <span>{item.description || "--"}</span>
-                                              {item.imageDataUrl && <img src={item.imageDataUrl} alt="" className="h-6 w-auto object-contain flex-shrink-0 rounded" />}
-                                            </div>
-                                          </td>
-                                          <td className="py-1 px-2 border-b border-gray-100 text-right font-mono">{peso(price)}</td>
-                                          <td className="py-1 px-2 border-b border-gray-100 text-right font-mono">{peso(qty * price)}</td>
-                                        </tr>
-                                      );
-                                    })}
+                                    {(quotation.items || []).map(
+                                      (item: any, i: number) => {
+                                        const price =
+                                          Number(item.unitPrice) || 0;
+                                        const qty = Number(item.qty) || 0;
+                                        return (
+                                          <tr
+                                            key={i}
+                                            className={
+                                              i % 2 === 1 ? "bg-gray-50" : ""
+                                            }
+                                          >
+                                            <td className="py-1 px-2 border-b border-gray-100">
+                                              {qty}
+                                            </td>
+                                            <td className="py-1 px-2 border-b border-gray-100">
+                                              {item.unit}
+                                            </td>
+                                            <td className="py-1 px-2 border-b border-gray-100">
+                                              <div className="flex items-center gap-2">
+                                                <span>
+                                                  {item.description || "--"}
+                                                </span>
+                                                {item.imageDataUrl && (
+                                                  <img
+                                                    src={item.imageDataUrl}
+                                                    alt=""
+                                                    className="h-6 w-auto object-contain flex-shrink-0 rounded"
+                                                  />
+                                                )}
+                                              </div>
+                                            </td>
+                                            <td className="py-1 px-2 border-b border-gray-100 text-right font-mono">
+                                              {peso(price)}
+                                            </td>
+                                            <td className="py-1 px-2 border-b border-gray-100 text-right font-mono">
+                                              {peso(qty * price)}
+                                            </td>
+                                          </tr>
+                                        );
+                                      },
+                                    )}
                                   </tbody>
                                 </table>
                               </div>
@@ -546,30 +696,48 @@ export default function PipelineStepper({
                                 <table className="text-[10px] w-full max-w-[240px]">
                                   <tbody>
                                     <tr>
-                                      <td className="py-1 px-2 bg-[#e8f0e5] rounded-l-sm">Subtotal</td>
-                                      <td className="py-1 px-2 bg-[#e8f0e5] text-right font-mono rounded-r-sm">{peso(subtotal)}</td>
+                                      <td className="py-1 px-2 bg-[#e8f0e5] rounded-l-sm">
+                                        Subtotal
+                                      </td>
+                                      <td className="py-1 px-2 bg-[#e8f0e5] text-right font-mono rounded-r-sm">
+                                        {peso(subtotal)}
+                                      </td>
                                     </tr>
                                     {discountAmount > 0 && (
                                       <tr>
                                         <td className="py-1 px-2">Discount</td>
-                                        <td className="py-1 px-2 text-right font-mono">-{peso(discountAmount)}</td>
+                                        <td className="py-1 px-2 text-right font-mono">
+                                          -{peso(discountAmount)}
+                                        </td>
                                       </tr>
                                     )}
                                     {deliveryFee > 0 && (
                                       <tr>
-                                        <td className="py-1 px-2">Delivery Fee</td>
-                                        <td className="py-1 px-2 text-right font-mono">{peso(deliveryFee)}</td>
+                                        <td className="py-1 px-2">
+                                          Delivery Fee
+                                        </td>
+                                        <td className="py-1 px-2 text-right font-mono">
+                                          {peso(deliveryFee)}
+                                        </td>
                                       </tr>
                                     )}
                                     {hasVat && (
                                       <tr>
-                                        <td className="py-1 px-2">VAT ({vatRate}%)</td>
-                                        <td className="py-1 px-2 text-right font-mono">{peso(vat)}</td>
+                                        <td className="py-1 px-2">
+                                          VAT ({vatRate}%)
+                                        </td>
+                                        <td className="py-1 px-2 text-right font-mono">
+                                          {peso(vat)}
+                                        </td>
                                       </tr>
                                     )}
                                     <tr className="border-t-2 border-[#3D5F3B]">
-                                      <td className="py-1 px-2 font-bold text-[11px] bg-[#e8f0e5] rounded-l-sm">TOTAL</td>
-                                      <td className="py-1 px-2 font-bold text-[11px] text-right font-mono bg-[#e8f0e5] rounded-r-sm">{peso(total)}</td>
+                                      <td className="py-1 px-2 font-bold text-[11px] bg-[#e8f0e5] rounded-l-sm">
+                                        TOTAL
+                                      </td>
+                                      <td className="py-1 px-2 font-bold text-[11px] text-right font-mono bg-[#e8f0e5] rounded-r-sm">
+                                        {peso(total)}
+                                      </td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -577,20 +745,32 @@ export default function PipelineStepper({
 
                               <div className="grid grid-cols-[1fr_240px] gap-4 mt-8 mb-2 text-[8px] leading-snug break-inside-avoid">
                                 <div>
-                                  <p className="font-bold text-[9px] uppercase tracking-wide mb-1">Terms &amp; Condition</p>
+                                  <p className="font-bold text-[9px] uppercase tracking-wide mb-1">
+                                    Terms &amp; Condition
+                                  </p>
                                   <ol className="list-decimal pl-4 flex flex-col gap-0.5 text-gray-700">
-                                    {terms.map((t, i) => <li key={i}>{t}</li>)}
+                                    {terms.map((t, i) => (
+                                      <li key={i}>{t}</li>
+                                    ))}
                                   </ol>
                                 </div>
                                 <div>
-                                  <p className="font-bold text-[9px] uppercase tracking-wide mb-3">Customer Conforme:</p>
+                                  <p className="font-bold text-[9px] uppercase tracking-wide mb-3">
+                                    Customer Conforme:
+                                  </p>
                                   <div className="border-t border-black w-full mb-1.5" />
-                                  <p className="text-gray-600">This is to certify that all details in this quotation are correct (name, address, items, specifications, quantity, price)</p>
+                                  <p className="text-gray-600">
+                                    This is to certify that all details in this
+                                    quotation are correct (name, address, items,
+                                    specifications, quantity, price)
+                                  </p>
                                 </div>
                               </div>
 
                               <div className="border-t border-black pt-1 break-inside-avoid mt-8">
-                                <p className="text-center font-bold text-[9px] uppercase tracking-wide mb-2">Bank Transfer Details</p>
+                                <p className="text-center font-bold text-[9px] uppercase tracking-wide mb-2">
+                                  Bank Transfer Details
+                                </p>
                                 <div className="grid grid-cols-4 gap-2 gap-x-3 text-[7px]">
                                   <div>
                                     <p className="font-bold">BANK:</p>
@@ -611,7 +791,9 @@ export default function PipelineStepper({
                                     <p>50110044450</p>
                                   </div>
                                   <div>
-                                    <p className="font-bold">BANCO DE ORO (SM AURA BRANCH)</p>
+                                    <p className="font-bold">
+                                      BANCO DE ORO (SM AURA BRANCH)
+                                    </p>
                                     <p className="mt-0.5">MICHAEL P. SAYNES</p>
                                     <p>008010019955</p>
                                   </div>
@@ -650,8 +832,15 @@ export default function PipelineStepper({
                 <EmptyStep text="Waiting on Step 1: create a quotation first." />
               ) : (
                 <div className="flex flex-col h-full gap-1.5">
-                  <SummaryRow label="Quotation Status" value={quotation.status.replace("_", " ")} />
-                  <SummaryRow label="Total Value" value={peso(quotationTotal(quotation))} mono />
+                  <SummaryRow
+                    label="Quotation Status"
+                    value={quotation.status.replace("_", " ")}
+                  />
+                  <SummaryRow
+                    label="Total Value"
+                    value={peso(quotationTotal(quotation))}
+                    mono
+                  />
 
                   <div
                     className={`mt-4 mb-3 p-5 rounded-2xl border transition-colors duration-300 ${
@@ -663,7 +852,12 @@ export default function PipelineStepper({
                     {isQuotationApprovedOrBeyond ? (
                       <div className="flex flex-col items-start gap-3">
                         <p className="text-[13px] font-medium text-gray-900 leading-relaxed">
-                          <strong className="text-[#149911] mr-1">Approved!</strong> The client has accepted this quotation. You can now print the formal document and proceed to confirm the internal order.
+                          <strong className="text-[#149911] mr-1">
+                            Approved!
+                          </strong>{" "}
+                          The client has accepted this quotation. You can now
+                          print the formal document and proceed to confirm the
+                          internal order.
                         </p>
                         <Link
                           href={`/admin-dashboard/client-quotation?id=${quotation.id}&pipelineId=${request.id}`}
@@ -736,7 +930,8 @@ export default function PipelineStepper({
                       </div>
 
                       <div className="relative w-full sm:w-auto">
-                        {isCreatingOrder || quotation?.status === "order_confirmed" ? (
+                        {isCreatingOrder ||
+                        quotation?.status === "order_confirmed" ? (
                           <span className="inline-block w-full sm:w-[160px] text-center px-4 py-2 text-[11px] font-medium bg-[#149911]/10 text-[#149911] rounded-xl">
                             Generating Order...
                           </span>
@@ -755,7 +950,14 @@ export default function PipelineStepper({
                               <option value="order_confirmed">Confirmed</option>
                             </select>
                             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 opacity-40">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                              <svg
+                                width="12"
+                                height="12"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2.5"
+                              >
                                 <path d="M6 9l6 6 6-6" />
                               </svg>
                             </div>
@@ -766,7 +968,8 @@ export default function PipelineStepper({
 
                     <div className="py-10 text-center bg-[#fbfbfd] rounded-2xl border border-dashed border-gray-200 px-5">
                       <p className="text-[13px] text-gray-500 font-medium max-w-sm mx-auto">
-                        Please confirm the internal order status above to unlock supplier assignments and PO generation.
+                        Please confirm the internal order status above to unlock
+                        supplier assignments and PO generation.
                       </p>
                     </div>
                   </div>
@@ -809,12 +1012,6 @@ export default function PipelineStepper({
                     />
                   </div>
 
-                  <OrderOpexSection
-                    opex={localOrder.opex || []}
-                    onUpdate={(newOpex) => handleUpdateOrderField("opex", newOpex)}
-                    allowAdd={true}
-                  />
-
                   {/* Left Action Button, Right Financial Summary */}
                   <div className="border-t border-gray-100 pt-6 mt-6 flex flex-col-reverse lg:flex-row gap-6 justify-between items-start">
                     <div className="w-full lg:w-auto flex-1 flex justify-start">
@@ -849,17 +1046,24 @@ export default function PipelineStepper({
                       allowStatusChange={true}
                     />
                   </div>
-
-                  {linkedPOs.length > 0 && linkedPOs.every((po: any) => po.status === "fulfilled") && (
-                    <div className="flex justify-start pt-2">
-                      <button
-                        onClick={() => handleTabChange("delivery")}
-                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[13px] font-medium shadow-sm"
-                      >
-                        Next Step: Track Delivery & Payment &rarr;
-                      </button>
-                    </div>
-                  )}
+                  <OrderOpexSection
+                    opex={localOrder.opex || []}
+                    onUpdate={(newOpex) =>
+                      handleUpdateOrderField("opex", newOpex)
+                    }
+                    allowAdd={true}
+                  />
+                  {linkedPOs.length > 0 &&
+                    linkedPOs.every((po: any) => po.status === "fulfilled") && (
+                      <div className="flex justify-start pt-2">
+                        <button
+                          onClick={() => handleTabChange("delivery")}
+                          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[13px] font-medium shadow-sm"
+                        >
+                          Next Step: Track Delivery & Payment &rarr;
+                        </button>
+                      </div>
+                    )}
                 </div>
               )}
             </TabSection>
@@ -885,7 +1089,9 @@ export default function PipelineStepper({
                       value={localOrder.fulfillmentStatus}
                       options={FULFILLMENT_OPTIONS}
                       colorMap={FULFILLMENT_COLORS}
-                      onChange={(val: string) => handleUpdateOrderField("fulfillmentStatus", val)}
+                      onChange={(val: string) =>
+                        handleUpdateOrderField("fulfillmentStatus", val)
+                      }
                     />
                   </div>
 
@@ -902,14 +1108,18 @@ export default function PipelineStepper({
                       value={localOrder.paymentStatus}
                       options={PAYMENT_OPTIONS}
                       colorMap={PAYMENT_COLORS}
-                      onChange={(val: string) => handleUpdateOrderField("paymentStatus", val)}
+                      onChange={(val: string) =>
+                        handleUpdateOrderField("paymentStatus", val)
+                      }
                     />
                   </div>
 
                   <div className="mt-1 mb-1">
                     <OrderOpexSection
                       opex={localOrder.opex || []}
-                      onUpdate={(newOpex) => handleUpdateOrderField("opex", newOpex)}
+                      onUpdate={(newOpex) =>
+                        handleUpdateOrderField("opex", newOpex)
+                      }
                       allowAdd={true}
                     />
                   </div>
@@ -917,14 +1127,15 @@ export default function PipelineStepper({
                   {/* Left Action Button, Right Financial Summary */}
                   <div className="border-t border-gray-100 pt-6 mt-5 flex flex-col-reverse lg:flex-row gap-6 justify-between items-start">
                     <div className="w-full lg:w-auto flex-1 flex justify-start">
-                      {localOrder.fulfillmentStatus === "delivered" && localOrder.paymentStatus === "paid" && (
-                        <button
-                          onClick={() => handleTabChange("closed")}
-                          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[11px] font-medium shadow-sm"
-                        >
-                          Next Step: Confirm Completed &rarr;
-                        </button>
-                      )}
+                      {localOrder.fulfillmentStatus === "delivered" &&
+                        localOrder.paymentStatus === "paid" && (
+                          <button
+                            onClick={() => handleTabChange("closed")}
+                            className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[11px] font-medium shadow-sm"
+                          >
+                            Next Step: Confirm Completed &rarr;
+                          </button>
+                        )}
                     </div>
                     {renderFinancialSummary()}
                   </div>
@@ -949,8 +1160,12 @@ export default function PipelineStepper({
                           <p className="text-[11px] text-gray-500 font-medium mb-1">
                             Pipeline Status
                           </p>
-                          <p className={`text-[14px] font-semibold tracking-tight ${request.status === "completed" ? "text-[#149911]" : "text-amber-600"}`}>
-                            {request.status === "completed" ? "Fully Closed & Completed" : "Pending Final Delivery/Payment"}
+                          <p
+                            className={`text-[14px] font-semibold tracking-tight ${request.status === "completed" ? "text-[#149911]" : "text-amber-600"}`}
+                          >
+                            {request.status === "completed"
+                              ? "Fully Closed & Completed"
+                              : "Pending Final Delivery/Payment"}
                           </p>
                         </div>
                       </div>
@@ -961,7 +1176,9 @@ export default function PipelineStepper({
                             Client Details
                           </h3>
                           <p className="text-[14px] font-medium text-gray-900 mb-1">
-                            {localOrder.customerName || quotation.customerName || "--"}
+                            {localOrder.customerName ||
+                              quotation.customerName ||
+                              "--"}
                           </p>
                           <p className="text-[13px] text-gray-600 mb-1">
                             {localOrder.company || quotation.company || "--"}
@@ -978,7 +1195,9 @@ export default function PipelineStepper({
                             Sales Agent
                           </h3>
                           <p className="text-[14px] font-medium text-gray-900">
-                            {localOrder.salesPerson || quotation.salesPerson || "--"}
+                            {localOrder.salesPerson ||
+                              quotation.salesPerson ||
+                              "--"}
                           </p>
                         </div>
                       </div>
@@ -1032,7 +1251,10 @@ export default function PipelineStepper({
                                   {item.description || "--"}
                                 </p>
                                 <p className="text-[13px] font-medium font-mono text-gray-900 sm:text-right flex-shrink-0">
-                                  {peso((Number(item.qty) || 0) * (Number(item.unitPrice) || 0))}
+                                  {peso(
+                                    (Number(item.qty) || 0) *
+                                      (Number(item.unitPrice) || 0),
+                                  )}
                                 </p>
                               </div>
                             ))}
@@ -1053,7 +1275,13 @@ export default function PipelineStepper({
   );
 }
 
-function TabSection({ title, children }: { title: string; children: React.ReactNode }) {
+function TabSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
   return (
     <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
       <h2 className="text-[15px] font-semibold tracking-tight text-gray-900 mb-6 pb-3 border-b border-gray-100">
@@ -1064,7 +1292,15 @@ function TabSection({ title, children }: { title: string; children: React.ReactN
   );
 }
 
-function SummaryRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function SummaryRow({
+  label,
+  value,
+  mono,
+}: {
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center justify-between py-2.5 md:py-3 border-b border-gray-50 last:border-0 gap-1.5 sm:gap-3">
       <span className="text-[12px] font-medium text-gray-500 flex-shrink-0">
@@ -1079,12 +1315,18 @@ function SummaryRow({ label, value, mono }: { label: string; value: string; mono
   );
 }
 
-function EmptyStep({ text, ctaLabel, href }: { text: string; ctaLabel?: string; href?: string }) {
+function EmptyStep({
+  text,
+  ctaLabel,
+  href,
+}: {
+  text: string;
+  ctaLabel?: string;
+  href?: string;
+}) {
   return (
     <div className="flex flex-col items-center justify-center p-8 md:p-12 bg-[#fbfbfd] rounded-3xl border border-dashed border-gray-200 text-center">
-      <p className="text-[13px] text-gray-500 font-medium mb-5">
-        {text}
-      </p>
+      <p className="text-[13px] text-gray-500 font-medium mb-5">{text}</p>
       {ctaLabel && href && (
         <Link
           href={href}

@@ -175,7 +175,7 @@ export default function ExportCenterPage() {
         </Link>
       </div>
 
-      <div className="flex flex-col lg:flex-row max-w-[1400px] mx-auto">
+      <div className="flex flex-col lg:flex-row max-w-[1000px] mx-auto">
         
         {/* LEFT COLUMN: CONTROLS */}
         <div className="w-full lg:w-[45%] xl:w-[40%] p-8 md:p-12 lg:pr-16 flex flex-col">
