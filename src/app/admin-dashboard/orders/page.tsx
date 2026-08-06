@@ -1,6 +1,8 @@
 import Link from 'next/link'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import OrderOpexSection from '@/components/OrderOpexSection'
+import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
 
 const FULFILLMENT_STAGES = ['preparing', 'shipped', 'delivered'] as const
 
@@ -84,10 +86,29 @@ function MinimalStepper({ status }: { status: string }) {
 export default async function OrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; id?: string }>
+  searchParams: Promise<{ status?: string; id?: string; pipelineId?: string }>
 }) {
-  const { status: activeStatus, id: highlightId } = await searchParams
+  const { status: activeStatus, id: highlightId, pipelineId } = await searchParams
   const payload = await getPayloadClient()
+
+  // =========================================================================
+  // 🔒 STRICT ROLE-BASED ACCESS CONTROL (SERVER-SIDE)
+  // =========================================================================
+  const reqHeaders = await headers()
+  const { user } = await payload.auth({ headers: reqHeaders })
+
+  // If the user is NOT an admin ('user' role or undefined)
+  if (user?.role !== 'admin') {
+    // 1. Block access to the main list (no ID)
+    if (!highlightId) {
+      redirect('/admin-dashboard')
+    }
+    // 2. Block access to a specific order if they don't have pipeline context
+    if (highlightId && !pipelineId) {
+      redirect('/admin-dashboard')
+    }
+  }
+  // =========================================================================
 
   const { docs } = await payload.find({
     collection: 'orders',
@@ -163,7 +184,14 @@ export default async function OrdersPage({
             const orderPOs = posByOrderId[String(o.id)] || []
             
             // Financial Math
-            const markupTotal = orderItems.reduce((sum: number, i: any) => sum + ((Number(i.qty) || 0) * ((Number(i.unitPrice) || 0) - (Number(i.unitCost) || 0))), 0)
+            const subtotal = orderItems.reduce((sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitPrice) || 0), 0)
+            const discount = Number(o.discountAmount) || 0
+            const delivery = Number(o.deliveryFee) || 0
+            const netRevenue = subtotal - discount + delivery
+            
+            const cogs = orderItems.reduce((sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitCost) || 0), 0)
+            const markupTotal = netRevenue - cogs
+            
             const liquidatedOpex = (o.opex || []).reduce((sum: number, exp: any) => sum + (exp.status === 'liquidated' ? Number(exp.amount) || 0 : 0), 0)
             const pendingOpex = (o.opex || []).reduce((sum: number, exp: any) => sum + (exp.status === 'pending' ? Number(exp.amount) || 0 : 0), 0)
             const trueNet = markupTotal - liquidatedOpex
@@ -256,7 +284,11 @@ export default async function OrdersPage({
                     <div className="flex flex-col gap-2">
                       {orderPOs.length > 0 ? (
                         orderPOs.map(po => (
-                          <div key={po.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2 bg-gray-50 rounded border border-gray-100 text-[11px]">
+                          <Link 
+                            key={po.id} 
+                            href={`/admin-dashboard/supplier-po?listSupplier=${encodeURIComponent(po.supplierName || '')}`}
+                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100 hover:border-gray-300 hover:shadow-sm transition-all text-[11px]"
+                          >
                             <span className="text-gray-700 font-medium truncate">
                               <span className="font-mono font-bold text-[#01172f] mr-2">{po.poNumber}</span>
                               {po.supplierName || 'Unnamed Supplier'}
@@ -264,7 +296,7 @@ export default async function OrdersPage({
                             <span className="text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#149911]/10 text-[#149911] rounded flex-shrink-0">
                               {po.status}
                             </span>
-                          </div>
+                          </Link>
                         ))
                       ) : (
                         <p className="text-[11px] text-gray-400 italic py-1">No supplier POs created yet.</p>
@@ -275,7 +307,6 @@ export default async function OrdersPage({
 
                 {/* OPEX Section */}
                 <div className="mb-6">
-                  {/* Passing orderId makes this component autonomously handle API updates */}
                   <OrderOpexSection 
                     orderId={o.id} 
                     opex={o.opex || []} 
@@ -287,6 +318,22 @@ export default async function OrdersPage({
                 <div className="flex flex-col md:flex-row justify-end items-start md:items-end border-t border-gray-100 pt-6 gap-4 mt-2">
                   <div className="bg-gray-50 p-4 md:p-5 rounded flex flex-col gap-2.5 border border-gray-200 w-full md:w-[340px]">
                     <div className="flex justify-between items-center text-[11px] text-gray-500">
+                      <span>Subtotal</span>
+                      <span className="font-mono">{peso(subtotal)}</span>
+                    </div>
+                    {discount > 0 && (
+                      <div className="flex justify-between items-center text-[11px] text-gray-500">
+                        <span>Discount</span>
+                        <span className="font-mono text-red-500">-{peso(discount)}</span>
+                      </div>
+                    )}
+                    {delivery > 0 && (
+                      <div className="flex justify-between items-center text-[11px] text-gray-500">
+                        <span>Delivery Fee</span>
+                        <span className="font-mono">{peso(delivery)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center text-[11px] text-gray-500 border-t border-gray-200 pt-2.5 mt-1.5 border-dashed">
                       <span>Gross Markup</span>
                       <span className="font-mono">{peso(markupTotal)}</span>
                     </div>

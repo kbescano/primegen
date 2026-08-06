@@ -99,7 +99,21 @@ export default function QuotationGenerator({
   const [reminderOpen, setReminderOpen] = useState(false)
   const [confirmApprovalOpen, setConfirmApprovalOpen] = useState(false)
   const [pendingStatus, setPendingStatus] = useState<string>('draft')
+  
+  // Track context for back button
+  const [hasPipelineContext, setHasPipelineContext] = useState(false)
   const sourceRequestId = initial?.sourceRequestId 
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      if (params.has('from') || params.has('pipelineId')) {
+        setHasPipelineContext(true)
+      } else if (document.referrer.includes('/pipeline/')) {
+        setHasPipelineContext(true)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     if (isEditing) {
@@ -262,8 +276,11 @@ export default function QuotationGenerator({
       await upsertClientRecord()
       setSaving('saved')
 
-      if (sourceRequestId) {
+      // Contextual Redirect logic
+      if (hasPipelineContext && sourceRequestId) {
         router.push(`/admin-dashboard/pipeline/${sourceRequestId}?step=confirmation`)
+      } else {
+        router.push('/admin-dashboard/client-quotation')
       }
       
     } catch (err: any) {
@@ -383,12 +400,20 @@ export default function QuotationGenerator({
       <div className="print:hidden">
         <div className="mb-8">
           {showBackToList && (
-            <Link
-              href={sourceRequestId ? `/admin-dashboard/pipeline/${sourceRequestId}?step=confirmation` : '/admin-dashboard/client-quotation'}
-              className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.1em] text-[#01172f]/50 hover:text-[#149911] transition-colors mb-4"
+            <button
+              onClick={(e) => {
+                e.preventDefault()
+                // Context-aware Back button
+                if (hasPipelineContext && sourceRequestId) {
+                  router.push(`/admin-dashboard/pipeline/${sourceRequestId}?step=confirmation`)
+                } else {
+                  router.push('/admin-dashboard/client-quotation')
+                }
+              }}
+              className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.1em] text-[#01172f]/50 hover:text-[#149911] transition-colors mb-4 focus:outline-none"
             >
-              &larr; Back to Pipeline
-            </Link>
+              &larr; {hasPipelineContext && sourceRequestId ? 'Back to Pipeline' : 'Back to Quotations'}
+            </button>
           )}
           <div className="w-8 h-[3px] bg-[#149911] mb-4" />
           <h1 className="text-2xl font-black uppercase tracking-tight text-[#01172f] mb-2">

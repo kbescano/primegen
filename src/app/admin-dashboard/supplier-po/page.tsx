@@ -18,7 +18,7 @@ const STATUS_LABELS: Record<string, string> = {
 }
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-gray-100 text-gray-600',
-  issued: 'bg-[#149911]/10 text-[#3D5F3B]',
+  issued: 'bg-blue-50 text-blue-600',
   fulfilled: 'bg-[#149911] text-white',
   cancelled: 'bg-red-50 text-red-600',
 }
@@ -39,9 +39,19 @@ function extractId(val: any): string | undefined {
 export default async function SupplierPOPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; id?: string; new?: string; status?: string; supplierId?: string; orderId?: string; requestId?: string }>
+  searchParams: Promise<{ 
+    from?: string; 
+    id?: string; 
+    new?: string; 
+    status?: string; 
+    supplierId?: string; 
+    orderId?: string; 
+    requestId?: string;
+    listOrder?: string;
+    listSupplier?: string;
+  }>
 }) {
-  const { from, id, new: isNew, status, supplierId, orderId, requestId } = await searchParams
+  const { from, id, new: isNew, status, supplierId, orderId, requestId, listOrder, listSupplier } = await searchParams
 
   // ===== GENERATOR MODE =====
   if (id || from || isNew || supplierId || orderId || requestId) {
@@ -191,53 +201,67 @@ export default async function SupplierPOPage({
   // ===== LIST MODE =====
   const activeStatus = STATUSES.includes(status as any) ? status : undefined
 
+  // Build Where Clause dynamically based on URL filters
+  const where: any = {}
+  if (activeStatus) where.status = { equals: activeStatus }
+  if (listOrder) where.sourceOrderId = { equals: listOrder }
+  if (listSupplier) where.supplierName = { equals: listSupplier }
+
   const payload = await getPayloadClient()
   const { docs } = await payload.find({
     collection: 'supplier-purchase-orders',
     sort: '-createdAt',
     limit: 100,
-    where: activeStatus ? { status: { equals: activeStatus } } : undefined,
+    where: Object.keys(where).length > 0 ? where : undefined,
   })
 
   function buildHref(s?: string) {
-    return s ? `/admin-dashboard/supplier-po?status=${s}` : '/admin-dashboard/supplier-po'
+    const params = new URLSearchParams()
+    if (s) params.set('status', s)
+    if (listOrder) params.set('listOrder', listOrder)
+    if (listSupplier) params.set('listSupplier', listSupplier)
+    
+    return params.toString() ? `/admin-dashboard/supplier-po?${params.toString()}` : `/admin-dashboard/supplier-po`
   }
 
   return (
-    <div className="max-w-[990px] mx-auto">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
+    <div className="max-w-[1000px] mx-auto p-4 md:p-8 antialiased">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>
-          <div className="w-10 h-[3px] bg-[#149911] mb-5" />
-          <h1 className="text-[26px] md:text-[32px] font-black uppercase tracking-tight text-[#01172f] leading-none mb-3">
+          <h1 className="text-[26px] md:text-[32px] font-semibold tracking-tight text-gray-900 leading-none mb-3">
             Supplier Purchase Orders
           </h1>
-          <p className="text-[14px] text-[#01172f]/50 font-medium max-w-[560px]">
-            All purchase orders saved from the generator. Update status inline, or open an entry to
-            view, edit, or reprint it.
+          <p className="text-[14px] text-gray-500 font-medium max-w-[560px]">
+            {listOrder ? `Viewing purchase orders for Order #${listOrder}.` : listSupplier ? `Viewing purchase orders for supplier "${listSupplier}".` : 'All purchase orders saved from the generator. Update status inline, or open an entry to view, edit, or reprint it.'}
           </p>
           <Link
             href="/admin-dashboard/suppliers"
-            className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-[0.1em] text-[#103900] hover:text-[#149911] transition-colors mt-3"
+            className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#149911] hover:text-[#103900] transition-colors mt-4"
           >
             View or Add Suppliers
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M9 18l6-6-6-6" />
             </svg>
           </Link>
         </div>
         <Link
           href="/admin-dashboard/supplier-po?new=true"
-          className="inline-flex items-center gap-2 text-[12px] font-bold uppercase tracking-[0.1em] px-5 py-3 bg-[#3D5F3B] text-white hover:bg-[#01172f] transition-colors duration-300 w-fit flex-shrink-0"
+          className="inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[13px] font-medium shadow-sm flex-shrink-0 w-full sm:w-auto"
         >
           + Create New PO
         </Link>
       </div>
 
-      <div className="flex gap-2 flex-wrap mb-10">
+      <div className="flex items-center gap-2 flex-wrap mb-8">
         <FilterLink label="All" active={!activeStatus} href={buildHref(undefined)} />
         {STATUSES.map((s) => (
           <FilterLink key={s} label={STATUS_LABELS[s]} active={activeStatus === s} href={buildHref(s)} />
         ))}
+        {(listOrder || listSupplier) && (
+           <Link href="/admin-dashboard/supplier-po" className="text-[12px] font-medium text-red-500 hover:text-red-700 ml-2 px-4 py-2 rounded-full bg-red-50 hover:bg-red-100 transition-colors">
+              Clear Filters &times;
+           </Link>
+        )}
       </div>
 
       <div className="flex flex-col gap-4">
@@ -247,12 +271,12 @@ export default async function SupplierPOPage({
           return (
             <div
               key={po.id}
-              className="bg-white border border-[#01172f]/10 p-5 md:p-6 transition-all duration-300 hover:border-[#149911]/40 hover:shadow-[0_16px_40px_-16px_rgba(1,23,47,0.15)]"
+              className="bg-white border border-gray-100 rounded-3xl p-5 md:p-6 transition-all duration-300 hover:border-gray-200 hover:shadow-sm"
             >
-              <div className="flex justify-between items-start gap-3 flex-wrap">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4 flex-wrap">
                 <div>
-                  <p className="text-[11px] font-mono text-[#01172f]/40 mb-1">{po.poNumber}</p>
-                  <h3 className="text-[16px] font-bold text-[#01172f]">{po.supplierName || 'Untitled'}</h3>
+                  <p className="text-[11px] font-semibold tracking-wider uppercase text-gray-400 mb-1.5">{po.poNumber || 'DRAFT'}</p>
+                  <h3 className="text-[18px] font-semibold text-gray-900 tracking-tight leading-none">{po.supplierName || 'Untitled'}</h3>
                 </div>
                 <CollectionStatusSelect
                   collection="supplier-purchase-orders"
@@ -262,8 +286,8 @@ export default async function SupplierPOPage({
                   colorClassMap={STATUS_COLORS}
                 />
               </div>
-              <div className="flex justify-between items-center mt-4 pt-4 border-t border-[#01172f]/10">
-                <p className="text-[12px] text-[#01172f]/40 font-medium">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-5 pt-5 border-t border-gray-50 gap-4">
+                <p className="text-[13px] text-gray-500 font-medium">
                   {po.poDate
                     ? new Date(po.poDate).toLocaleDateString('en-PH', {
                         year: 'numeric',
@@ -272,11 +296,11 @@ export default async function SupplierPOPage({
                       })
                     : ''}
                 </p>
-                <div className="flex items-center gap-5">
-                  <p className="text-[15px] font-bold text-[#01172f] font-mono">{peso(total)}</p>
+                <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto">
+                  <p className="text-[16px] font-semibold text-gray-900 font-mono tracking-tight">{peso(total)}</p>
                   <Link
                     href={`/admin-dashboard/supplier-po?id=${po.id}`}
-                    className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#3D5F3B] hover:text-[#149911] transition-colors"
+                    className="text-[12px] font-medium text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-full"
                   >
                     View / Edit &rarr;
                   </Link>
@@ -287,9 +311,9 @@ export default async function SupplierPOPage({
         })}
 
         {docs.length === 0 && (
-          <div className="border border-dashed border-[#01172f]/15 py-16 text-center">
-            <p className="text-[14px] text-[#01172f]/40 font-medium">
-              No purchase orders{activeStatus ? ` with status "${STATUS_LABELS[activeStatus]}"` : ''} yet.
+          <div className="border border-dashed border-gray-200 py-16 text-center rounded-3xl bg-gray-50/50">
+            <p className="text-[14px] text-gray-400 font-medium">
+              No purchase orders found{activeStatus ? ` with status "${STATUS_LABELS[activeStatus]}"` : ''}.
             </p>
           </div>
         )}
@@ -302,10 +326,10 @@ function FilterLink({ label, active, href }: { label: string; active?: boolean; 
   return (
     <Link
       href={href}
-      className={`text-[11px] font-bold uppercase tracking-[0.1em] px-4 py-2 border transition-all duration-200 ${
+      className={`text-[12px] font-semibold px-4 py-2 rounded-full transition-all duration-200 ${
         active
-          ? 'bg-[#01172f] border-[#01172f] text-white'
-          : 'bg-white border-[#01172f]/15 text-[#01172f]/60 hover:border-[#01172f]/40 hover:text-[#01172f]'
+          ? 'bg-[#1d1d1f] text-white shadow-sm'
+          : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900'
       }`}
     >
       {label}

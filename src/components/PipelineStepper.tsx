@@ -132,20 +132,23 @@ function orderBreakdown(o: any) {
   };
 }
 
+// FIX: Aligned Gross Markup math perfectly with ReportsPage / ExportCenter
 function orderMarkupTotal(o: any): number {
-  return (o.items || []).reduce(
-    (sum: number, i: any) =>
-      sum +
-      (Number(i.qty) || 0) *
-        ((Number(i.unitPrice) || 0) - (Number(i.unitCost) || 0)),
-    0,
-  );
+  const subtotal = (o.items || []).reduce((sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitPrice) || 0), 0);
+  const discountAmount = Number(o.discountAmount) || 0;
+  const deliveryFee = Number(o.deliveryFee) || 0;
+  const netRevenue = subtotal - discountAmount + deliveryFee;
+
+  const cogs = (o.items || []).reduce((sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitCost) || 0), 0);
+
+  return netRevenue - cogs;
 }
 
+// FIX: Aligned True Net Profit perfectly with ReportsPage / ExportCenter
 function orderTrueNetProfit(o: any): number {
   const markup = orderMarkupTotal(o);
-  const opex = orderBreakdown(o).liquidatedOpex;
-  return markup - opex;
+  const liquidatedOpex = (o.opex || []).reduce((sum: number, exp: any) => sum + (exp.status === "liquidated" ? Number(exp.amount) || 0 : 0), 0);
+  return markup - liquidatedOpex;
 }
 
 export default function PipelineStepper({
@@ -622,7 +625,7 @@ export default function PipelineStepper({
                   ) : (
                     <div className="pt-6 mt-4 border-t border-gray-100 flex justify-start">
                       <Link
-                        href={`/admin-dashboard/client-quotation?id=${quotation.id}`}
+                        href={`/admin-dashboard/client-quotation?id=${quotation.id}&pipelineId=${request.id}`}
                         className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[11px] font-medium w-full sm:w-auto shadow-sm"
                       >
                         Open Full Quotation &rarr;
@@ -634,7 +637,7 @@ export default function PipelineStepper({
                 <EmptyStep
                   text="No quotation created yet for this request."
                   ctaLabel="Create Client Quotation"
-                  href={`/admin-dashboard/client-quotation?from=${request.id}`}
+                  href={`/admin-dashboard/client-quotation?from=${request.id}&pipelineId=${request.id}`}
                 />
               )}
             </TabSection>
@@ -663,7 +666,7 @@ export default function PipelineStepper({
                           <strong className="text-[#149911] mr-1">Approved!</strong> The client has accepted this quotation. You can now print the formal document and proceed to confirm the internal order.
                         </p>
                         <Link
-                          href={`/admin-dashboard/client-quotation?id=${quotation.id}`}
+                          href={`/admin-dashboard/client-quotation?id=${quotation.id}&pipelineId=${request.id}`}
                           className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-all text-[11px] font-medium w-full sm:w-auto mt-1 shadow-sm"
                         >
                           Open Quotation to Print &rarr;
@@ -680,7 +683,7 @@ export default function PipelineStepper({
                         </p>
                         {quotation.status === "draft" && (
                           <Link
-                            href={`/admin-dashboard/client-quotation?id=${quotation.id}`}
+                            href={`/admin-dashboard/client-quotation?id=${quotation.id}&pipelineId=${request.id}`}
                             className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-all text-[11px] font-medium w-full sm:w-auto shadow-sm"
                           >
                             Send for Internal Approval &rarr;
@@ -694,7 +697,7 @@ export default function PipelineStepper({
                     <div className="border-t border-gray-100 pt-5 mt-2 flex justify-start">
                       <button
                         onClick={() => handleTabChange("supplierPO")}
-                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[13px] font-medium shadow-sm"
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[11px] font-medium shadow-sm"
                       >
                         Next Step: Confirm Order & Create PO &rarr;
                       </button>
@@ -818,7 +821,7 @@ export default function PipelineStepper({
                       {linkedPOs.length > 0 && (
                         <button
                           onClick={() => handleTabChange("fulfilled")}
-                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[13px] font-medium shadow-sm"
+                          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[11px] font-medium shadow-sm"
                         >
                           Next Step: Order Fulfilled &rarr;
                         </button>
@@ -831,37 +834,36 @@ export default function PipelineStepper({
             </TabSection>
           )}
 
-         {/* ======================= STEP 4 ======================= */}
-        {activeTab === "fulfilled" && (
-          <TabSection title="Step 4: Order Fulfilled">
-            {!localOrder ? (
-              <EmptyStep text="Waiting on earlier steps." />
-            ) : (
-              <div className="w-full flex flex-col gap-6">
-                <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm p-5 md:p-6">
-                  <OrderSupplierSection
-                    orderId={localOrder.id}
-                    items={localOrder.items || []}
-                    linkedPOs={linkedPOs || []}
-                    allowStatusChange={true}
-                  />
-                </div>
-
-                {/* 🚀 RESTORED: Next Step Button appears on the left when all POs are fulfilled */}
-                {linkedPOs.length > 0 && linkedPOs.every((po: any) => po.status === "fulfilled") && (
-                  <div className="flex justify-start pt-2">
-                    <button
-                      onClick={() => handleTabChange("delivery")}
-                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[13px] font-medium shadow-sm"
-                    >
-                      Next Step: Track Delivery & Payment &rarr;
-                    </button>
+          {/* ======================= STEP 4 ======================= */}
+          {activeTab === "fulfilled" && (
+            <TabSection title="Step 4: Order Fulfilled">
+              {!localOrder ? (
+                <EmptyStep text="Waiting on earlier steps." />
+              ) : (
+                <div className="w-full flex flex-col gap-6">
+                  <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm p-5 md:p-6">
+                    <OrderSupplierSection
+                      orderId={localOrder.id}
+                      items={localOrder.items || []}
+                      linkedPOs={linkedPOs || []}
+                      allowStatusChange={true}
+                    />
                   </div>
-                )}
-              </div>
-            )}
-          </TabSection>
-        )}
+
+                  {linkedPOs.length > 0 && linkedPOs.every((po: any) => po.status === "fulfilled") && (
+                    <div className="flex justify-start pt-2">
+                      <button
+                        onClick={() => handleTabChange("delivery")}
+                        className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[13px] font-medium shadow-sm"
+                      >
+                        Next Step: Track Delivery & Payment &rarr;
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </TabSection>
+          )}
 
           {/* ======================= STEP 5 ======================= */}
           {activeTab === "delivery" && (
@@ -918,7 +920,7 @@ export default function PipelineStepper({
                       {localOrder.fulfillmentStatus === "delivered" && localOrder.paymentStatus === "paid" && (
                         <button
                           onClick={() => handleTabChange("closed")}
-                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[13px] font-medium shadow-sm"
+                          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[11px] font-medium shadow-sm"
                         >
                           Next Step: Confirm Completed &rarr;
                         </button>

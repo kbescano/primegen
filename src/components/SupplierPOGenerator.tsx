@@ -27,6 +27,7 @@ export type SupplierPOInitial = {
   items?: LineItem[]
   sourceOrderId?: string
   sourceRequestId?: string 
+  status?: string 
 }
 
 const peso = (n: number) =>
@@ -107,7 +108,23 @@ export default function SupplierPOGenerator({
   const [reminderOpen, setReminderOpen] = useState(false)
   
   const [pipelineId, setPipelineId] = useState<string | undefined>(initial?.sourceRequestId)
+  const [hasUrlContext, setHasUrlContext] = useState(false)
   const [isPrintMode, setIsPrintMode] = useState(false)
+  const [isFulfilled, setIsFulfilled] = useState(initial?.status === 'fulfilled')
+
+  // Fetch true PO status on load to auto-lock the form if it was already fulfilled
+  useEffect(() => {
+    if (initial?.id && initial?.status !== 'fulfilled') {
+      fetch(`/api/supplier-purchase-orders/${initial.id}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data?.status === 'fulfilled') {
+            setIsFulfilled(true)
+          }
+        })
+        .catch(() => {})
+    }
+  }, [initial?.id, initial?.status])
 
   // STRICT ROUTING FIX: Rely solely on the actual Order ID to lookup the correct Pipeline.
   useEffect(() => {
@@ -115,6 +132,10 @@ export default function SupplierPOGenerator({
 
     const urlParams = new URLSearchParams(window.location.search)
     
+    // Check if user came explicitly with pipeline/order context in the URL search params
+    const hasParamContext = urlParams.has('orderId') || urlParams.has('requestId') || urlParams.has('pipelineId') || urlParams.has('from')
+    setHasUrlContext(hasParamContext)
+
     // Auto-lock the form if opened from Step 4
     if (urlParams.get('mode') === 'print') {
       setIsPrintMode(true)
@@ -136,6 +157,9 @@ export default function SupplierPOGenerator({
       })
     }
   }, [initial])
+
+  // Computed Lock State: Lock if explicitly instructed via URL (print mode) OR if the PO is already fulfilled
+  const isLocked = isPrintMode || isFulfilled
 
   const subtotal = useMemo(() => items.reduce((sum, i) => sum + i.qty * i.unitPrice, 0), [items])
   const total = subtotal
@@ -262,10 +286,10 @@ export default function SupplierPOGenerator({
       
       router.refresh()
 
-      if (finalPipelineId && finalPipelineId !== 'undefined' && finalPipelineId !== 'null') { 
+      if (hasUrlContext && finalPipelineId && finalPipelineId !== 'undefined' && finalPipelineId !== 'null') { 
         router.push(`/admin-dashboard/pipeline/${finalPipelineId}?step=supplierPO`)
       } else {
-        router.back() 
+        router.push('/admin-dashboard/supplier-po') 
       }
       
     } catch (err: any) {
@@ -279,7 +303,7 @@ export default function SupplierPOGenerator({
   const labelClass = 'block text-[11px] font-semibold uppercase tracking-wider text-gray-500 mb-2'
 
   return (
-    <div className="max-w-[1000px] mx-auto p-4 md:p-8 bg-[#fbfbfd] min-h-screen antialiased print:min-h-0 print:p-0 print:m-0 print:bg-white">
+    <div className="w-full max-w-[1000px] mx-auto p-4 md:p-8 bg-[#fbfbfd] min-h-screen antialiased print:min-h-0 print:p-0 print:m-0 print:bg-white">
       {pickerOpen && (
         <SupplierPickerModal onSelect={handleSelectSupplier} onSkip={() => setPickerOpen(false)} />
       )}
@@ -301,10 +325,10 @@ export default function SupplierPOGenerator({
                 </li>
               ))}
             </ul>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <button
                 onClick={() => setReminderOpen(false)}
-                className="flex-1 py-3 rounded-full border border-gray-200 text-gray-700 font-medium text-[12px] hover:bg-gray-50 transition-colors shadow-sm"
+                className="w-full sm:flex-1 py-3 rounded-full border border-gray-200 text-gray-700 font-medium text-[12px] hover:bg-gray-50 transition-colors shadow-sm"
               >
                 Go Back
               </button>
@@ -313,7 +337,7 @@ export default function SupplierPOGenerator({
                   setReminderOpen(false)
                   savePO()
                 }}
-                className="flex-1 py-3 rounded-full bg-[#149911] text-white font-medium text-[12px] hover:bg-[#103900] transition-colors shadow-sm"
+                className="w-full sm:flex-1 py-3 rounded-full bg-[#149911] text-white font-medium text-[12px] hover:bg-[#103900] transition-colors shadow-sm"
               >
                 Save Anyway
               </button>
@@ -332,17 +356,17 @@ export default function SupplierPOGenerator({
       `}</style>
 
       {/* ===== FORM (hidden when printing) ===== */}
-      <div className="print:hidden">
-        <div className="mb-8 md:mb-10">
+      <div className="print:hidden w-full">
+        <div className="mb-6 md:mb-10">
           {showBackToList && (
             <button
               onClick={(e) => {
                 e.preventDefault()
-                if (pipelineId && pipelineId !== 'undefined' && pipelineId !== 'null') {
-                  // Direct back to Step 4 (Order Fulfilled) if in print mode, otherwise Step 3
-                  router.push(`/admin-dashboard/pipeline/${pipelineId}?step=${isPrintMode ? 'fulfilled' : 'supplierPO'}`)
+                // Only route back to pipeline if explicit URL context exists
+                if (hasUrlContext && pipelineId && pipelineId !== 'undefined' && pipelineId !== 'null') {
+                  router.push(`/admin-dashboard/pipeline/${pipelineId}?step=${isLocked ? 'fulfilled' : 'supplierPO'}`)
                 } else {
-                  router.back()
+                  router.push('/admin-dashboard/supplier-po')
                 }
               }}
               className="inline-flex items-center gap-1.5 text-[12px] font-medium text-gray-400 hover:text-gray-900 transition-colors mb-6 focus:outline-none"
@@ -350,32 +374,36 @@ export default function SupplierPOGenerator({
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <path d="M15 18l-6-6 6-6" />
               </svg>
-              Back to Pipeline
+              {hasUrlContext && pipelineId && pipelineId !== 'undefined' && pipelineId !== 'null' ? 'Back to Pipeline' : 'Back to PO List'}
             </button>
           )}
-          <h1 className="text-[26px] md:text-[32px] font-semibold tracking-tight text-gray-900 mb-2">
-            {isPrintMode ? 'Print Purchase Order' : isEditing ? 'Edit Purchase Order' : 'New Purchase Order'}
+          <h1 className="text-[24px] sm:text-[26px] md:text-[32px] font-semibold tracking-tight text-gray-900 mb-2">
+            {isFulfilled ? 'Fulfilled Purchase Order' : isPrintMode ? 'Print Purchase Order' : isEditing ? 'Edit Purchase Order' : 'New Purchase Order'}
           </h1>
-          <p className="text-[14px] text-gray-500 font-medium max-w-[560px]">
-            {isPrintMode ? 'Review the final document below and click Print to issue this PO.' : 'Fill in the details below. Save to auto-generate the PO number, then use Print / Save as PDF to send to the supplier.'}
+          <p className="text-[13px] sm:text-[14px] text-gray-500 font-medium max-w-[560px]">
+            {isFulfilled 
+              ? 'This purchase order has been fulfilled and is locked. You can print or save a copy for your records.' 
+              : isPrintMode 
+                ? 'Review the final document below and click Print to issue this PO.' 
+                : 'Fill in the details below. Save to auto-generate the PO number, then use Print / Save as PDF to send to the supplier.'}
           </p>
         </div>
 
-        <p className="flex items-start gap-3 text-[12px] text-amber-800 bg-amber-50/50 border border-amber-200/60 rounded-2xl px-5 py-4 mb-8 font-medium">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="flex-shrink-0 mt-0.5 text-amber-500">
+        <p className="flex flex-col sm:flex-row items-start sm:items-center gap-3 text-[12px] text-amber-800 bg-amber-50/50 border border-amber-200/60 rounded-2xl px-4 sm:px-5 py-3 sm:py-4 mb-6 sm:mb-8 font-medium">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="flex-shrink-0 mt-0.5 sm:mt-0 text-amber-500">
             <circle cx="12" cy="12" r="10" />
             <line x1="12" y1="8" x2="12" y2="12" />
             <line x1="12" y1="16" x2="12.01" y2="16" />
           </svg>
-          <span>
+          <span className="leading-snug">
             Before printing: in the print dialog, open &quot;More settings&quot; and uncheck
             &quot;Headers and footers&quot; to remove the browser&apos;s default URL/date markings.
           </span>
         </p>
 
-        <div className={`bg-white rounded-[2rem] border border-gray-100/80 p-6 md:p-8 shadow-[0_4px_32px_rgba(0,0,0,0.02)] mb-8 ${isPrintMode ? 'opacity-50 pointer-events-none' : ''}`}>
+        <div className={`bg-white rounded-[1.5rem] md:rounded-[2rem] border border-gray-100/80 p-5 md:p-8 shadow-[0_4px_32px_rgba(0,0,0,0.02)] mb-8 ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
           
-          <div className="grid md:grid-cols-2 gap-5 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 mb-8">
             <div>
               <label className={labelClass}>PO Date</label>
               <input type="date" className={inputClass} value={poDate} onChange={(e) => setPoDate(e.target.value)} />
@@ -385,32 +413,34 @@ export default function SupplierPOGenerator({
               <input className={`${inputClass} bg-gray-100/50 text-gray-400 cursor-not-allowed`} value={poNumber || 'Auto-generated on save'} readOnly />
             </div>
 
-            <div className="md:col-span-2 mt-4 pt-6 border-t border-gray-100 flex items-center justify-between">
+            <div className="col-span-1 md:col-span-2 mt-4 pt-6 border-t border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h2 className="text-[15px] font-semibold text-gray-900">Supplier Details</h2>
               <button
                 type="button"
                 onClick={() => setPickerOpen(true)}
-                className="text-[11px] font-semibold px-4 py-2 bg-[#149911]/10 text-[#149911] hover:bg-[#149911]/20 rounded-full transition-colors"
+                className="w-full sm:w-auto text-[11px] font-semibold px-4 py-2 bg-[#149911]/10 text-[#149911] hover:bg-[#149911]/20 rounded-full transition-colors"
               >
                 Select or Add Supplier
               </button>
             </div>
 
-            <div>
-              <label className={labelClass}>Supplier Name</label>
-              <input className={inputClass} value={supplierName} onChange={(e) => setSupplierName(e.target.value)} placeholder="e.g. NORTHMETAL" />
-            </div>
-            <div>
-              <label className={labelClass}>Company Name</label>
-              <input className={inputClass} value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="e.g. NORTHMETAL" />
-            </div>
-            <div className="md:col-span-2">
-              <label className={labelClass}>Street Address</label>
-              <input className={inputClass} value={streetAddress} onChange={(e) => setStreetAddress(e.target.value)} placeholder="e.g. Caloocan" />
-            </div>
-            <div>
-              <label className={labelClass}>Phone</label>
-              <input className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+639..." />
+            <div className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+              <div>
+                <label className={labelClass}>Supplier Name</label>
+                <input className={inputClass} value={supplierName} onChange={(e) => setSupplierName(e.target.value)} placeholder="e.g. NORTHMETAL" />
+              </div>
+              <div>
+                <label className={labelClass}>Company Name</label>
+                <input className={inputClass} value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="e.g. NORTHMETAL" />
+              </div>
+              <div className="col-span-1 md:col-span-2">
+                <label className={labelClass}>Street Address</label>
+                <input className={inputClass} value={streetAddress} onChange={(e) => setStreetAddress(e.target.value)} placeholder="e.g. Caloocan" />
+              </div>
+              <div>
+                <label className={labelClass}>Phone</label>
+                <input className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="+639..." />
+              </div>
             </div>
           </div>
 
@@ -423,7 +453,7 @@ export default function SupplierPOGenerator({
             {items.map((item, index) => (
               <div
                 key={index}
-                className="bg-gray-50/50 border border-gray-100 rounded-2xl p-4 md:p-5 transition-shadow hover:shadow-sm"
+                className="bg-gray-50/50 border border-gray-100 rounded-2xl p-4 transition-shadow hover:shadow-sm"
               >
                 {products.length > 0 && (
                   <select
@@ -440,61 +470,65 @@ export default function SupplierPOGenerator({
                   </select>
                 )}
 
-                <div className="grid grid-cols-2 md:grid-cols-[1fr_70px_90px_120px_120px_36px] gap-3 items-center">
+                <div className="grid grid-cols-12 md:grid-cols-[1fr_70px_90px_120px_120px_36px] gap-3 items-center">
                   <input
-                    className={`${inputClass} col-span-2 md:col-span-1`}
+                    className={`${inputClass} col-span-12 md:col-span-1`}
                     value={item.description}
                     onChange={(e) => updateItem(index, { description: e.target.value })}
                     placeholder="Description"
                   />
                   <input
                     type="text"
-                    className={inputClass}
+                    className={`${inputClass} col-span-4 md:col-span-1`}
                     value={item.qty}
                     onChange={(e) => updateItem(index, { qty: Number(e.target.value) || 0 })}
                     placeholder="Qty"
                   />
                   <input
-                    className={inputClass}
+                    className={`${inputClass} col-span-4 md:col-span-1`}
                     value={item.unit}
                     onChange={(e) => updateItem(index, { unit: e.target.value })}
                     placeholder="Unit"
                   />
                   <input
                     type="text"
-                    className={inputClass}
+                    className={`${inputClass} col-span-4 md:col-span-1`}
                     value={item.unitPrice}
                     onChange={(e) => updateItem(index, { unitPrice: Number(e.target.value) || 0 })}
                     placeholder="Price"
                   />
-                  <div className="text-[13px] text-right font-mono text-gray-900 font-medium">{peso(item.qty * item.unitPrice)}</div>
+                  <div className="col-span-6 md:col-span-1 text-[13px] text-left md:text-right font-mono text-gray-900 font-medium flex items-center md:justify-end overflow-hidden">
+                    <span className="md:hidden text-gray-400 mr-2 text-[11px] uppercase tracking-wider shrink-0">Total:</span> 
+                    <span className="truncate">{peso(item.qty * item.unitPrice)}</span>
+                  </div>
                   <button
                     onClick={() => setItems((prev) => prev.filter((_, i) => i !== index))}
                     disabled={items.length === 1}
-                    className="col-span-2 md:col-span-1 text-gray-400 hover:text-red-500 disabled:opacity-0 disabled:pointer-events-none transition-colors text-lg justify-self-end md:justify-self-center"
+                    className="col-span-6 md:col-span-1 text-gray-400 hover:text-red-500 disabled:opacity-0 disabled:pointer-events-none transition-colors text-sm font-medium flex items-center justify-end md:justify-center gap-1"
                     aria-label="Remove line item"
                   >
-                    &times;
+                    <span className="md:hidden text-[12px] uppercase tracking-wide">Remove</span>
+                    <span className="hidden md:inline text-lg">&times;</span>
                   </button>
                 </div>
 
-                <div className="flex flex-wrap items-center gap-3 mt-4 pt-4 border-t border-gray-200/60">
-                  <label className="text-[11px] font-medium text-gray-500 flex items-center gap-2 cursor-pointer">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 mt-4 pt-4 border-t border-gray-200/60">
+                  <label className="text-[11px] font-medium text-gray-500 flex items-center gap-2 cursor-pointer w-full sm:w-auto">
                     <input
                       type="file"
                       accept="image/*"
                       className="hidden"
                       onChange={(e) => handleImageSelect(index, e.target.files?.[0] ?? null)}
                     />
-                    <span className="px-4 py-2 border border-dashed border-gray-300 rounded-lg text-[#149911] hover:border-[#149911] hover:bg-[#149911]/5 transition-all duration-200">
+                    <span className="w-full sm:w-auto text-center px-4 py-2 border border-dashed border-gray-300 rounded-lg text-[#149911] hover:border-[#149911] hover:bg-[#149911]/5 transition-all duration-200">
                       {item.imageDataUrl ? 'Change spec image' : '+ Add spec image'}
                     </span>
                   </label>
                   {item.imageDataUrl && (
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center justify-between sm:justify-start gap-3 w-full sm:w-auto">
                       <img src={item.imageDataUrl} alt="" className="h-10 w-10 object-contain border border-gray-200 bg-white rounded-lg flex-shrink-0" />
                       <button type="button" onClick={() => handleImageSelect(index, null)} className="text-[11px] font-medium text-red-500 hover:text-red-600">
-                        Remove
+                        Remove Image
                       </button>
                     </div>
                   )}
@@ -510,7 +544,7 @@ export default function SupplierPOGenerator({
             + Add Line Item
           </button>
 
-          <div className="grid md:grid-cols-2 gap-5 pt-6 border-t border-gray-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5 pt-6 border-t border-gray-100">
             <div>
               <label className={labelClass}>Prepared By (Name)</label>
               <input className={inputClass} value={preparedBy} onChange={(e) => setPreparedBy(e.target.value)} placeholder="e.g. Nira" />
@@ -522,9 +556,9 @@ export default function SupplierPOGenerator({
           </div>
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-3 mb-8">
-          {/* Hide Save Purchase Order button if in Print Mode */}
-          {!isPrintMode && (
+        <div className="flex flex-col sm:flex-row gap-3 mb-8 w-full">
+          {/* Hide Save Purchase Order button if locked/fulfilled/print mode */}
+          {!isLocked && (
             <button
               onClick={() => {
                 if (getMissingFields().length > 0) {
@@ -534,7 +568,7 @@ export default function SupplierPOGenerator({
                 }
               }}
               disabled={saving === 'saving'}
-              className={`px-8 py-3.5 rounded-full font-medium text-[13px] disabled:opacity-50 transition-all duration-300 shadow-sm ${
+              className={`w-full sm:w-auto px-8 py-3.5 rounded-full font-medium text-[13px] disabled:opacity-50 transition-all duration-300 shadow-sm ${
                 saving === 'saved'
                   ? 'bg-[#149911] text-white'
                   : 'bg-[#1d1d1f] text-white hover:bg-gray-800'
@@ -547,8 +581,8 @@ export default function SupplierPOGenerator({
           <button
             type="button"
             onClick={async () => {
-              // Auto-update status to "Issued" when printed
-              if (initial?.id && isPrintMode) {
+              // Auto-update status to "Issued" when printed ONLY if not already fulfilled
+              if (initial?.id && isPrintMode && !isFulfilled) {
                 try {
                   await fetch(`/api/supplier-purchase-orders/${initial.id}`, {
                     method: 'PATCH',
@@ -560,7 +594,7 @@ export default function SupplierPOGenerator({
               }
               window.print()
             }}
-            className="px-8 py-3.5 rounded-full bg-[#149911] border border-transparent text-white font-medium text-[13px] hover:bg-[#103900] transition-all duration-300 shadow-sm"
+            className="w-full sm:w-auto px-8 py-3.5 rounded-full bg-[#149911] border border-transparent text-white font-medium text-[13px] hover:bg-[#103900] transition-all duration-300 shadow-sm"
           >
             Print / Save as PDF
           </button>
@@ -572,58 +606,58 @@ export default function SupplierPOGenerator({
           </p>
         )}
 
-        <div className="flex items-center gap-4 mb-8 pt-6 border-t border-gray-200">
+        <div className="flex items-center gap-4 mb-6 md:mb-8 pt-6 border-t border-gray-200">
           <span className="text-[11px] uppercase tracking-wider font-semibold text-gray-400">Document Preview</span>
         </div>
       </div>
 
       {/* ===== FORMAL PURCHASE ORDER DOCUMENT ===== */}
-      <div className="po-print-doc bg-white border border-gray-200 rounded-3xl p-6 md:p-10 print:border-0 print:p-10 print:rounded-none text-[#01172f] shadow-sm print:shadow-none print:w-full print:max-w-none">
+      <div className="po-print-doc bg-white border border-gray-200 rounded-[1.5rem] md:rounded-3xl p-4 sm:p-6 md:p-10 print:border-0 print:p-10 print:rounded-none text-[#01172f] shadow-sm print:shadow-none print:w-full print:max-w-none overflow-hidden print:overflow-visible">
 
-        <div className="flex flex-col sm:flex-row justify-between items-start gap-6 print:gap-3 mb-6 print:mb-4">
-          <div className="flex gap-1.5 items-center">
-            <div className="relative w-44 h-44 flex-shrink-0 overflow-hidden">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-6 print:gap-3 mb-6 print:mb-4">
+          <div className="flex gap-2 sm:gap-3 items-center">
+            <div className="relative w-16 h-16 sm:w-32 sm:h-32 md:w-44 md:h-44 flex-shrink-0 overflow-hidden">
               <Image src="/branding/primegen_trading_logo.png" alt="Primegen Trading Corporation" fill className="object-contain scale-[1.1]" />
             </div>
             <div>
-              <h2 className="text-xl font-black leading-none text-[#103900] tracking-tight">PRIMEGEN</h2>
-              <p className="text-[11px] font-bold tracking-[0.2em] text-[#01172f] mt-0 mb-1.5">TRADING CORPORATION</p>
-              <div className="w-full max-w-[240px] h-[2px] bg-[#149911] mb-1.5" />
-              <p className="text-[9px] font-bold text-[#103900] leading-snug max-w-[240px] m-0">
+              <h2 className="text-sm sm:text-lg md:text-xl font-black leading-none text-[#103900] tracking-tight">PRIMEGEN</h2>
+              <p className="text-[7px] sm:text-[9px] md:text-[11px] font-bold tracking-[0.2em] text-[#01172f] mt-0 mb-1 sm:mb-1.5">TRADING CORPORATION</p>
+              <div className="w-full max-w-[120px] sm:max-w-[200px] md:max-w-[240px] h-[2px] bg-[#149911] mb-1 sm:mb-1.5" />
+              <p className="text-[6px] sm:text-[8px] md:text-[9px] font-bold text-[#103900] leading-snug max-w-[150px] sm:max-w-[200px] md:max-w-[240px] m-0">
                 SOUTHERN CITY HOMES, YG BUILDING, CEBU ST, 4 TANZANG LUMA, IMUS, 4103 CAVITE,
                 PHILIPPINES
               </p>
-              <p className="text-[9px] font-bold text-[#103900] m-0 mt-1">
+              <p className="text-[6px] sm:text-[8px] md:text-[9px] font-bold text-[#103900] m-0 mt-1">
                 0917-185-9127 / 0917-133-9515 / 046-8860853
               </p>
-              <p className="text-[9px] font-bold text-[#103900] m-0 mt-1">SALES@PRIMEGENTRADINGCORP.COM</p>
+              <p className="text-[6px] sm:text-[8px] md:text-[9px] font-bold text-[#103900] m-0 mt-1">SALES@PRIMEGENTRADINGCORP.COM</p>
             </div>
           </div>
 
-          <div className="text-left sm:text-right w-full sm:w-auto">
-            <span className="inline-block bg-[#3D5F3B] text-white text-sm print:text-[11px] font-bold tracking-wide px-4 print:px-3 py-1.5 print:py-1 mb-3 print:mb-2">
+          <div className="text-left sm:text-right w-full sm:w-auto border-t sm:border-0 border-gray-100 pt-3 sm:pt-0 mt-2 sm:mt-0">
+            <span className="inline-block bg-[#3D5F3B] text-white text-[10px] sm:text-sm print:text-[11px] font-bold tracking-wide px-3 sm:px-4 print:px-3 py-1 sm:py-1.5 print:py-1 mb-2 sm:mb-3 print:mb-2">
               PURCHASE ORDER
             </span>
-            <table className="text-sm print:text-xs ml-0 sm:ml-auto mt-2 sm:mt-0">
+            <table className="text-[10px] sm:text-sm print:text-xs ml-0 sm:ml-auto mt-1 sm:mt-0">
               <tbody>
                 <tr>
-                  <td className="px-2 py-0.5 font-bold text-right">PO#:</td>
-                  <td className="px-2 py-0.5 font-mono">{poNumber || '________'}</td>
+                  <td className="px-1 sm:px-2 py-0.5 font-bold text-left sm:text-right">PO#:</td>
+                  <td className="px-1 sm:px-2 py-0.5 font-mono">{poNumber || '________'}</td>
                 </tr>
                 <tr>
-                  <td className="px-2 py-0.5 font-bold text-right">DATE:</td>
-                  <td className="px-2 py-0.5">{formatDisplayDate(poDate)}</td>
+                  <td className="px-1 sm:px-2 py-0.5 font-bold text-left sm:text-right">DATE:</td>
+                  <td className="px-1 sm:px-2 py-0.5">{formatDisplayDate(poDate)}</td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
 
-        <div className="mb-6 print:mb-4">
-          <div className="bg-[#3D5F3B] text-white text-xs font-bold uppercase tracking-wide px-3 py-1 print:py-0.5">
+        <div className="mb-4 sm:mb-6 print:mb-4">
+          <div className="bg-[#3D5F3B] text-white text-[10px] sm:text-xs font-bold uppercase tracking-wide px-2 sm:px-3 py-1 print:py-0.5">
             Supplier
           </div>
-          <div className="text-sm print:text-[11px] flex flex-col gap-0.5 py-2 print:py-1">
+          <div className="text-[10px] sm:text-sm print:text-[11px] flex flex-col gap-0.5 py-1.5 sm:py-2 print:py-1">
             <p>NAME: {supplierName || '________'}</p>
             <p>COMPANY NAME: {companyName || '________'}</p>
             <p>STREET ADDRESS: {streetAddress || '________'}</p>
@@ -632,66 +666,66 @@ export default function SupplierPOGenerator({
         </div>
 
         <div className="overflow-x-auto print:overflow-visible">
-          <table className="w-full text-sm print:text-xs mb-2 border-collapse min-w-[600px] md:min-w-full print:min-w-0">
+          <table className="w-full text-[10px] sm:text-sm print:text-xs mb-2 border-collapse min-w-[500px] md:min-w-full print:min-w-0">
             <thead>
-              <tr className="bg-[#3D5F3B] text-white text-xs print:text-[10px] uppercase tracking-wide">
-                <th className="py-3.5 print:py-1.5 px-4 print:px-2 text-left">Description</th>
-                <th className="py-3.5 print:py-1.5 px-4 print:px-2 text-right w-[70px]">Qty.</th>
-                <th className="py-3.5 print:py-1.5 px-4 print:px-2 text-right w-[120px]">Price</th>
-                <th className="py-3.5 print:py-1.5 px-4 print:px-2 text-right w-[120px]">Total</th>
+              <tr className="bg-[#3D5F3B] text-white text-[9px] sm:text-xs print:text-[10px] uppercase tracking-wide">
+                <th className="py-2 sm:py-3.5 print:py-1.5 px-2 sm:px-4 print:px-2 text-left">Description</th>
+                <th className="py-2 sm:py-3.5 print:py-1.5 px-2 sm:px-4 print:px-2 text-right w-[50px] sm:w-[70px]">Qty.</th>
+                <th className="py-2 sm:py-3.5 print:py-1.5 px-2 sm:px-4 print:px-2 text-right w-[80px] sm:w-[120px]">Price</th>
+                <th className="py-2 sm:py-3.5 print:py-1.5 px-2 sm:px-4 print:px-2 text-right w-[80px] sm:w-[120px]">Total</th>
               </tr>
             </thead>
             <tbody>
               {items.map((item, i) => (
                 <tr key={i} className={i % 2 === 1 ? 'bg-gray-50' : ''}>
-                  <td className="py-3.5 print:py-1.5 px-4 print:px-2 border-b border-gray-100">
-                    <div className="flex items-center gap-3">
-                      <span>{item.description || '--'}</span>
+                  <td className="py-2 sm:py-3.5 print:py-1.5 px-2 sm:px-4 print:px-2 border-b border-gray-100">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <span className="whitespace-normal sm:whitespace-nowrap">{item.description || '--'}</span>
                       {item.imageDataUrl && (
-                        <img src={item.imageDataUrl} alt="" className="h-16 print:h-8 w-auto object-contain flex-shrink-0" />
+                        <img src={item.imageDataUrl} alt="" className="h-8 sm:h-16 print:h-8 w-auto object-contain flex-shrink-0" />
                       )}
                     </div>
                   </td>
-                  <td className="py-3.5 print:py-1.5 px-4 print:px-2 border-b border-gray-100 text-right">{item.qty}</td>
-                  <td className="py-3.5 print:py-1.5 px-4 print:px-2 border-b border-gray-100 text-right font-mono">₱{peso(item.unitPrice)}</td>
-                  <td className="py-3.5 print:py-1.5 px-4 print:px-2 border-b border-gray-100 text-right font-mono">₱{peso(item.qty * item.unitPrice)}</td>
+                  <td className="py-2 sm:py-3.5 print:py-1.5 px-2 sm:px-4 print:px-2 border-b border-gray-100 text-right">{item.qty}</td>
+                  <td className="py-2 sm:py-3.5 print:py-1.5 px-2 sm:px-4 print:px-2 border-b border-gray-100 text-right font-mono">₱{peso(item.unitPrice)}</td>
+                  <td className="py-2 sm:py-3.5 print:py-1.5 px-2 sm:px-4 print:px-2 border-b border-gray-100 text-right font-mono">₱{peso(item.qty * item.unitPrice)}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
 
-        <div className="flex justify-end mt-10 print:mt-10 mb-10 print:mb-10">
-          <table className="text-sm print:text-xs w-full max-w-[280px]">
+        <div className="flex justify-end mt-6 sm:mt-10 print:mt-10 mb-6 sm:mb-10 print:mb-10">
+          <table className="text-[10px] sm:text-sm print:text-xs w-full max-w-[200px] sm:max-w-[280px]">
             <tbody>
               <tr>
-                <td className="py-2.5 print:py-1 px-4 print:px-2 bg-[#e8f0e5]">SUBTOTAL</td>
-                <td className="py-2.5 print:py-1 px-4 print:px-2 bg-[#e8f0e5] text-right font-mono">₱{peso(subtotal)}</td>
+                <td className="py-1.5 sm:py-2.5 print:py-1 px-2 sm:px-4 print:px-2 bg-[#e8f0e5]">SUBTOTAL</td>
+                <td className="py-1.5 sm:py-2.5 print:py-1 px-2 sm:px-4 print:px-2 bg-[#e8f0e5] text-right font-mono">₱{peso(subtotal)}</td>
               </tr>
               <tr className="border-t-2 border-[#3D5F3B]">
-                <td className="py-3.5 print:py-1.5 px-4 print:px-2 font-bold text-base print:text-[13px] bg-[#e8f0e5]">TOTAL</td>
-                <td className="py-3.5 print:py-1.5 px-4 print:px-2 font-bold text-base print:text-[13px] text-right font-mono bg-[#e8f0e5]">₱{peso(total)}</td>
+                <td className="py-2 sm:py-3.5 print:py-1.5 px-2 sm:px-4 print:px-2 font-bold text-[11px] sm:text-base print:text-[13px] bg-[#e8f0e5]">TOTAL</td>
+                <td className="py-2 sm:py-3.5 print:py-1.5 px-2 sm:px-4 print:px-2 font-bold text-[11px] sm:text-base print:text-[13px] text-right font-mono bg-[#e8f0e5]">₱{peso(total)}</td>
               </tr>
             </tbody>
           </table>
         </div>
 
-        <div className="mt-10 print:mt-4 mb-10 print:mb-4 text-[11px] print:text-[8px] leading-relaxed print:leading-tight print:break-inside-avoid">
-          <div className="bg-[#3D5F3B] text-white text-xs print:text-[9px] font-bold uppercase tracking-wide px-3 py-1.5 print:py-1 mb-3 print:mb-1.5">
+        <div className="mt-6 sm:mt-10 print:mt-4 mb-6 sm:mb-10 print:mb-4 text-[9px] sm:text-[11px] print:text-[8px] leading-snug sm:leading-relaxed print:leading-tight print:break-inside-avoid">
+          <div className="bg-[#3D5F3B] text-white text-[9px] sm:text-xs print:text-[9px] font-bold uppercase tracking-wide px-2 sm:px-3 py-1 sm:py-1.5 print:py-1 mb-2 sm:mb-3 print:mb-1.5">
             Terms and Condition
           </div>
-          <ol className="list-decimal pl-4 flex flex-col gap-1.5 print:gap-0.5 text-gray-700">
+          <ol className="list-decimal pl-4 flex flex-col gap-1 sm:gap-1.5 print:gap-0.5 text-gray-700">
             {TERMS.map((t, i) => (
               <li key={i}>{t}</li>
             ))}
           </ol>
         </div>
 
-        <div className="text-sm print:text-[11px] print:break-inside-avoid mt-10 print:mt-6">
-          <p className="font-bold mb-8 print:mb-4">PREPARED BY:</p>
-          <div className="border-t border-black w-[220px] mb-1" />
+        <div className="text-[10px] sm:text-sm print:text-[11px] print:break-inside-avoid mt-6 sm:mt-10 print:mt-6">
+          <p className="font-bold mb-4 sm:mb-8 print:mb-4">PREPARED BY:</p>
+          <div className="border-t border-black w-[160px] sm:w-[220px] mb-1" />
           <p className="font-bold">{preparedBy || '________'}</p>
-          <p className="text-gray-600 text-xs print:text-[9px] uppercase tracking-wide">{preparedByRole}</p>
+          <p className="text-gray-600 text-[8px] sm:text-xs print:text-[9px] uppercase tracking-wide">{preparedByRole}</p>
         </div>
       </div>
     </div>

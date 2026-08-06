@@ -5,12 +5,13 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import NotificationBell from '@/components/NotificationBell'
 
+// 1. ADDED `adminOnly` FLAGS TO ROUTES
 const NAV_ITEMS = [
-  { href: '/admin-dashboard', label: 'Quotation Inbox' },
-  // { href: '/admin-dashboard/client-quotation', label: 'Client Quotation' },
-  // { href: '/admin-dashboard/orders', label: 'Orders' },
-  // { href: '/admin-dashboard/supplier-po', label: 'Supplier PO' },
-  // { href: '/admin-dashboard/reports', label: 'Reports' },
+  { href: '/admin-dashboard', label: 'Quotation Inbox', adminOnly: false },
+  { href: '/admin-dashboard/client-quotation', label: 'Client Quotation', adminOnly: true },
+  { href: '/admin-dashboard/orders', label: 'Orders', adminOnly: true },
+  { href: '/admin-dashboard/supplier-po', label: 'Supplier PO', adminOnly: true },
+  { href: '/admin-dashboard/reports', label: 'Reports', adminOnly: true },
 ]
 
 type AdminUser = { name?: string; email: string; role?: string }
@@ -27,12 +28,21 @@ export default function AdminLayout({
   const [open, setOpen] = useState(false)
 
   const displayName = user?.name?.trim() || user?.email
+  
+  // 2. CHECK ROLE
+  const isAdmin = user?.role === 'admin'
+
+  // 3. FILTER NAV ITEMS BASED ON ROLE
+  const visibleNavItems = NAV_ITEMS.filter((item) => {
+    if (item.adminOnly && !isAdmin) return false
+    return true
+  })
 
   async function handleLogout() {
     try {
       await fetch('/api/users/logout', { method: 'POST', credentials: 'include' })
     } catch {
-      // proceed to redirect regardless -- worst case the cookie just expires naturally
+      // proceed to redirect regardless
     }
     router.push('/admin-login')
     router.refresh()
@@ -51,7 +61,8 @@ export default function AdminLayout({
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-1 h-full">
-            {NAV_ITEMS.map((item) => {
+            {/* 4. RENDER ONLY VISIBLE ITEMS */}
+            {visibleNavItems.map((item) => {
               const isActive = pathname === item.href
               return (
                 <Link
@@ -96,7 +107,7 @@ export default function AdminLayout({
         </div>
       </header>
 
-      {/* ===== User bar -- sits below the nav, not inside it ===== */}
+      {/* ===== User bar ===== */}
       {user && (
         <div className="admin-header bg-[#f4f6f2] border-b border-[#01172f]/10">
           <div className="flex items-center justify-between px-4 sm:px-6 md:px-10 h-11">
@@ -118,7 +129,7 @@ export default function AdminLayout({
         </div>
       )}
 
-      {/* ===== Mobile full-screen overlay -- sibling of header, not nested ===== */}
+      {/* ===== Mobile full-screen overlay ===== */}
       {open && (
         <div className="admin-header md:hidden fixed inset-0 bg-white z-50 flex flex-col px-6 pt-8 pb-10 overflow-y-auto">
           <div className="flex items-center justify-between mb-10">
@@ -133,7 +144,8 @@ export default function AdminLayout({
           </div>
 
           <nav className="flex flex-col gap-1">
-            {NAV_ITEMS.map((item) => {
+            {/* 5. RENDER ONLY VISIBLE ITEMS FOR MOBILE */}
+            {visibleNavItems.map((item) => {
               const isActive = pathname === item.href
               return (
                 <Link

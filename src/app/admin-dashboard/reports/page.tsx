@@ -3,12 +3,6 @@ import { getPayloadClient } from '@/lib/getPayloadClient'
 
 export const dynamic = 'force-dynamic'
 
-/**
- * Reports palette: strictly #149911 (accent green) + #fdfffc (off-white).
- * All chips, bars, and highlights are opacity variants of #149911.
- * Neutral near-black text is kept for legibility only.
- */
-
 const peso = (n: number) =>
   '\u20B1' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
@@ -23,21 +17,40 @@ function docTotal(d: any): number {
   return withDelivery + vat
 }
 
-// Profit -- client's full total payment (VAT included) minus total supplier cost.
-// Requires unitCost on line items to be meaningful.
-function docCost(d: any): number {
-  return (d.items || []).reduce(
-    (sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitCost) || 0),
+// Calculate the explicit VAT Liability for the tally
+function docVat(d: any): number {
+  const subtotal = (d.items || []).reduce(
+    (sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitPrice) || 0),
     0
   )
-}
-function docProfit(d: any): number {
-  return docTotal(d) - docCost(d)
+  const afterDiscount = subtotal - (Number(d.discountAmount) || 0)
+  const withDelivery = afterDiscount + (Number(d.deliveryFee) || 0)
+  return withDelivery * ((Number(d.vatRate) || 0) / 100)
 }
 
-// TEMPORARY PLACEHOLDER -- edit these two numbers to match what your Google listing shows.
-// Once GOOGLE_PLACES_API_KEY + GOOGLE_PLACE_ID are set in .env, live data takes over automatically
-// and this constant is ignored. Safe to delete then.
+// TRUE NET PROFIT: 
+// Pre-VAT Net Revenue (Subtotal - Discount + Delivery) MINUS (Total Supplier Cost + Liquidated OPEX)
+function docTrueNetProfit(o: any): number {
+  const subtotal = (o.items || []).reduce((sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitPrice) || 0), 0)
+  const discountAmount = Number(o.discountAmount) || 0
+  const deliveryFee = Number(o.deliveryFee) || 0
+  const netRevenue = subtotal - discountAmount + deliveryFee
+
+  const cogs = (o.items || []).reduce((sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitCost) || 0), 0)
+  const grossProfit = netRevenue - cogs
+
+  const liquidatedOpex = (o.opex || []).reduce((sum: number, exp: any) => sum + (exp.status === 'liquidated' ? Number(exp.amount) || 0 : 0), 0)
+  
+  return grossProfit - liquidatedOpex
+}
+
+// Helper to calculate total costs (COGS + OPEX)
+function docTotalCosts(o: any): number {
+  const cogs = (o.items || []).reduce((sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitCost) || 0), 0)
+  const liquidatedOpex = (o.opex || []).reduce((sum: number, exp: any) => sum + (exp.status === 'liquidated' ? Number(exp.amount) || 0 : 0), 0)
+  return cogs + liquidatedOpex
+}
+
 const PLACEHOLDER_REVIEWS = { rating: 5.0, count: 9, isPlaceholder: true }
 
 async function fetchGoogleReviews(): Promise<{ rating: number; count: number; isPlaceholder?: boolean } | null> {
@@ -47,7 +60,7 @@ async function fetchGoogleReviews(): Promise<{ rating: number; count: number; is
   try {
     const res = await fetch(
       `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=rating,user_ratings_total&key=${key}`,
-      { next: { revalidate: 3600 } } // refresh at most hourly -- keeps API usage minimal
+      { next: { revalidate: 3600 } } 
     )
     if (!res.ok) return null
     const data = await res.json()
@@ -60,13 +73,6 @@ async function fetchGoogleReviews(): Promise<{ rating: number; count: number; is
   }
 }
 
-function monthKeyOf(dateStr?: string): string | null {
-  if (!dateStr) return null
-  const d = new Date(dateStr)
-  if (isNaN(d.getTime())) return null
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-}
-
 const QUOTATION_STATUS_LABELS: Record<string, string> = {
   draft: 'Draft',
   sent: 'Sent',
@@ -74,10 +80,10 @@ const QUOTATION_STATUS_LABELS: Record<string, string> = {
   cancelled: 'Cancelled',
 }
 const QUOTATION_STATUS_CHIPS: Record<string, string> = {
-  draft: 'bg-[#149911]/5 text-[#149911]/70',
-  sent: 'bg-[#149911]/15 text-[#149911]',
-  order_confirmed: 'bg-[#149911] text-[#fdfffc]',
-  cancelled: 'bg-[#149911]/5 text-[#149911]/40',
+  draft: 'bg-gray-100 text-gray-600',
+  sent: 'bg-blue-50 text-blue-600',
+  order_confirmed: 'bg-[#149911]/10 text-[#149911]',
+  cancelled: 'bg-red-50 text-red-600',
 }
 
 const FULFILLMENT_LABELS: Record<string, string> = {
@@ -87,10 +93,10 @@ const FULFILLMENT_LABELS: Record<string, string> = {
   cancelled: 'Cancelled',
 }
 const FULFILLMENT_CHIPS: Record<string, string> = {
-  preparing: 'bg-[#149911]/10 text-[#149911]',
-  shipped: 'bg-[#149911]/25 text-[#149911]',
-  delivered: 'bg-[#149911] text-[#fdfffc]',
-  cancelled: 'bg-[#149911]/5 text-[#149911]/40',
+  preparing: 'bg-amber-50 text-amber-600',
+  shipped: 'bg-blue-50 text-blue-600',
+  delivered: 'bg-[#149911]/10 text-[#149911]',
+  cancelled: 'bg-red-50 text-red-600',
 }
 
 function FunnelStep({
@@ -106,24 +112,26 @@ function FunnelStep({
 }) {
   return (
     <div
-      className={`flex-1 min-w-[140px] p-5 border ${
+      className={`flex-1 min-w-[140px] p-6 rounded-3xl border transition-shadow shadow-sm ${
         highlight
-          ? 'bg-[#149911] border-[#149911] text-[#fdfffc]'
-          : 'bg-[#fdfffc] border-[#149911]/15 text-[#01172f]'
+          ? 'bg-[#149911] border-[#149911] text-white shadow-md'
+          : 'bg-white border-gray-100 text-gray-900'
       }`}
     >
       <p
-        className={`text-[10px] font-bold uppercase tracking-[0.15em] mb-2 ${
-          highlight ? 'text-[#fdfffc]/70' : 'text-[#01172f]/40'
+        className={`text-[11px] font-semibold uppercase tracking-wider mb-2 ${
+          highlight ? 'text-white/80' : 'text-gray-400'
         }`}
       >
         {label}
       </p>
-      <p className="text-[28px] font-black leading-none">{value}</p>
+      <p className="text-[32px] md:text-[40px] font-semibold tracking-tight leading-none mb-2">
+        {value}
+      </p>
       {sublabel && (
         <p
-          className={`text-[11px] font-medium mt-2 ${
-            highlight ? 'text-[#fdfffc]/70' : 'text-[#01172f]/40'
+          className={`text-[12px] font-medium ${
+            highlight ? 'text-white/80' : 'text-gray-500'
           }`}
         >
           {sublabel}
@@ -148,19 +156,19 @@ function BarRow({
 }) {
   const pct = maxValue > 0 ? Math.max(2, Math.round((value / maxValue) * 100)) : 0
   return (
-    <div className="flex items-center gap-4 py-3 border-b border-[#149911]/10 last:border-0">
+    <div className="flex items-center gap-4 py-3.5 border-b border-gray-50 last:border-0">
       <span
-        className={`text-[10px] font-bold uppercase tracking-wide px-2.5 py-1 flex-shrink-0 w-[130px] text-center ${chipClass}`}
+        className={`text-[10px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full flex-shrink-0 w-[130px] text-center ${chipClass}`}
       >
         {label}
       </span>
-      <div className="flex-1 h-2 bg-[#149911]/10 overflow-hidden">
-        <div className="h-full bg-[#149911]" style={{ width: `${pct}%` }} />
+      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-full bg-[#149911] rounded-full" style={{ width: `${pct}%` }} />
       </div>
-      <span className="text-[12px] text-[#01172f]/50 font-medium w-8 text-right flex-shrink-0">
+      <span className="text-[12px] text-gray-500 font-medium w-8 text-right flex-shrink-0">
         {count}
       </span>
-      <span className="text-[13px] font-bold text-[#01172f] font-mono w-[130px] text-right flex-shrink-0">
+      <span className="text-[13px] font-medium text-gray-900 font-mono w-[110px] text-right flex-shrink-0">
         {peso(value)}
       </span>
     </div>
@@ -170,9 +178,18 @@ function BarRow({
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string }>
+  searchParams: Promise<{ month?: string; year?: string }>
 }) {
-  const { month: activeMonth } = await searchParams
+  const searchParamsResolved = await searchParams
+  
+  // Set Defaults to Current Month & Year
+  const now = new Date()
+  const defaultMonth = String(now.getMonth() + 1).padStart(2, '0')
+  const defaultYear = String(now.getFullYear())
+
+  const activeMonth = searchParamsResolved.month || defaultMonth
+  const activeYear = searchParamsResolved.year || defaultYear
+
   const payload = await getPayloadClient()
 
   const [requestsRes, quotationsRes, ordersRes, googleReviews] = await Promise.all([
@@ -182,13 +199,23 @@ export default async function ReportsPage({
     fetchGoogleReviews(),
   ])
 
-  const inMonth = (dateStr?: string) => !activeMonth || monthKeyOf(dateStr) === activeMonth
+  // Filtering Logic
+  const inPeriod = (dateStr?: string) => {
+    if (activeMonth === 'all' && activeYear === 'all') return true
+    if (!dateStr) return false
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return false
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const y = String(d.getFullYear())
 
-  const requests = (requestsRes.docs as any[]).filter((r) => inMonth(r.createdAt))
-  const quotations = (quotationsRes.docs as any[]).filter((q) =>
-    inMonth(q.quotationDate || q.createdAt)
-  )
-  const orders = (ordersRes.docs as any[]).filter((o) => inMonth(o.orderDate || o.createdAt))
+    if (activeYear !== 'all' && activeYear !== y) return false
+    if (activeMonth !== 'all' && activeMonth !== m) return false
+    return true
+  }
+
+  const requests = (requestsRes.docs as any[]).filter((r) => inPeriod(r.createdAt))
+  const quotations = (quotationsRes.docs as any[]).filter((q) => inPeriod(q.quotationDate || q.createdAt))
+  const orders = (ordersRes.docs as any[]).filter((o) => inPeriod(o.orderDate || o.createdAt))
 
   // ===== Funnel =====
   const requestCount = requests.length
@@ -197,16 +224,27 @@ export default async function ReportsPage({
   const paidOrders = orders.filter((o) => o.paymentStatus === 'paid')
   const paidCount = paidOrders.length
 
-  const requestToQuotationRate =
-    requestCount > 0 ? Math.round((quotationCount / requestCount) * 100) : 0
-  const quotationToOrderRate =
-    quotationCount > 0 ? Math.round((orderCount / quotationCount) * 100) : 0
+  const requestToQuotationRate = requestCount > 0 ? Math.round((quotationCount / requestCount) * 100) : 0
+  const quotationToOrderRate = quotationCount > 0 ? Math.round((orderCount / quotationCount) * 100) : 0
   const orderToPaidRate = orderCount > 0 ? Math.round((paidCount / orderCount) * 100) : 0
 
-  // ===== Actual profit: PAID ORDERS ONLY =====
-  const actualProfit = paidOrders.reduce((sum, o) => sum + docProfit(o), 0)
-  const actualCost = paidOrders.reduce((sum, o) => sum + docCost(o), 0)
-  const actualMarkupPercent = actualCost > 0 ? (actualProfit / actualCost) * 100 : 0
+  // ===== TRUE PROFIT: PAID ORDERS ONLY =====
+  const paidGross = paidOrders.reduce((sum, o) => sum + docTotal(o), 0)
+  const paidVat = paidOrders.reduce((sum, o) => sum + docVat(o), 0)
+  const paidCosts = paidOrders.reduce((sum, o) => sum + docTotalCosts(o), 0)
+  const actualProfit = paidOrders.reduce((sum, o) => sum + docTrueNetProfit(o), 0)
+  const actualMarkupPercent = paidCosts > 0 ? (actualProfit / paidCosts) * 100 : 0
+
+  // ===== ACCOUNTING SUMMARY (Accrual Basis - All Confirmed Orders) =====
+  const totalGrossRevenue = orders.reduce((sum, o) => sum + docTotal(o), 0)
+  const totalVat = orders.reduce((sum, o) => sum + docVat(o), 0)
+  const totalCosts = orders.reduce((sum, o) => sum + docTotalCosts(o), 0)
+  const totalNetProfit = orders.reduce((sum, o) => sum + docTrueNetProfit(o), 0) // Explicit mathematical tally
+
+  // Receivables (Any order that is 'unpaid' or 'partial')
+  const unpaidOrders = orders.filter(o => o.paymentStatus === 'unpaid' || o.paymentStatus === 'partial')
+  const totalReceivables = unpaidOrders.reduce((sum, o) => sum + docTotal(o), 0)
+  const receivablesCount = unpaidOrders.length
 
   // ===== Quotation pipeline by status =====
   const quotationPipeline: Record<string, { count: number; value: number }> = {
@@ -252,108 +290,185 @@ export default async function ReportsPage({
     .slice(0, 8)
   const maxMaterialQty = topMaterials.length > 0 ? topMaterials[0][1] : 0
 
-  // ===== Revenue by sales person (orders; paid highlighted) =====
-  const bySalesPerson: Record<string, { count: number; value: number; paidValue: number }> = {}
+  // ===== Performance by Sales Person (Accrual Basis on ALL orders in period) =====
+  const bySalesPerson: Record<string, { count: number; gross: number; vat: number; costs: number; profit: number }> = {}
   for (const o of orders) {
     const sp = o.salesPerson?.trim() || 'Unassigned'
-    if (!bySalesPerson[sp]) bySalesPerson[sp] = { count: 0, value: 0, paidValue: 0 }
+    if (!bySalesPerson[sp]) bySalesPerson[sp] = { count: 0, gross: 0, vat: 0, costs: 0, profit: 0 }
     bySalesPerson[sp].count += 1
-    bySalesPerson[sp].value += docTotal(o)
-    if (o.paymentStatus === 'paid') bySalesPerson[sp].paidValue += docTotal(o)
+    bySalesPerson[sp].gross += docTotal(o)
+    bySalesPerson[sp].vat += docVat(o)
+    bySalesPerson[sp].costs += docTotalCosts(o)
+    bySalesPerson[sp].profit += docTrueNetProfit(o)
   }
   const salesPersonRows = Object.entries(bySalesPerson).sort(
-    (a, b) => b[1].paidValue - a[1].paidValue
+    (a, b) => b[1].profit - a[1].profit
   )
 
-  // ===== Month filter pills (last 12 months + all time) =====
-  const now = new Date()
-  const monthPills: { key: string; label: string }[] = []
-  for (let i = 0; i < 12; i++) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
-    monthPills.push({
-      key: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`,
-      label: d.toLocaleDateString('en-PH', { month: 'short', year: '2-digit' }),
-    })
-  }
+  // Generating Years & Months for Dropdowns
+  const currentYear = new Date().getFullYear()
+  const filterYears = Array.from({ length: currentYear - 2023 + 2 }, (_, i) => String(2023 + i))
+  const filterMonths = [
+    { v: '01', l: 'January' }, { v: '02', l: 'February' }, { v: '03', l: 'March' },
+    { v: '04', l: 'April' }, { v: '05', l: 'May' }, { v: '06', l: 'June' },
+    { v: '07', l: 'July' }, { v: '08', l: 'August' }, { v: '09', l: 'September' },
+    { v: '10', l: 'October' }, { v: '11', l: 'November' }, { v: '12', l: 'December' }
+  ]
 
-  const sectionTitle = 'text-[13px] font-black uppercase tracking-[0.15em] text-[#01172f] mb-4'
-  const card = 'bg-[#fdfffc] border border-[#149911]/15 p-6 md:p-8'
+  const sectionTitle = 'text-[13px] font-semibold uppercase tracking-wider text-gray-400 mb-5'
+  const card = 'bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-sm'
 
   return (
-    <div className="max-w-[990px] mx-auto">
-      <div className="mb-8">
-        <div className="w-10 h-[3px] bg-[#149911] mb-5" />
-        <h1 className="text-[26px] md:text-[32px] font-black uppercase tracking-tight text-[#01172f] leading-none mb-3">
-          Reports
-        </h1>
-        <p className="text-[14px] text-[#01172f]/50 font-medium max-w-[560px]">
-          Sales funnel, pipeline, and confirmed revenue. Revenue counts Paid orders only.
-        </p>
-      </div>
-
-      {/* Month filter */}
-      <div className="flex flex-wrap gap-2 mb-10">
-        <Link
-          href="/admin-dashboard/reports"
-          className={`text-[11px] font-bold uppercase tracking-[0.1em] px-4 py-2 border transition-colors duration-200 ${
-            !activeMonth
-              ? 'bg-[#149911] border-[#149911] text-[#fdfffc]'
-              : 'bg-[#fdfffc] border-[#149911]/20 text-[#01172f]/60 hover:border-[#149911]'
-          }`}
-        >
-          All Time
-        </Link>
-        {monthPills.map((m) => (
-          <Link
-            key={m.key}
-            href={`/admin-dashboard/reports?month=${m.key}`}
-            className={`text-[11px] font-bold uppercase tracking-[0.1em] px-4 py-2 border transition-colors duration-200 ${
-              activeMonth === m.key
-                ? 'bg-[#149911] border-[#149911] text-[#fdfffc]'
-                : 'bg-[#fdfffc] border-[#149911]/20 text-[#01172f]/60 hover:border-[#149911]'
-            }`}
-          >
-            {m.label}
-          </Link>
-        ))}
-      </div>
-
-      {/* Actual Profit -- paid orders only */}
-      <div className="bg-[#149911] text-[#fdfffc] p-6 md:p-8 mb-6 flex items-center justify-between flex-wrap gap-4">
+    <div className="max-w-[1000px] mx-auto p-4 md:p-8 antialiased">
+      
+      {/* EXPORT HEADER BUTTON */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#fdfffc]/60 mb-2">
-            Actual Profit -- Paid Orders Only
+          <h1 className="text-[26px] md:text-[32px] font-semibold tracking-tight text-gray-900 leading-none mb-3">
+            Reports
+          </h1>
+          <p className="text-[14px] text-gray-500 font-medium max-w-[560px]">
+            Financial metrics, sales funnel, and pipeline tracking. Standard reporting operates on an accrual basis for confirmed orders.
           </p>
-          <p className="text-[32px] md:text-[40px] font-black leading-none">{peso(actualProfit)}</p>
-          <p className="text-[12px] text-[#fdfffc]/60 font-medium mt-2">
+        </div>
+        
+        <Link
+          href="/admin-dashboard/reports/export"
+          className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[13px] font-medium shadow-sm flex-shrink-0"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          Export Center
+        </Link>
+      </div>
+
+      {/* Auto-Submitting Filter Form */}
+      <form id="filter-form" method="GET" className="flex flex-wrap items-center gap-3 mb-8">
+        <div className="relative">
+          <select 
+            name="month" 
+            defaultValue={activeMonth} 
+            className="appearance-none bg-white border border-gray-200 rounded-full pl-5 pr-9 py-2.5 text-[13px] font-medium text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all cursor-pointer shadow-sm"
+          >
+            <option value="all">All Months</option>
+            {filterMonths.map(m => <option key={m.v} value={m.v}>{m.l}</option>)}
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+        </div>
+
+        <div className="relative">
+          <select 
+            name="year" 
+            defaultValue={activeYear} 
+            className="appearance-none bg-white border border-gray-200 rounded-full pl-5 pr-9 py-2.5 text-[13px] font-medium text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all cursor-pointer shadow-sm"
+          >
+            <option value="all">All Years</option>
+            {filterYears.map(y => <option key={y} value={y}>{y}</option>)}
+          </select>
+          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 9l6 6 6-6"/></svg>
+          </div>
+        </div>
+
+        <script dangerouslySetInnerHTML={{ __html: `
+          document.getElementById('filter-form').addEventListener('change', function() {
+            this.submit();
+          });
+        `}} />
+      </form>
+
+      {/* True Profit Card -- paid orders only */}
+      <div className="bg-[#1d1d1f] text-white rounded-[2rem] p-6 md:p-8 mb-6 flex items-center justify-between flex-wrap gap-8 shadow-lg">
+        <div>
+          <p className="text-[12px] font-semibold uppercase tracking-wider text-gray-400 mb-3">
+            True Net Profit (Paid Orders Only)
+          </p>
+          <p className="text-[36px] md:text-[48px] font-semibold tracking-tight leading-none text-[#149911]">
+            {peso(actualProfit)}
+          </p>
+          <p className="text-[13px] text-gray-400 font-medium mt-3">
             {paidCount} paid order{paidCount === 1 ? '' : 's'} &middot; {actualMarkupPercent.toFixed(1)}% avg. markup
           </p>
         </div>
-        <p className="text-[12px] text-[#fdfffc]/60 font-medium max-w-[280px]">
-          Client's total payment minus supplier cost. Only orders marked Paid count here.
-        </p>
+        
+        {/* Explicit Math Breakdown for transparency */}
+        <div className="flex flex-col gap-1.5 text-[13px] text-gray-400 font-medium md:text-right flex-shrink-0 min-w-[200px]">
+           <p className="flex justify-between md:justify-end gap-6"><span>Gross Paid:</span> <span>{peso(paidGross)}</span></p>
+           <p className="flex justify-between md:justify-end gap-6 text-amber-500/80"><span>Less VAT:</span> <span>-{peso(paidVat)}</span></p>
+           <p className="flex justify-between md:justify-end gap-6 text-red-400/80"><span>Less Costs:</span> <span>-{peso(paidCosts)}</span></p>
+           <div className="w-full h-[1px] bg-gray-800 my-1" />
+           <p className="flex justify-between md:justify-end gap-6 text-[#149911] font-semibold"><span>Net Profit:</span> <span>{peso(actualProfit)}</span></p>
+        </div>
       </div>
 
-      {/* Google Reviews -- renders only once GOOGLE_PLACES_API_KEY + GOOGLE_PLACE_ID are set */}
+      {/* Basic Accounting Reports (Accrual Basis) */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 md:gap-5 mb-8">
+        
+        <div className="bg-white border border-gray-100 rounded-[1.5rem] p-5 shadow-sm flex flex-col">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Gross Revenue</p>
+          <p className="text-[20px] lg:text-[24px] font-semibold tracking-tight text-gray-900 mb-3">{peso(totalGrossRevenue)}</p>
+          <div className="mt-auto">
+            <p className="text-[11px] text-gray-500 font-medium">All confirmed</p>
+          </div>
+        </div>
+
+        <div className="bg-white border border-gray-100 rounded-[1.5rem] p-5 shadow-sm flex flex-col">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">VAT Payable</p>
+          <p className="text-[20px] lg:text-[24px] font-semibold tracking-tight text-amber-500 mb-3">-{peso(totalVat)}</p>
+          <div className="mt-auto">
+            <p className="text-[11px] text-gray-500 font-medium">Tax liability</p>
+          </div>
+        </div>
+        
+        <div className="bg-white border border-gray-100 rounded-[1.5rem] p-5 shadow-sm flex flex-col">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Total Costs</p>
+          <p className="text-[20px] lg:text-[24px] font-semibold tracking-tight text-red-500 mb-3">-{peso(totalCosts)}</p>
+          <div className="mt-auto">
+            <p className="text-[11px] text-gray-500 font-medium">COGS + OPEX</p>
+          </div>
+        </div>
+
+        <div className="bg-white border border-gray-100 rounded-[1.5rem] p-5 shadow-sm flex flex-col">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Receivables</p>
+          <p className="text-[20px] lg:text-[24px] font-semibold tracking-tight text-blue-500 mb-3">{peso(totalReceivables)}</p>
+          <div className="mt-auto">
+            <p className="text-[11px] text-gray-500 font-medium">{receivablesCount} unpaid orders</p>
+          </div>
+        </div>
+
+        <div className="bg-[#1d1d1f] rounded-[1.5rem] p-5 shadow-lg flex flex-col text-white col-span-2 lg:col-span-1">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Net Profit</p>
+          <p className="text-[20px] lg:text-[24px] font-semibold tracking-tight text-[#149911] mb-3">{peso(totalNetProfit)}</p>
+          <div className="mt-auto">
+            <p className="text-[11px] text-gray-400 font-medium">Accrual Tally</p>
+          </div>
+        </div>
+
+      </div>
+
+      {/* Google Reviews */}
       {googleReviews && (
-        <div className="bg-[#fdfffc] border border-[#149911]/15 p-6 md:p-8 mb-6 flex items-center justify-between flex-wrap gap-4">
+        <div className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 mb-8 flex items-center justify-between flex-wrap gap-4 shadow-sm">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#01172f]/40 mb-2">
+            <p className="text-[12px] font-semibold uppercase tracking-wider text-gray-400 mb-2">
               Google Reviews
             </p>
             <div className="flex items-baseline gap-3">
-              <p className="text-[32px] md:text-[40px] font-black leading-none text-[#01172f]">
+              <p className="text-[32px] md:text-[40px] font-semibold tracking-tight leading-none text-gray-900">
                 {googleReviews.rating.toFixed(1)}
               </p>
               <p className="text-[20px] text-[#149911] tracking-[0.1em]">
                 {'★'.repeat(Math.round(googleReviews.rating))}
               </p>
             </div>
-            <p className="text-[12px] text-[#01172f]/40 font-medium mt-2">
+            <p className="text-[13px] text-gray-500 font-medium mt-2">
               from {googleReviews.count.toLocaleString()} review{googleReviews.count === 1 ? '' : 's'} on Google
             </p>
           </div>
-          <p className="text-[12px] text-[#01172f]/40 font-medium max-w-[280px]">
+          <p className="text-[13px] text-gray-400 font-medium max-w-[280px] leading-relaxed">
             {googleReviews.isPlaceholder
               ? 'Placeholder values -- edit PLACEHOLDER_REVIEWS in this page\u2019s code, or configure the Google Places API for live data.'
               : 'Live from your Google Business Profile. Google\u2019s API provides the average and count only -- not the star-by-star breakdown.'}
@@ -362,7 +477,7 @@ export default async function ReportsPage({
       )}
 
       {/* Conversion funnel */}
-      <div className="flex flex-wrap gap-3 mb-6">
+      <div className="flex flex-wrap gap-4 mb-8">
         <FunnelStep label="Requests" value={requestCount} />
         <FunnelStep
           label="Quotations"
@@ -419,20 +534,20 @@ export default async function ReportsPage({
         <div className={card}>
           <h2 className={sectionTitle}>Material Demand (Top 8)</h2>
           {topMaterials.length === 0 ? (
-            <p className="text-[13px] text-[#01172f]/40 font-medium py-4">
+            <p className="text-[13px] text-gray-400 font-medium py-4">
               No line items in this period yet.
             </p>
           ) : (
             topMaterials.map(([name, qty]) => {
               const pct = maxMaterialQty > 0 ? Math.max(3, Math.round((qty / maxMaterialQty) * 100)) : 0
               return (
-                <div key={name} className="py-2.5 border-b border-[#149911]/10 last:border-0">
-                  <div className="flex justify-between items-baseline gap-3 mb-1.5">
-                    <p className="text-[13px] font-bold text-[#01172f] truncate">{name}</p>
-                    <p className="text-[12px] text-[#01172f]/50 font-mono flex-shrink-0">{qty}</p>
+                <div key={name} className="py-3.5 border-b border-gray-50 last:border-0">
+                  <div className="flex justify-between items-baseline gap-3 mb-2">
+                    <p className="text-[13px] font-medium text-gray-900 truncate">{name}</p>
+                    <p className="text-[12px] text-gray-500 font-mono flex-shrink-0">{qty}</p>
                   </div>
-                  <div className="h-1.5 bg-[#149911]/10 overflow-hidden">
-                    <div className="h-full bg-[#149911]" style={{ width: `${pct}%` }} />
+                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-[#149911] rounded-full" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               )
@@ -440,30 +555,38 @@ export default async function ReportsPage({
           )}
         </div>
 
-        {/* Revenue by sales person */}
+        {/* Performance by Sales Person */}
         <div className={card}>
-          <h2 className={sectionTitle}>Revenue by Sales Person</h2>
+          <h2 className={sectionTitle}>Performance by Sales Person</h2>
           {salesPersonRows.length === 0 ? (
-            <p className="text-[13px] text-[#01172f]/40 font-medium py-4">
+            <p className="text-[13px] text-gray-400 font-medium py-4">
               No orders in this period yet.
             </p>
           ) : (
             salesPersonRows.map(([name, v]) => (
               <div
                 key={name}
-                className="flex items-center justify-between gap-4 py-3 border-b border-[#149911]/10 last:border-0"
+                className="flex items-center justify-between gap-4 py-4 border-b border-gray-50 last:border-0"
               >
-                <div>
-                  <p className={`text-[13px] font-bold ${name === 'Unassigned' ? 'italic text-[#01172f]/40' : 'text-[#01172f]'}`}>
+                <div className="flex-1 min-w-0">
+                  <p className={`text-[13px] font-semibold truncate ${name === 'Unassigned' ? 'italic text-gray-400' : 'text-gray-900'}`}>
                     {name}
                   </p>
-                  <p className="text-[11px] text-[#01172f]/40 font-medium">
-                    {v.count} order{v.count === 1 ? '' : 's'} &middot; {peso(v.value)} total
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{v.count} orders</span>
+                    <span className="text-[11px] font-medium text-gray-500">Gross: {peso(v.gross)}</span>
+                    <span className="text-[11px] font-medium text-amber-500">VAT: -{peso(v.vat)}</span>
+                    <span className="text-[11px] font-medium text-red-500">Cost: -{peso(v.costs)}</span>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end flex-shrink-0">
+                  <p className="text-[14px] font-semibold text-[#149911] font-mono leading-none">
+                    {peso(v.profit)}
+                  </p>
+                  <p className="text-[9px] uppercase tracking-wider font-semibold text-gray-400 mt-1.5">
+                    Net Profit
                   </p>
                 </div>
-                <p className="text-[14px] font-black text-[#149911] font-mono flex-shrink-0">
-                  {peso(v.paidValue)}
-                </p>
               </div>
             ))
           )}

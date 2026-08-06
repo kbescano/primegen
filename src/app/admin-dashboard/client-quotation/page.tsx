@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
 import QuotationGenerator, { type QuotationInitial } from '@/components/QuotationGenerator'
 import CollectionStatusSelect from '@/components/CollectionStatusSelect'
 import { getPayloadClient } from '@/lib/getPayloadClient'
@@ -59,14 +61,35 @@ function mapDocToInitial(q: any): QuotationInitial {
 export default async function ClientQuotationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; id?: string; new?: string; status?: string }>
+  searchParams: Promise<{ from?: string; id?: string; new?: string; status?: string; pipelineId?: string }>
 }) {
-  const { from, id, new: isNew, status } = await searchParams
+  const { from, id, new: isNew, status, pipelineId } = await searchParams
 
+  const payload = await getPayloadClient()
+
+  // =========================================================================
+  // 🔒 STRICT ROLE-BASED ACCESS CONTROL (SERVER-SIDE)
+  // =========================================================================
+  const reqHeaders = await headers()
+  const { user } = await payload.auth({ headers: reqHeaders })
+
+  // If the user is NOT an admin ('user' role or undefined)
+  if (user?.role !== 'admin') {
+    // 1. Block access to the main list (no ID and no pipeline 'from' request)
+    if (!id && !from) {
+      redirect('/admin-dashboard')
+    }
+    // 2. Block access to a specific quotation if they don't have pipeline context
+    if (id && !pipelineId) {
+      redirect('/admin-dashboard')
+    }
+  }
+  // =========================================================================
+
+  // ===== GENERATOR / DOCUMENT VIEW MODE =====
   if (id || from || isNew) {
     let initial: QuotationInitial | undefined
-    const payloadForProducts = await getPayloadClient()
-    const productsRes = await payloadForProducts.find({
+    const productsRes = await payload.find({
       collection: 'products',
       limit: 500,
       sort: 'name',
@@ -76,7 +99,6 @@ export default async function ClientQuotationPage({
 
     if (id) {
       try {
-        const payload = await getPayloadClient()
         const q: any = await payload.findByID({ collection: 'client-quotations', id })
         if (q) initial = mapDocToInitial(q)
       } catch {
@@ -84,7 +106,6 @@ export default async function ClientQuotationPage({
       }
     } else if (from) {
       try {
-        const payload = await getPayloadClient()
         const existingForRequest = await payload.find({
           collection: 'client-quotations',
           where: { sourceRequestId: { equals: from } },
@@ -131,9 +152,9 @@ export default async function ClientQuotationPage({
     )
   }
 
+  // ===== LIST MODE (ADMIN ONLY) =====
   const activeStatus = STATUSES.includes(status as any) ? status : undefined
 
-  const payload = await getPayloadClient()
   const { docs } = await payload.find({
     collection: 'client-quotations',
     sort: '-createdAt',

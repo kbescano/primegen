@@ -295,7 +295,7 @@ export default async function QuotationInboxPage({
                     href={`/admin-dashboard/pipeline/${q.id}`}
                     className="text-[10px] font-bold uppercase tracking-wider text-[#01172f] hover:text-[#149911] transition-colors flex items-center gap-1"
                   >
-                    View Pipeline &rarr;
+                    View Order Workflow &rarr;
                   </Link>
                 </div>
 
