@@ -8,7 +8,7 @@ interface ScrollRevealProps {
   as?: ElementType
   id?: string
   style?: CSSProperties
-  direction?: 'up' | 'left'
+  direction?: 'up' | 'left' | 'none'
   [key: string]: any
 }
 
@@ -51,8 +51,12 @@ export default function ScrollReveal({
     }
   }, [])
 
-  const hiddenTransform = direction === 'left' ? '-translate-x-10' : 'translate-y-10'
-  const revealedTransform = direction === 'left' ? 'translate-x-0' : 'translate-y-0'
+  const hiddenTransform = direction === 'none' 
+  ? '' 
+  : direction === 'left' ? '-translate-x-10' : 'translate-y-10'
+const revealedTransform = direction === 'none' 
+  ? '' 
+  : direction === 'left' ? 'translate-x-0' : 'translate-y-0'
 
   return (
     <Component
