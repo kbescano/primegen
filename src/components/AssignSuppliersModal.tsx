@@ -38,12 +38,12 @@ export default function AssignSuppliersModal({
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
   const [addingNew, setAddingNew] = useState(false)
+  
+  // ALL 4 fields are required for new suppliers
   const [newSupplier, setNewSupplier] = useState({ name: '', company: '', phone: '', address: '' })
   
-  // Fetch the sales agent from the order so we can prefill 'preparedBy'
   const [orderSalesPerson, setOrderSalesPerson] = useState('')
 
-  // Map to quickly look up the current supplier name of an assigned item
   const poById = useMemo(() => {
     const map: Record<string, any> = {}
     for (const po of linkedPOs) {
@@ -52,11 +52,10 @@ export default function AssignSuppliersModal({
     return map
   }, [linkedPOs])
 
-  // Automatically skip to 'select-supplier' if ALL items are unassigned (or if it's the very first assignment)
+  // Automatically skip to 'select-supplier' if ALL items are unassigned
   useEffect(() => {
     const allUnassigned = items.every(item => !item.assignedPOId)
     if (allUnassigned && items.length > 0) {
-      // Auto-select everything
       setSelected(new Set(items.map((_, i) => i)))
       setStep('select-supplier')
     }
@@ -70,7 +69,6 @@ export default function AssignSuppliersModal({
         .then((res) => res.json())
         .then((data) => {
           setSuppliers(data.docs || [])
-          // If no suppliers exist in the database, automatically show the "Add New" form
           if (!data.docs || data.docs.length === 0) {
             setAddingNew(true)
           }
@@ -80,7 +78,7 @@ export default function AssignSuppliersModal({
     }
   }, [step, suppliers.length])
 
-  // Fetch the Order details to grab the Sales Person
+  // Fetch Order details for Sales Person
   useEffect(() => {
     if (orderId) {
       fetch(`/api/orders/${orderId}?depth=0`, { credentials: 'include' })
@@ -103,43 +101,79 @@ export default function AssignSuppliersModal({
     })
   }
 
-  async function createPOForSupplier(supplier: { name: string; company?: string; address?: string , phone?: string}) {
+  // CORE ASSIGNMENT & CLEANUP FLOW
+  async function assignSelectedItemsToSupplier(supplier: { name: string; company?: string; address?: string; phone?: string }) {
     setCreating(true)
     setError('')
     try {
-      const selectedItems = Array.from(selected).map((i) => ({
+      const selectedIndices = Array.from(selected)
+      if (selectedIndices.length === 0) throw new Error('Please select at least one item.')
+
+      const selectedItemsPayload = selectedIndices.map((i) => ({
         description: items[i].description,
         qty: items[i].qty,
         unit: items[i].unit,
-        // Prefill with the supplier cost already entered on the quotation this order
-        // came from -- keeps the markup consistent across quotation, order, and PO.
         unitPrice: items[i].unitCost || 0,
       }))
 
-      const poRes = await fetch('/api/supplier-purchase-orders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          supplierName: supplier.name,
-          supplierAddress: supplier.address || '',
-          supplierCompany: supplier.company || '',
-          supplierPhone: supplier?.phone || '',
-          preparedBy: orderSalesPerson, // Automatically saves the Sales Agent to the PO
-          preparedByRole: 'Sales Agent', 
-          items: selectedItems,
-          status: 'draft',
-          sourceOrderId: String(orderId),
-        }),
-      })
-      if (!poRes.ok) throw new Error('Failed to create Supplier PO')
-      const poData = await poRes.json()
-      const newPOId = poData.doc.id
-
-      // Mark the selected items on the Order as assigned to this new PO (overwriting previous assignment if any)
-      const updatedItems = items.map((item, i) =>
-        selected.has(i) ? { ...item, assignedPOId: String(newPOId) } : item
+      // 1. Check if an active Draft PO already exists for this exact supplier on this order to avoid duplicates
+      let targetPO = linkedPOs.find(
+        (po) =>
+          po.status === 'draft' &&
+          po.supplierName?.toLowerCase().trim() === supplier.name.toLowerCase().trim()
       )
+
+      let targetPOId: string | number
+
+      if (targetPO) {
+        // RE-USE existing draft PO: append items cleanly
+        const existingItems = targetPO.items || []
+        const combinedItems = [...existingItems, ...selectedItemsPayload].map(({ id, ...rest }: any) => rest)
+
+        const patchRes = await fetch(`/api/supplier-purchase-orders/${targetPO.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ items: combinedItems }),
+        })
+        if (!patchRes.ok) throw new Error('Failed to update existing supplier PO')
+        targetPOId = targetPO.id
+      } else {
+        // CREATE new PO if none exists for this supplier yet
+        const poRes = await fetch('/api/supplier-purchase-orders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            supplierName: supplier.name,
+            supplierAddress: supplier.address || '',
+            supplierCompany: supplier.company || '',
+            supplierPhone: supplier.phone || '',
+            preparedBy: orderSalesPerson,
+            preparedByRole: 'Sales Agent',
+            items: selectedItemsPayload,
+            status: 'draft',
+            sourceOrderId: String(orderId),
+          }),
+        })
+        if (!poRes.ok) throw new Error('Failed to create Supplier PO')
+        const poData = await poRes.json()
+        targetPOId = poData.doc.id
+      }
+
+      // 2. Track old PO IDs that were previously attached to these items so we can check for orphaned cleanups
+      const oldPOIdsToCheck = new Set<string>()
+      selectedIndices.forEach((i) => {
+        if (items[i].assignedPOId) {
+          oldPOIdsToCheck.add(String(items[i].assignedPOId))
+        }
+      })
+
+      // 3. Update Order items mapping
+      const updatedItems = items.map((item, i) =>
+        selected.has(i) ? { ...item, assignedPOId: String(targetPOId) } : item
+      )
+
       const orderRes = await fetch(`/api/orders/${orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -148,28 +182,51 @@ export default function AssignSuppliersModal({
       })
       if (!orderRes.ok) throw new Error('Failed to update order items')
 
-      router.refresh()
-      setSelected(new Set())
-      
-      // If we auto-skipped, just close the modal since they assigned everything
-      const allUnassigned = items.every(item => !item.assignedPOId)
-      if (allUnassigned) {
-        onClose()
-      } else {
-        setStep('select-items')
+      // 4. AUTOMATIC CLEANUP: Check if any old POs now have zero items pointing to them. If so, delete them!
+      for (const oldId of oldPOIdsToCheck) {
+        if (String(oldId) !== String(targetPOId)) {
+          const stillHasItems = updatedItems.some((it) => String(it.assignedPOId) === String(oldId))
+          if (!stillHasItems) {
+            await fetch(`/api/supplier-purchase-orders/${oldId}`, {
+              method: 'DELETE',
+              credentials: 'include',
+            }).catch(() => {})
+          }
+        }
       }
 
+      // Trigger server refresh and force close the modal
+      router.refresh()
+      onClose()
+      
     } catch (err: any) {
       setError(err?.message || 'Something went wrong -- please try again.')
-    } finally {
       setCreating(false)
     }
   }
 
+  // Validation: Require all 4 fields for creating a new supplier
+  const isNewSupplierValid =
+    newSupplier.name.trim() !== '' &&
+    newSupplier.company.trim() !== '' &&
+    newSupplier.phone.trim() !== '' &&
+    newSupplier.address.trim() !== ''
+
+  // Determine if all items are selected or assigned
+  const allCompleted = selected.size === items.length || items.every((item) => Boolean(item.assignedPOId))
+
   return (
     <div className="fixed inset-0 bg-[#1d1d1f]/40 backdrop-blur-sm z-[120] flex items-center justify-center p-4 antialiased">
-      <div className="bg-white max-w-lg w-full max-h-[85vh] flex flex-col rounded-[2rem] shadow-[0_24px_48px_rgba(0,0,0,0.15)] overflow-hidden ring-1 ring-white/50">
+      <div className="bg-white max-w-lg w-full max-h-[85vh] flex flex-col rounded-[2rem] shadow-[0_24px_48px_rgba(0,0,0,0.15)] overflow-hidden ring-1 ring-white/50 relative">
         
+        {/* Loading Overlay when saving/creating PO */}
+        {creating && (
+          <div className="absolute inset-0 bg-white/85 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-3">
+            <div className="w-8 h-8 border-4 border-[#149911] border-t-transparent rounded-full animate-spin" />
+            <p className="text-[13px] font-semibold text-gray-700">Assigning supplier...</p>
+          </div>
+        )}
+
         <div className="p-6 md:p-8 border-b border-gray-100 shrink-0">
           <div className="w-8 h-[3px] bg-[#149911] mb-4" />
           <h2 className="text-[18px] md:text-[20px] font-semibold tracking-tight text-gray-900 mb-2">
@@ -235,7 +292,7 @@ export default function AssignSuppliersModal({
                     />
                   </div>
                   <div>
-                    <label className="block text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">Company (Optional)</label>
+                    <label className="block text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">Company *</label>
                     <input
                       placeholder="e.g. Acer Inc."
                       value={newSupplier.company}
@@ -245,7 +302,7 @@ export default function AssignSuppliersModal({
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">Phone (Optional)</label>
+                      <label className="block text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">Phone *</label>
                       <input
                         placeholder="+639..."
                         value={newSupplier.phone}
@@ -254,7 +311,7 @@ export default function AssignSuppliersModal({
                       />
                     </div>
                     <div>
-                      <label className="block text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">Address (Optional)</label>
+                      <label className="block text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1.5">Address *</label>
                       <input
                         placeholder="City, Region"
                         value={newSupplier.address}
@@ -272,7 +329,7 @@ export default function AssignSuppliersModal({
                       Cancel
                     </button>
                     <button
-                      disabled={creating || !newSupplier.name.trim()}
+                      disabled={creating || !isNewSupplierValid}
                       onClick={async () => {
                         setCreating(true)
                         setError('')
@@ -289,9 +346,10 @@ export default function AssignSuppliersModal({
                             { id: savedSupplier.doc.id, ...newSupplier },
                             ...prev,
                           ])
+                          const tempSupplierData = { ...newSupplier }
                           setNewSupplier({ name: '', company: '', phone: '', address: '' })
                           setAddingNew(false)
-                          await createPOForSupplier(newSupplier)
+                          await assignSelectedItemsToSupplier(tempSupplierData)
                         } catch (err: any) {
                           setError(err?.message || 'Something went wrong -- please try again.')
                           setCreating(false)
@@ -325,7 +383,7 @@ export default function AssignSuppliersModal({
                           <button
                             key={s.id}
                             disabled={creating}
-                            onClick={() => createPOForSupplier(s)}
+                            onClick={() => assignSelectedItemsToSupplier(s)}
                             className="w-full flex flex-col text-left px-4 py-3.5 hover:bg-[#149911]/[0.04] transition-colors border-b border-gray-100 last:border-0 disabled:opacity-50 focus:outline-none focus:bg-gray-50"
                           >
                             <span className="font-semibold text-gray-900 text-[14px] leading-tight">{s.name}</span>
@@ -345,7 +403,8 @@ export default function AssignSuppliersModal({
           {step === 'select-supplier' && (
             <button
               onClick={() => setStep('select-items')}
-              className="flex-1 py-3.5 rounded-full text-[13px] font-medium border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors focus:outline-none shadow-sm"
+              disabled={creating}
+              className="flex-1 py-3.5 rounded-full text-[13px] font-medium border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors focus:outline-none shadow-sm disabled:opacity-50"
             >
               &larr; Back to Items
             </button>
@@ -353,7 +412,7 @@ export default function AssignSuppliersModal({
           {step === 'select-items' && (
             <button
               onClick={() => setStep('select-supplier')}
-              disabled={selected.size === 0}
+              disabled={selected.size === 0 || creating}
               className="flex-1 py-3.5 rounded-full text-[13px] font-medium bg-[#149911] text-white hover:bg-[#103900] transition-colors focus:outline-none shadow-sm disabled:opacity-50 disabled:bg-gray-300 disabled:text-gray-500"
             >
               Choose Supplier ({selected.size})
@@ -361,9 +420,10 @@ export default function AssignSuppliersModal({
           )}
           <button
             onClick={onClose}
-            className="flex-1 py-3.5 rounded-full text-[13px] font-medium border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors focus:outline-none shadow-sm"
+            disabled={creating}
+            className="flex-1 py-3.5 rounded-full text-[13px] font-medium border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors focus:outline-none shadow-sm disabled:opacity-50"
           >
-            Cancel
+            {allCompleted ? 'Close' : 'Cancel'}
           </button>
         </div>
       </div>
