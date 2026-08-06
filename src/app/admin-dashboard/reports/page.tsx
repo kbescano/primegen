@@ -51,6 +51,21 @@ function docTotalCosts(o: any): number {
   return cogs + liquidatedOpex
 }
 
+// Helper to calculate exact amount paid based on status
+function docAmountPaid(o: any): number {
+    const gross = docTotal(o)
+    if (o.paymentStatus === 'paid') return gross
+    if (o.paymentStatus === 'partial') return Number(o.amountPaid) || 0
+    return 0
+}
+
+// Helper to calculate exact receivable based on amount paid
+function docReceivable(o: any): number {
+    const gross = docTotal(o)
+    const paid = docAmountPaid(o)
+    return gross - paid
+}
+
 const PLACEHOLDER_REVIEWS = { rating: 5.0, count: 9, isPlaceholder: true }
 
 async function fetchGoogleReviews(): Promise<{ rating: number; count: number; isPlaceholder?: boolean } | null> {
@@ -221,30 +236,24 @@ export default async function ReportsPage({
   const requestCount = requests.length
   const quotationCount = quotations.length
   const orderCount = orders.length
-  const paidOrders = orders.filter((o) => o.paymentStatus === 'paid')
-  const paidCount = paidOrders.length
+  
+  // Count any order with partial or full payment
+  const payingOrdersCount = orders.filter((o) => ['paid', 'partial'].includes(o.paymentStatus)).length
 
   const requestToQuotationRate = requestCount > 0 ? Math.round((quotationCount / requestCount) * 100) : 0
   const quotationToOrderRate = quotationCount > 0 ? Math.round((orderCount / quotationCount) * 100) : 0
-  const orderToPaidRate = orderCount > 0 ? Math.round((paidCount / orderCount) * 100) : 0
-
-  // ===== TRUE PROFIT: PAID ORDERS ONLY =====
-  const paidGross = paidOrders.reduce((sum, o) => sum + docTotal(o), 0)
-  const paidVat = paidOrders.reduce((sum, o) => sum + docVat(o), 0)
-  const paidCosts = paidOrders.reduce((sum, o) => sum + docTotalCosts(o), 0)
-  const actualProfit = paidOrders.reduce((sum, o) => sum + docTrueNetProfit(o), 0)
-  const actualMarkupPercent = paidCosts > 0 ? (actualProfit / paidCosts) * 100 : 0
+  const orderToPaidRate = orderCount > 0 ? Math.round((payingOrdersCount / orderCount) * 100) : 0
 
   // ===== ACCOUNTING SUMMARY (Accrual Basis - All Confirmed Orders) =====
   const totalGrossRevenue = orders.reduce((sum, o) => sum + docTotal(o), 0)
+  const totalAmountPaid = orders.reduce((sum, o) => sum + docAmountPaid(o), 0)
+  const totalReceivables = orders.reduce((sum, o) => sum + docReceivable(o), 0)
   const totalVat = orders.reduce((sum, o) => sum + docVat(o), 0)
   const totalCosts = orders.reduce((sum, o) => sum + docTotalCosts(o), 0)
-  const totalNetProfit = orders.reduce((sum, o) => sum + docTrueNetProfit(o), 0) // Explicit mathematical tally
+  const totalNetProfit = orders.reduce((sum, o) => sum + docTrueNetProfit(o), 0) 
 
-  // Receivables (Any order that is 'unpaid' or 'partial')
-  const unpaidOrders = orders.filter(o => o.paymentStatus === 'unpaid' || o.paymentStatus === 'partial')
-  const totalReceivables = unpaidOrders.reduce((sum, o) => sum + docTotal(o), 0)
-  const receivablesCount = unpaidOrders.length
+  const actualMarkupPercent = totalCosts > 0 ? (totalNetProfit / totalCosts) * 100 : 0
+  const receivablesCount = orders.filter(o => docReceivable(o) > 0).length
 
   // ===== Quotation pipeline by status =====
   const quotationPipeline: Record<string, { count: number; value: number }> = {
@@ -291,14 +300,14 @@ export default async function ReportsPage({
   const maxMaterialQty = topMaterials.length > 0 ? topMaterials[0][1] : 0
 
   // ===== Performance by Sales Person (Accrual Basis on ALL orders in period) =====
-  const bySalesPerson: Record<string, { count: number; gross: number; vat: number; costs: number; profit: number }> = {}
+  const bySalesPerson: Record<string, { count: number; gross: number; paid: number; ar: number; profit: number }> = {}
   for (const o of orders) {
     const sp = o.salesPerson?.trim() || 'Unassigned'
-    if (!bySalesPerson[sp]) bySalesPerson[sp] = { count: 0, gross: 0, vat: 0, costs: 0, profit: 0 }
+    if (!bySalesPerson[sp]) bySalesPerson[sp] = { count: 0, gross: 0, paid: 0, ar: 0, profit: 0 }
     bySalesPerson[sp].count += 1
     bySalesPerson[sp].gross += docTotal(o)
-    bySalesPerson[sp].vat += docVat(o)
-    bySalesPerson[sp].costs += docTotalCosts(o)
+    bySalesPerson[sp].paid += docAmountPaid(o)
+    bySalesPerson[sp].ar += docReceivable(o)
     bySalesPerson[sp].profit += docTrueNetProfit(o)
   }
   const salesPersonRows = Object.entries(bySalesPerson).sort(
@@ -306,8 +315,8 @@ export default async function ReportsPage({
   )
 
   // Generating Years & Months for Dropdowns
-  const currentYear = new Date().getFullYear()
-  const filterYears = Array.from({ length: currentYear - 2023 + 2 }, (_, i) => String(2023 + i))
+  const currentYearOptions = new Date().getFullYear()
+  const filterYears = Array.from({ length: currentYearOptions - 2023 + 2 }, (_, i) => String(2023 + i))
   const filterMonths = [
     { v: '01', l: 'January' }, { v: '02', l: 'February' }, { v: '03', l: 'March' },
     { v: '04', l: 'April' }, { v: '05', l: 'May' }, { v: '06', l: 'June' },
@@ -380,68 +389,75 @@ export default async function ReportsPage({
         `}} />
       </form>
 
-      {/* True Profit Card -- paid orders only */}
+      {/* True Profit Card -- All confirmed orders */}
       <div className="bg-[#1d1d1f] text-white rounded-[2rem] p-6 md:p-8 mb-6 flex items-center justify-between flex-wrap gap-8 shadow-lg">
         <div>
           <p className="text-[12px] font-semibold uppercase tracking-wider text-gray-400 mb-3">
-            True Net Profit (Paid Orders Only)
+            True Net Profit (All Confirmed Orders)
           </p>
           <p className="text-[36px] md:text-[48px] font-semibold tracking-tight leading-none text-[#149911]">
-            {peso(actualProfit)}
+            {peso(totalNetProfit)}
           </p>
           <p className="text-[13px] text-gray-400 font-medium mt-3">
-            {paidCount} paid order{paidCount === 1 ? '' : 's'} &middot; {actualMarkupPercent.toFixed(1)}% avg. markup
+            {orderCount} total confirmed order{orderCount === 1 ? '' : 's'} &middot; {actualMarkupPercent.toFixed(1)}% avg. markup
           </p>
         </div>
         
-        {/* Explicit Math Breakdown for transparency */}
         <div className="flex flex-col gap-1.5 text-[13px] text-gray-400 font-medium md:text-right flex-shrink-0 min-w-[200px]">
-           <p className="flex justify-between md:justify-end gap-6"><span>Gross Paid:</span> <span>{peso(paidGross)}</span></p>
-           <p className="flex justify-between md:justify-end gap-6 text-amber-500/80"><span>Less VAT:</span> <span>-{peso(paidVat)}</span></p>
-           <p className="flex justify-between md:justify-end gap-6 text-red-400/80"><span>Less Costs:</span> <span>-{peso(paidCosts)}</span></p>
+           <p className="flex justify-between md:justify-end gap-6"><span>Gross Revenue:</span> <span>{peso(totalGrossRevenue)}</span></p>
+           <p className="flex justify-between md:justify-end gap-6 text-amber-500/80"><span>Less VAT:</span> <span>-{peso(totalVat)}</span></p>
+           <p className="flex justify-between md:justify-end gap-6 text-red-400/80"><span>Less Costs:</span> <span>-{peso(totalCosts)}</span></p>
            <div className="w-full h-[1px] bg-gray-800 my-1" />
-           <p className="flex justify-between md:justify-end gap-6 text-[#149911] font-semibold"><span>Net Profit:</span> <span>{peso(actualProfit)}</span></p>
+           <p className="flex justify-between md:justify-end gap-6 text-[#149911] font-semibold"><span>Net Profit:</span> <span>{peso(totalNetProfit)}</span></p>
         </div>
       </div>
 
-      {/* Basic Accounting Reports (Accrual Basis) */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 md:gap-5 mb-8">
+      {/* Cleaner 3-Column Accounting Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 mb-8">
         
         <div className="bg-white border border-gray-100 rounded-[1.5rem] p-5 shadow-sm flex flex-col">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Gross Revenue</p>
-          <p className="text-[20px] lg:text-[24px] font-semibold tracking-tight text-gray-900 mb-3">{peso(totalGrossRevenue)}</p>
+          <p className="text-[24px] font-semibold tracking-tight text-gray-900 mb-3">{peso(totalGrossRevenue)}</p>
           <div className="mt-auto">
             <p className="text-[11px] text-gray-500 font-medium">All confirmed</p>
           </div>
         </div>
 
-        <div className="bg-white border border-gray-100 rounded-[1.5rem] p-5 shadow-sm flex flex-col">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">VAT Payable</p>
-          <p className="text-[20px] lg:text-[24px] font-semibold tracking-tight text-amber-500 mb-3">-{peso(totalVat)}</p>
+        <div className="bg-[#149911]/5 border border-[#149911]/20 rounded-[1.5rem] p-5 shadow-sm flex flex-col">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#149911]/80 mb-1">Amount Paid</p>
+          <p className="text-[24px] font-semibold tracking-tight text-[#149911] mb-3">{peso(totalAmountPaid)}</p>
           <div className="mt-auto">
-            <p className="text-[11px] text-gray-500 font-medium">Tax liability</p>
+            <p className="text-[11px] text-[#149911]/80 font-medium">Full & partial payments</p>
+          </div>
+        </div>
+
+        <div className="bg-amber-50/50 border border-amber-100 rounded-[1.5rem] p-5 shadow-sm flex flex-col">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600/80 mb-1">Receivables</p>
+          <p className="text-[24px] font-semibold tracking-tight text-amber-600 mb-3">{peso(totalReceivables)}</p>
+          <div className="mt-auto">
+            <p className="text-[11px] text-amber-600/80 font-medium">{receivablesCount} pending balances</p>
           </div>
         </div>
         
         <div className="bg-white border border-gray-100 rounded-[1.5rem] p-5 shadow-sm flex flex-col">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Total Costs</p>
-          <p className="text-[20px] lg:text-[24px] font-semibold tracking-tight text-red-500 mb-3">-{peso(totalCosts)}</p>
+          <p className="text-[24px] font-semibold tracking-tight text-red-500 mb-3">-{peso(totalCosts)}</p>
           <div className="mt-auto">
             <p className="text-[11px] text-gray-500 font-medium">COGS + OPEX</p>
           </div>
         </div>
 
         <div className="bg-white border border-gray-100 rounded-[1.5rem] p-5 shadow-sm flex flex-col">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Receivables</p>
-          <p className="text-[20px] lg:text-[24px] font-semibold tracking-tight text-blue-500 mb-3">{peso(totalReceivables)}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">VAT Payable</p>
+          <p className="text-[24px] font-semibold tracking-tight text-gray-600 mb-3">-{peso(totalVat)}</p>
           <div className="mt-auto">
-            <p className="text-[11px] text-gray-500 font-medium">{receivablesCount} unpaid orders</p>
+            <p className="text-[11px] text-gray-500 font-medium">Tax liability</p>
           </div>
         </div>
 
-        <div className="bg-[#1d1d1f] rounded-[1.5rem] p-5 shadow-lg flex flex-col text-white col-span-2 lg:col-span-1">
+        <div className="bg-[#1d1d1f] rounded-[1.5rem] p-5 shadow-lg flex flex-col text-white">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Net Profit</p>
-          <p className="text-[20px] lg:text-[24px] font-semibold tracking-tight text-[#149911] mb-3">{peso(totalNetProfit)}</p>
+          <p className="text-[24px] font-semibold tracking-tight text-[#149911] mb-3">{peso(totalNetProfit)}</p>
           <div className="mt-auto">
             <p className="text-[11px] text-gray-400 font-medium">Accrual Tally</p>
           </div>
@@ -490,8 +506,8 @@ export default async function ReportsPage({
           sublabel={`${quotationToOrderRate}% of quotations`}
         />
         <FunnelStep
-          label="Paid"
-          value={paidCount}
+          label="With Payment"
+          value={payingOrdersCount}
           sublabel={`${orderToPaidRate}% of orders`}
           highlight
         />
@@ -575,8 +591,8 @@ export default async function ReportsPage({
                   <div className="flex items-center gap-2 mt-2 flex-wrap">
                     <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{v.count} orders</span>
                     <span className="text-[11px] font-medium text-gray-500">Gross: {peso(v.gross)}</span>
-                    <span className="text-[11px] font-medium text-amber-500">VAT: -{peso(v.vat)}</span>
-                    <span className="text-[11px] font-medium text-red-500">Cost: -{peso(v.costs)}</span>
+                    <span className="text-[11px] font-medium text-[#149911]">Paid: {peso(v.paid)}</span>
+                    <span className="text-[11px] font-medium text-amber-500">AR: {peso(v.ar)}</span>
                   </div>
                 </div>
                 <div className="flex flex-col items-end flex-shrink-0">

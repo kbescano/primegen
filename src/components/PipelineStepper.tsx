@@ -1,6 +1,7 @@
-"use client";
+'use client';
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { StepKey, STEPS } from "@/lib/pipelineUtils";
 import {
   StepQuotation,
@@ -26,8 +27,10 @@ export default function PipelineStepper({
   completedSteps: Record<StepKey, boolean>;
   currentStep: StepKey;
 }) {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<StepKey>(currentStep);
   const [localOrder, setLocalOrder] = useState(order);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const isQuotationApprovedOrBeyond =
     ["quotation_approved", "order_confirmed"].includes(quotation?.status) || !!order;
@@ -43,15 +46,20 @@ export default function PipelineStepper({
       maxUnlockedIndex = 0;
     } else {
       const prevStepKey = STEPS[i - 1].key;
-      if (completedSteps[prevStepKey]) {
+      // ONLY unlock Step 6 if fully delivered AND fully paid
+      const isDeliveredAndPaidLocal = localOrder?.fulfillmentStatus === 'delivered' && localOrder?.paymentStatus === 'paid';
+      
+      if (prevStepKey === 'delivery' && isDeliveredAndPaidLocal) {
+        maxUnlockedIndex = i;
+      } else if (completedSteps[prevStepKey]) {
         maxUnlockedIndex = i;
       } else {
-        break; // Hard stop at the first incomplete step
+        break;
       }
     }
   }
 
-  // Validate activeTab against maxUnlockedIndex on initial load & popstate
+  // Handle URL step parameter sync
   useEffect(() => {
     if (typeof window !== "undefined") {
       const updateTabFromUrl = () => {
@@ -61,13 +69,9 @@ export default function PipelineStepper({
 
         if (stepParam && requestedIdx !== -1 && requestedIdx <= maxUnlockedIndex) {
           setActiveTab(stepParam);
-        } else {
-          // Force fallback to highest valid step
+        } else if (!stepParam) {
           const fallbackStep = STEPS[maxUnlockedIndex].key;
           setActiveTab(fallbackStep);
-          const url = new URL(window.location.href);
-          url.searchParams.set("step", fallbackStep);
-          window.history.replaceState({}, "", url.toString());
         }
       };
 
@@ -91,6 +95,7 @@ export default function PipelineStepper({
 
   async function handleConfirmOrder() {
     if (!quotation?.id) return;
+    setIsUpdating(true);
     try {
       const res = await fetch(`/api/client-quotations/${quotation.id}`, {
         method: "PATCH",
@@ -99,25 +104,38 @@ export default function PipelineStepper({
         body: JSON.stringify({ status: "order_confirmed" }),
       });
       if (res.ok) {
+        router.refresh();
         window.location.reload();
       }
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsUpdating(false);
     }
   }
 
   async function handleUpdateOrderField(field: string, value: any) {
     if (!localOrder?.id) return;
-    setLocalOrder((prev: any) => (prev ? { ...prev, [field]: value } : prev));
+    
+    setIsUpdating(true);
+    const updatedOrder = { ...localOrder, [field]: value };
+    setLocalOrder(updatedOrder);
+
     try {
-      await fetch(`/api/orders/${localOrder.id}`, {
+      const res = await fetch(`/api/orders/${localOrder.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({ [field]: value }),
       });
+
+      if (res.ok) {
+        router.refresh();
+      }
     } catch (e) {
       console.error(e);
+    } finally {
+      setTimeout(() => setIsUpdating(false), 800); 
     }
   }
 
@@ -127,7 +145,8 @@ export default function PipelineStepper({
         <div className="w-full max-w-[900px] mx-auto px-4">
           <div className="grid grid-cols-3 sm:flex sm:flex-nowrap items-start w-full gap-y-6 sm:gap-y-0 relative">
             {STEPS.map((step, i) => {
-              const done = completedSteps[step.key];
+              const isDeliveredAndPaidLocal = localOrder?.fulfillmentStatus === 'delivered' && localOrder?.paymentStatus === 'paid';
+              const done = completedSteps[step.key] || (step.key === 'delivery' && isDeliveredAndPaidLocal);
               const isActive = activeTab === step.key;
               const isLast = i === STEPS.length - 1;
               const isDisabled = i > maxUnlockedIndex;
@@ -209,6 +228,7 @@ export default function PipelineStepper({
               linkedPOs={linkedPOs}
               handleUpdateOrderField={handleUpdateOrderField}
               handleTabChange={handleTabChange}
+              isUpdating={isUpdating}
             />
           )}
           {activeTab === "delivery" && (
@@ -217,6 +237,7 @@ export default function PipelineStepper({
               linkedPOs={linkedPOs}
               handleUpdateOrderField={handleUpdateOrderField}
               handleTabChange={handleTabChange}
+              isUpdating={isUpdating}
             />
           )}
           {activeTab === "closed" && (

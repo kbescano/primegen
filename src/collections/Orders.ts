@@ -140,5 +140,15 @@ export const Orders: CollectionConfig = {
         { label: 'Paid', value: 'paid' },
       ],
     },
+    {
+      name: 'amountPaid',
+      type: 'number',
+      label: 'Amount Paid',
+      admin: {
+        description: 'Record the partial payment amount received from the client.',
+        // This condition hides the field in the Payload Admin UI unless the status is partial
+        condition: (data) => data.paymentStatus === 'partial', 
+      },
+    },
   ],
 }

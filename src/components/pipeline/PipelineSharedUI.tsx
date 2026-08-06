@@ -67,57 +67,96 @@ export function InstantSelect({ value, options, onChange, colorMap }: any) {
 
 export function FinancialSummary({ localOrder }: { localOrder: any }) {
   if (!localOrder) return null;
-  const breakdown = orderBreakdown(localOrder);
-  const markup = orderMarkupTotal(localOrder);
-  const trueNet = orderTrueNetProfit(localOrder);
+
+  // 1. Calculate Revenue & VAT
+  const subtotal = (localOrder.items || []).reduce((sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitPrice) || 0), 0);
+  const discount = Number(localOrder.discountAmount) || 0;
+  const delivery = Number(localOrder.deliveryFee) || 0;
+  const netRev = subtotal - discount + delivery;
+  const vatVal = netRev * ((Number(localOrder.vatRate) || 0) / 100);
+  const totalGross = netRev + vatVal;
+
+  // 2. Calculate Receivables
+  const amountPaid = Number(localOrder.amountPaid) || 0;
+  const isPartial = localOrder.paymentStatus === 'partial' || localOrder.paymentStatus === 'partial';
+  const receivables = isPartial 
+    ? totalGross - amountPaid 
+    : (localOrder.paymentStatus === 'paid' ? 0 : totalGross);
+
+  // 3. Calculate Expenses & Profit
+  const cogs = (localOrder.items || []).reduce((sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitCost) || 0), 0);
+  const opex = (localOrder.opex || []).reduce((sum: number, exp: any) => sum + (exp.status === 'liquidated' ? Number(exp.amount) || 0 : 0), 0);
+  const profit = netRev - cogs - opex;
 
   return (
-    <div className="flex flex-col gap-2 w-full lg:w-[280px] bg-[#fbfbfd] p-4 rounded-xl border border-gray-100 flex-shrink-0">
-      <div className="flex items-center justify-between w-full">
-        <p className="text-[11px] font-medium text-gray-500">Subtotal</p>
-        <p className="text-[12px] text-gray-900 font-medium">{peso(breakdown.subtotal)}</p>
-      </div>
-      {breakdown.discountAmount > 0 && (
-        <div className="flex items-center justify-between w-full">
-          <p className="text-[11px] font-medium text-gray-500">Discount</p>
-          <p className="text-[12px] text-gray-900 font-medium">-{peso(breakdown.discountAmount)}</p>
+    <div className="w-full lg:w-[320px] bg-[#fbfbfd] rounded-2xl border border-gray-100 p-5 shrink-0 flex flex-col shadow-sm">
+      <h3 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-3">Financial Summary</h3>
+      
+      <div className="flex flex-col gap-2 mb-3">
+        <div className="flex justify-between items-center">
+          <span className="text-[12px] text-gray-500">Subtotal</span>
+          <span className="text-[12px] font-mono text-gray-700">{peso(subtotal)}</span>
         </div>
-      )}
-      {breakdown.deliveryFee > 0 && (
-        <div className="flex items-center justify-between w-full">
-          <p className="text-[11px] font-medium text-gray-500">Delivery</p>
-          <p className="text-[12px] text-gray-900 font-medium">{peso(breakdown.deliveryFee)}</p>
+        
+        {discount > 0 && (
+          <div className="flex justify-between items-center">
+            <span className="text-[12px] text-gray-500">Discount</span>
+            <span className="text-[12px] font-mono text-red-500">-{peso(discount)}</span>
+          </div>
+        )}
+        
+        {delivery > 0 && (
+          <div className="flex justify-between items-center">
+            <span className="text-[12px] text-gray-500">Delivery Fee</span>
+            <span className="text-[12px] font-mono text-gray-700">+{peso(delivery)}</span>
+          </div>
+        )}
+
+        <div className="flex justify-between items-center">
+          <span className="text-[12px] text-gray-500">VAT ({localOrder.vatRate || 0}%)</span>
+          <span className="text-[12px] font-mono text-gray-700">+{peso(vatVal)}</span>
         </div>
-      )}
-      {breakdown.vatAmount > 0 && (
-        <div className="flex items-center justify-between w-full">
-          <p className="text-[11px] font-medium text-gray-500">VAT ({breakdown.vatRate}%)</p>
-          <p className="text-[12px] text-gray-900 font-medium">{peso(breakdown.vatAmount)}</p>
-        </div>
-      )}
-      <div className="flex items-center justify-between w-full pt-2 mt-1 border-t border-gray-100">
-        <p className="text-[12px] font-semibold text-gray-900">Total Revenue</p>
-        <p className="text-[16px] font-semibold tracking-tight text-gray-900">{peso(breakdown.total)}</p>
       </div>
 
-      <div className="flex items-center justify-between w-full pt-3 mt-1 border-t border-dashed border-gray-200">
-        <p className="text-[11px] font-medium text-gray-500">Gross Markup</p>
-        <p className="text-[12px] font-medium text-gray-900">{peso(markup)}</p>
+      <div className="h-[1px] w-full bg-gray-200/60 mb-3" />
+
+      <div className="flex justify-between items-center mb-4">
+        <span className="text-[12px] font-semibold text-gray-900">Gross Revenue</span>
+        <span className="text-[13px] font-mono font-bold text-gray-900">{peso(totalGross)}</span>
       </div>
-      {(breakdown.liquidatedOpex > 0 || breakdown.pendingOpex > 0) && (
-        <div className="flex items-center justify-between w-full pt-1">
-          <p className="text-[11px] font-medium text-gray-500">Less: OPEX</p>
-          <div className="text-right">
-            <p className="text-[12px] font-medium text-red-500">-{peso(breakdown.liquidatedOpex)}</p>
-            {breakdown.pendingOpex > 0 && (
-              <p className="text-[9px] text-amber-500 font-medium mt-0.5">(+ {peso(breakdown.pendingOpex)} pending)</p>
-            )}
+
+      <div className="flex flex-col gap-2 mb-4 bg-amber-50/50 -mx-2 px-2 py-2.5 rounded-lg border border-amber-100/50">
+        {isPartial && (
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-[11px] text-amber-600/80">Amount Paid</span>
+            <span className="text-[11px] font-mono text-amber-600/80">-{peso(amountPaid)}</span>
           </div>
+        )}
+        <div className="flex justify-between items-center">
+          <span className="text-[12px] font-semibold text-amber-600">Receivables (Unpaid)</span>
+          <span className="text-[13px] font-mono font-semibold text-amber-600">{peso(receivables)}</span>
         </div>
-      )}
-      <div className="flex items-center justify-between w-full pt-2 mt-1 border-t border-gray-100">
-        <p className="text-[12px] font-semibold text-[#149911]">True Net Profit</p>
-        <p className="text-[16px] font-semibold tracking-tight text-[#149911]">{peso(trueNet)}</p>
+      </div>
+      
+      <div className="flex flex-col gap-2 mb-3">
+        <div className="flex justify-between items-center">
+          <span className="text-[12px] text-gray-500">Total COGS</span>
+          <span className="text-[12px] font-mono text-gray-700">-{peso(cogs)}</span>
+        </div>
+        
+        <div className="flex justify-between items-center">
+          <span className="text-[12px] text-gray-500">Liquidated OPEX</span>
+          <span className="text-[12px] font-mono text-gray-700">-{peso(opex)}</span>
+        </div>
+      </div>
+
+      <div className="h-[1px] w-full bg-gray-200/60 my-3" />
+      
+      <div className="flex justify-between items-center">
+        <span className="text-[13px] font-bold text-gray-900">Net Profit</span>
+        <span className={`text-[15px] font-mono font-bold tracking-tight ${profit >= 0 ? 'text-[#149911]' : 'text-red-600'}`}>
+          {peso(profit)}
+        </span>
       </div>
     </div>
   );

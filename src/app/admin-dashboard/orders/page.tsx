@@ -189,12 +189,22 @@ export default async function OrdersPage({
             const delivery = Number(o.deliveryFee) || 0
             const netRevenue = subtotal - discount + delivery
             
+            const vatAmount = netRevenue * ((Number(o.vatRate) || 0) / 100)
+            const grossRevenue = netRevenue + vatAmount
+
             const cogs = orderItems.reduce((sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitCost) || 0), 0)
             const markupTotal = netRevenue - cogs
             
             const liquidatedOpex = (o.opex || []).reduce((sum: number, exp: any) => sum + (exp.status === 'liquidated' ? Number(exp.amount) || 0 : 0), 0)
             const pendingOpex = (o.opex || []).reduce((sum: number, exp: any) => sum + (exp.status === 'pending' ? Number(exp.amount) || 0 : 0), 0)
             const trueNet = markupTotal - liquidatedOpex
+
+            // Receivables calculation
+            const amountPaid = Number(o.amountPaid) || 0
+            const paymentStatusLabel = o.paymentStatus === 'partial' ? 'Partial' : (o.paymentStatus || 'unpaid')
+            const receivables = o.paymentStatus === 'partial' 
+                ? grossRevenue - amountPaid 
+                : (o.paymentStatus === 'paid' ? 0 : grossRevenue)
 
             const isHighlighted = highlightId && String(o.id) === String(highlightId)
             const date = o.orderDate
@@ -240,12 +250,12 @@ export default async function OrdersPage({
                   </div>
 
                   <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-                    <span className={`px-2 py-0.5 text-[9px] font-bold uppercase rounded ${PAYMENT_COLORS[o.paymentStatus || 'unpaid']}`}>
-                      Payment: {o.paymentStatus || 'unpaid'}
+                    <span className={`px-2 py-0.5 text-[9px] font-bold uppercase rounded ${PAYMENT_COLORS[o.paymentStatus || 'unpaid'] || PAYMENT_COLORS['unpaid']}`}>
+                      Payment: {paymentStatusLabel}
                     </span>
                     <div className="text-right">
                       <p className="text-[14px] font-black font-mono text-[#01172f]">
-                        {peso(total)}
+                        {peso(total - receivables)}
                       </p>
                     </div>
                   </div>
@@ -333,9 +343,40 @@ export default async function OrdersPage({
                         <span className="font-mono">{peso(delivery)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between items-center text-[11px] text-gray-500 border-t border-gray-200 pt-2.5 mt-1.5 border-dashed">
-                      <span>Gross Markup</span>
-                      <span className="font-mono">{peso(markupTotal)}</span>
+                    <div className="flex justify-between items-center text-[11px] text-gray-500">
+                      <span>VAT ({o.vatRate || 0}%)</span>
+                      <span className="font-mono">+{peso(vatAmount)}</span>
+                    </div>
+                    
+                    <div className="flex justify-between items-center text-[11px] font-semibold text-gray-800 border-t border-gray-200 pt-2 mt-1">
+                      <span>Gross Revenue</span>
+                      <span className="font-mono">{peso(grossRevenue)}</span>
+                    </div>
+
+                    {/* Show Receivables / Amount Paid block if partial */}
+                    {o.paymentStatus === 'partial' && (
+                        <div className="bg-amber-50/50 border border-amber-100/50 -mx-3 px-3 py-2.5 rounded-lg flex flex-col gap-2 my-1">
+                            <div className="flex justify-between items-center text-[11px] text-amber-600/80">
+                                <span>Amount Paid</span>
+                                <span className="font-mono">-{peso(amountPaid)}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[11px] font-semibold text-amber-600">
+                                <span>Receivables (Unpaid)</span>
+                                <span className="font-mono">{peso(receivables)}</span>
+                            </div>
+                        </div>
+                    )}
+                     {/* Show Receivables block if unpaid */}
+                    {o.paymentStatus !== 'paid' && o.paymentStatus !== 'partial' && (
+                         <div className="flex justify-between items-center text-[11px] font-semibold text-amber-600 bg-amber-50/50 border border-amber-100/50 -mx-3 px-3 py-2.5 rounded-lg my-1">
+                            <span>Receivables (Unpaid)</span>
+                            <span className="font-mono">{peso(grossRevenue)}</span>
+                        </div>
+                    )}
+
+                    <div className="flex justify-between items-center text-[11px] text-gray-500 border-t border-gray-200 pt-2.5 mt-1 border-dashed">
+                      <span>Total COGS</span>
+                      <span className="font-mono text-red-500">-{peso(cogs)}</span>
                     </div>
                     <div className="flex justify-between items-center text-[11px] text-gray-500">
                       <span>
@@ -344,8 +385,8 @@ export default async function OrdersPage({
                       </span>
                       <span className="font-mono text-red-500">-{peso(liquidatedOpex)}</span>
                     </div>
-                    <div className="flex justify-between items-center text-[12px] font-bold text-[#149911] border-t border-gray-200 pt-2.5 mt-1.5">
-                      <span className="uppercase tracking-wide">True Net Profit</span>
+                    <div className="flex justify-between items-center text-[12px] font-bold text-[#149911] border-t border-gray-200 pt-2.5 mt-1">
+                      <span className="uppercase tracking-wide">Net Profit</span>
                       <span className="font-mono text-[15px] leading-none">{peso(trueNet)}</span>
                     </div>
                   </div>

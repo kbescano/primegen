@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useState, useEffect } from "react";
 import OrderSupplierSection from "@/components/OrderSupplierSection";
 import OrderOpexSection from "@/components/OrderOpexSection";
 import QuotationPrintPreview from "@/components/pipeline/QuotationPrintPreview";
@@ -213,7 +214,7 @@ export function StepSupplierPO({ quotation, localOrder, isQuotationApprovedOrBey
   );
 }
 
-export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, handleTabChange }: any) {
+export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, handleTabChange, isUpdating }: any) {
   // Strict Validation
   const isFullyAssigned = Boolean(
     localOrder?.items?.length > 0 && 
@@ -256,12 +257,19 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
         />
         {linkedPOs.length > 0 && linkedPOs.every((po: any) => po.status === "fulfilled") && (
           <div className="flex justify-start pt-2">
-            <button
-              onClick={() => handleTabChange("delivery")}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[13px] font-medium shadow-sm"
-            >
-              Next Step: Track Delivery & Payment &rarr;
-            </button>
+            {isUpdating ? (
+              <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gray-50 text-gray-500 text-[13px] font-medium border border-gray-100">
+                <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                Saving Updates...
+              </div>
+            ) : (
+              <button
+                onClick={() => handleTabChange("delivery")}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[13px] font-medium shadow-sm"
+              >
+                Next Step: Track Delivery & Payment &rarr;
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -269,7 +277,13 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
   );
 }
 
-export function StepDelivery({ localOrder, linkedPOs, handleUpdateOrderField, handleTabChange }: any) {
+export function StepDelivery({ localOrder, linkedPOs, handleUpdateOrderField, handleTabChange, isUpdating }: any) {
+  const [tempAmount, setTempAmount] = useState<string | number>(localOrder.amountPaid || '');
+
+  useEffect(() => {
+    setTempAmount(localOrder.amountPaid || '');
+  }, [localOrder.amountPaid]);
+
   // Strict Validation
   const isFullyAssigned = Boolean(
     localOrder?.items?.length > 0 && 
@@ -303,17 +317,50 @@ export function StepDelivery({ localOrder, linkedPOs, handleUpdateOrderField, ha
             onChange={(val: string) => handleUpdateOrderField("fulfillmentStatus", val)}
           />
         </div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-3">
           <div>
             <p className="text-[12px] text-gray-500 font-medium mb-1">Payment Status</p>
             <p className="text-[13px] text-gray-900 font-medium">Monitor client payment progress.</p>
           </div>
-          <InstantSelect
-            value={localOrder.paymentStatus}
-            options={PAYMENT_OPTIONS}
-            colorMap={PAYMENT_COLORS}
-            onChange={(val: string) => handleUpdateOrderField("paymentStatus", val)}
-          />
+          <div className="flex flex-col gap-3 w-full sm:w-auto">
+            <InstantSelect
+              value={localOrder.paymentStatus}
+              options={PAYMENT_OPTIONS}
+              colorMap={PAYMENT_COLORS}
+              onChange={(val: string) => {
+                handleUpdateOrderField("paymentStatus", val);
+                // Reset amount if they switch away from partial payment
+                if (val !== 'partial') {
+                   handleUpdateOrderField("amountPaid", 0);
+                }
+              }}
+            />
+            {/* Show amount input only if payment is partially paid */}
+            {localOrder.paymentStatus === 'partial' && (
+              <div className="w-full sm:w-[200px] ml-auto bg-amber-50 p-2.5 rounded-xl border border-amber-100/50 flex flex-col gap-2">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-amber-600 mb-1 ml-1">
+                  Amount Received
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] font-semibold text-gray-400">₱</span>
+                  <input 
+                    type="number" 
+                    value={tempAmount} 
+                    onChange={(e) => setTempAmount(e.target.value)}
+                    className="w-full pl-7 pr-3 py-2 text-[13px] bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/20 transition-all font-mono"
+                    placeholder="0.00"
+                  />
+                </div>
+                <button
+                  onClick={() => handleUpdateOrderField("amountPaid", Number(tempAmount))}
+                  disabled={isUpdating || Number(tempAmount) === Number(localOrder.amountPaid)}
+                  className="w-full py-2 bg-amber-500 text-white text-[11px] font-bold uppercase tracking-wider rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:bg-gray-300 disabled:text-gray-500 mt-1"
+                >
+                  {isUpdating ? 'Saving...' : 'Save Amount'}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
         <div className="mt-1 mb-1">
           <OrderOpexSection
@@ -324,13 +371,21 @@ export function StepDelivery({ localOrder, linkedPOs, handleUpdateOrderField, ha
         </div>
         <div className="border-t border-gray-100 pt-6 mt-5 flex flex-col-reverse lg:flex-row gap-6 justify-between items-start">
           <div className="w-full lg:w-auto flex-1 flex justify-start">
-            {localOrder.fulfillmentStatus === "delivered" && localOrder.paymentStatus === "paid" && (
-              <button
-                onClick={() => handleTabChange("closed")}
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[11px] font-medium shadow-sm"
-              >
-                Next Step: Confirm Completed &rarr;
-              </button>
+            {isUpdating ? (
+              <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-gray-50 text-gray-500 text-[11px] font-medium border border-gray-100">
+                <div className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                Saving Status...
+              </div>
+            ) : (
+              // ONLY allow completing if FULLY paid and FULLY delivered
+              localOrder.fulfillmentStatus === "delivered" && localOrder.paymentStatus === "paid" && (
+                <button
+                  onClick={() => handleTabChange("closed")}
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[11px] font-medium shadow-sm"
+                >
+                  Next Step: Confirm Completed &rarr;
+                </button>
+              )
             )}
           </div>
           <FinancialSummary localOrder={localOrder} />
@@ -352,6 +407,14 @@ export function StepClosed({ localOrder, quotation, request, linkedPOs }: any) {
   // Calculate OPEX for display on Step 6
   const liquidatedOpex = (localOrder.opex || []).reduce((sum: number, exp: any) => sum + (exp.status === 'liquidated' ? Number(exp.amount) || 0 : 0), 0)
   const pendingOpex = (localOrder.opex || []).reduce((sum: number, exp: any) => sum + (exp.status === 'pending' ? Number(exp.amount) || 0 : 0), 0)
+
+  // Calculate Receivables if Partially Paid
+  const subtotal = (localOrder.items || []).reduce((sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitPrice) || 0), 0)
+  const netRev = subtotal - (Number(localOrder.discountAmount) || 0) + (Number(localOrder.deliveryFee) || 0)
+  const vatVal = netRev * ((Number(localOrder.vatRate) || 0) / 100)
+  const totalGross = netRev + vatVal
+  const amountPaid = Number(localOrder.amountPaid) || 0
+  const receivables = localOrder.paymentStatus === 'partial' ? totalGross - amountPaid : (localOrder.paymentStatus === 'paid' ? 0 : totalGross)
 
   return (
     <TabSection title="Step 6: Confirm Completed">
@@ -411,6 +474,22 @@ export function StepClosed({ localOrder, quotation, request, linkedPOs }: any) {
                 </div>
               ))}
             </div>
+             
+             {/* Payment Details Section if Partially Paid */}
+             {localOrder.paymentStatus === 'partial' && (
+               <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-100 flex flex-col gap-2">
+                 <h3 className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">Accounts Receivable</h3>
+                 <div className="flex justify-between items-center text-[12px] text-gray-700">
+                    <span>Amount Paid</span>
+                    <span className="font-mono font-medium">{peso(amountPaid)}</span>
+                 </div>
+                 <div className="flex justify-between items-center text-[13px] font-semibold text-gray-900 mt-1 pt-2 border-t border-amber-200/60">
+                    <span>Remaining Balance</span>
+                    <span className="font-mono">{peso(receivables)}</span>
+                 </div>
+               </div>
+             )}
+
              <div className="mt-8">
                 <h3 className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-3">Linked Supplier POs</h3>
                 <div className="flex flex-col gap-2">

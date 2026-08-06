@@ -243,8 +243,11 @@ export default async function ClientQuotationPage({
             const supplierCostTotal = (q.items || []).reduce((sum: number, i: any) => sum + (i.qty || 0) * (i.unitCost || 0), 0)
             const markupTotal = (q.items || []).reduce((sum: number, i: any) => sum + (i.qty || 0) * (i.marginAmount || 0), 0)
             const subtotal = (q.items || []).reduce((sum: number, i: any) => sum + (i.qty || 0) * (i.unitPrice || 0), 0)
-            const vat = subtotal * ((q.vatRate || 0) / 100)
-            const total = subtotal + vat
+            const discount = Number(q.discountAmount) || 0
+            const delivery = Number(q.deliveryFee) || 0
+            const netRev = subtotal - discount + delivery
+            const vat = netRev * ((q.vatRate || 0) / 100)
+            const total = netRev + vat
             
             const existingOrderId = orderIdByQuotationId[String(q.id)]
             const availableOptions = STATUS_OPTIONS
@@ -329,24 +332,52 @@ export default async function ClientQuotationPage({
                     </div>
                   </div>
 
-                  {/* Right Column: Mini Financial Breakdown */}
+                  {/* Right Column: Detailed Financial Breakdown */}
                   <div>
                     <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-3">
                       Financial Breakdown
                     </p>
                     <div className="bg-gray-50 p-3 rounded border border-gray-100 flex flex-col gap-1.5 text-[11px]">
+                      
                       <div className="flex justify-between text-gray-500">
                         <span>Supplier Cost</span>
                         <span className="font-mono">{peso(supplierCostTotal)}</span>
                       </div>
+                      
                       <div className="flex justify-between text-gray-500">
                         <span>Markup Total</span>
                         <span className="font-mono font-bold text-[#149911]">{peso(markupTotal)}</span>
                       </div>
+                      
                       <div className="flex justify-between text-gray-500 border-t border-gray-200 pt-1 mt-0.5">
                         <span>Subtotal</span>
                         <span className="font-mono">{peso(subtotal)}</span>
                       </div>
+
+                      {discount > 0 && (
+                        <div className="flex justify-between text-gray-500">
+                          <span>Discount</span>
+                          <span className="font-mono text-red-500">-{peso(discount)}</span>
+                        </div>
+                      )}
+                      
+                      {delivery > 0 && (
+                        <div className="flex justify-between text-gray-500">
+                          <span>Delivery Fee</span>
+                          <span className="font-mono">+{peso(delivery)}</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between text-gray-500">
+                        <span>VAT ({q.vatRate || 0}%)</span>
+                        <span className="font-mono">+{peso(vat)}</span>
+                      </div>
+                      
+                      <div className="flex justify-between font-bold text-[#01172f] border-t border-gray-200 pt-1 mt-0.5">
+                        <span>Total (Gross)</span>
+                        <span className="font-mono">{peso(total)}</span>
+                      </div>
+                      
                     </div>
                   </div>
 
