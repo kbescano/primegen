@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import PipelineStepper from '@/components/PipelineStepper'
+import { StepKey } from '@/lib/pipelineUtils'
 
 export default async function PipelinePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
@@ -53,16 +54,40 @@ export default async function PipelinePage({ params }: { params: Promise<{ id: s
     linkedPOs = posRes.docs
   }
 
-  const completedSteps = {
+  // Strict completion checks
+  const isQuotationApproved = Boolean(
+    quotation && (['quotation_approved', 'order_confirmed'].includes(quotation.status || '') || Boolean(order))
+  )
+  
+  // STRICT FIX: The item must have an assignedPOId AND that PO must actively exist in linkedPOs
+  const allItemsAssigned = Boolean(
+    order &&
+      Array.isArray(order.items) &&
+      order.items.length > 0 &&
+      order.items.every((item: any) => 
+        item.assignedPOId && linkedPOs.some((po: any) => String(po.id) === String(item.assignedPOId))
+      )
+  )
+
+  const allPOsFulfilled = Boolean(
+    linkedPOs.length > 0 && linkedPOs.every((po: any) => po.status === 'fulfilled')
+  )
+
+  const isDeliveredAndPaid = Boolean(
+    order && order.fulfillmentStatus === 'delivered' && order.paymentStatus === 'paid'
+  )
+
+  // Step key completion mapping
+  const completedSteps: Record<StepKey, boolean> = {
     quotation: Boolean(quotation),
-    confirmation: Boolean(order),
-    supplierPO: linkedPOs.length > 0,
-    fulfilled: linkedPOs.length > 0 && linkedPOs.every((po: any) => po.status === 'fulfilled'),
-    delivery: Boolean(order && order.fulfillmentStatus === 'delivered' && order.paymentStatus === 'paid'),
+    confirmation: isQuotationApproved,
+    supplierPO: isQuotationApproved && allItemsAssigned && linkedPOs.length > 0,
+    fulfilled: isQuotationApproved && allItemsAssigned && allPOsFulfilled,
+    delivery: isQuotationApproved && allItemsAssigned && allPOsFulfilled && isDeliveredAndPaid,
     closed: request.status === 'completed',
   }
 
-  const stepOrder: (keyof typeof completedSteps)[] = [
+  const stepOrder: StepKey[] = [
     'quotation',
     'confirmation',
     'supplierPO',
@@ -70,16 +95,11 @@ export default async function PipelinePage({ params }: { params: Promise<{ id: s
     'delivery',
     'closed',
   ]
-  const currentStep = stepOrder.find((s) => !completedSteps[s]) || 'closed'
+  const currentStep: StepKey = stepOrder.find((s) => !completedSteps[s]) || 'closed'
 
   return (
-    // Big Modal Overlay Container
     <div className="fixed inset-0 z-[100] bg-[#1d1d1f]/30 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 md:p-6 antialiased">
-      
-      {/* Modal Window */}
       <div className="bg-[#fbfbfd] w-full max-w-[1100px] h-full max-h-[98vh] rounded-[1.5rem] md:rounded-[2rem] shadow-[0_24px_48px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden ring-1 ring-white/50">
-        
-        {/* Compact Fixed Header */}
         <div className="px-4 py-3 md:px-6 md:py-3.5 bg-white/95 backdrop-blur-md border-b border-gray-200/60 z-20 flex items-center gap-3 shrink-0">
           <Link 
             href="/admin-dashboard" 
@@ -100,7 +120,6 @@ export default async function PipelinePage({ params }: { params: Promise<{ id: s
           </div>
         </div>
 
-        {/* Scrollable Modal Body */}
         <div className="flex-1 overflow-y-auto relative w-full">
           <PipelineStepper
             request={request}
@@ -108,7 +127,7 @@ export default async function PipelinePage({ params }: { params: Promise<{ id: s
             order={order}
             linkedPOs={linkedPOs}
             completedSteps={completedSteps}
-            currentStep={currentStep as any}
+            currentStep={currentStep}
           />
         </div>
       </div>

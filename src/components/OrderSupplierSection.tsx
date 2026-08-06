@@ -71,8 +71,14 @@ export default function OrderSupplierSection({
 
   const hasUnassigned = items.some((i) => !i.assignedPOId)
   
-  // If there is only 1 PO overall, we only show the PO controls on the 1st row.
-  const isSinglePO = linkedPOs.length <= 1
+  // ============================================================================
+  // STRICT FILTER: Only get POs that are currently assigned to at least one item
+  // ============================================================================
+  const assignedPOIds = new Set(items.map((i) => i.assignedPOId).filter(Boolean))
+  const activePOs = linkedPOs.filter((po) => assignedPOIds.has(String(po.id)))
+  
+  // If there is only 1 ACTIVE PO overall, we only show the PO controls on the 1st row.
+  const isSinglePO = activePOs.length <= 1
 
   const poById: Record<string, LinkedPO> = {}
   for (const po of linkedPOs) poById[String(po.id)] = po
@@ -98,7 +104,8 @@ export default function OrderSupplierSection({
         {/* Hide manage/merge buttons entirely in Step 4 (when allowStatusChange is true) */}
         {!allowStatusChange && (
           <div className="flex flex-col sm:flex-row w-full sm:w-auto gap-3">
-            {linkedPOs.length > 1 && (
+            {/* FIX: Only show Merge Button if there are 2+ ACTIVELY ASSIGNED POs */}
+            {activePOs.length > 1 && (
               <button
                 onClick={() => setMergeModalOpen(true)}
                 className="w-full sm:w-auto text-[11px] font-semibold px-4 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-full transition-colors duration-200"
@@ -235,7 +242,7 @@ export default function OrderSupplierSection({
         <AssignSuppliersModal
           orderId={orderId}
           items={items}
-          linkedPOs={linkedPOs}
+          linkedPOs={linkedPOs} // Assign modal still needs ALL linked POs
           onClose={() => setAssignModalOpen(false)}
         />
       )}
@@ -244,7 +251,7 @@ export default function OrderSupplierSection({
         <MergeSuppliersModal
           orderId={orderId}
           orderItems={items}
-          linkedPOs={linkedPOs}
+          linkedPOs={activePOs} // FIX: Merge modal is strictly fed ONLY actively assigned POs
           onClose={() => setMergeModalOpen(false)}
         />
       )}
