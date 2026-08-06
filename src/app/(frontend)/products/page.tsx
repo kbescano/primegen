@@ -88,7 +88,7 @@ export default async function ProductsPage({ searchParams }: Props) {
           </ScrollReveal>
         )}
 
-        {/* Categories Grid (Top Section) -- full-bleed hero panels, each stagger in individually */}
+        {/* Categories Grid (Top Section) */}
         {orderedSlugs.length > 0 && !q && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-24 lg:mb-36">
             {orderedSlugs.map((slug, index) => {
@@ -100,7 +100,7 @@ export default async function ProductsPage({ searchParams }: Props) {
               const isSteelFabrication =
                 label.trim().toLowerCase() === "steel fabrication";
 
-              // Special wide video hero card -- spans the full grid width regardless of column count
+              // Special wide video hero card
               if (isSteelFabrication) {
                 return (
                   <ScrollReveal
@@ -108,7 +108,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                     as="a"
                     href={`#${slug}`}
                     style={{ transitionDelay: `${delay}ms` }}
-                    className="group sm:col-span-2 lg:col-span-3 relative flex flex-col overflow-hidden bg-[#fdfffc] outline-none cursor-pointer border border-[#3D5F3B]/10 transition-all duration-500 hover:border-[#149911]/30"
+                    className="group sm:col-span-2 lg:col-span-3 relative flex flex-col overflow-hidden bg-[#fdfffc] outline-none cursor-pointer border border-[#3D5F3B]/10 transition-all duration-500 md:hover:border-[#149911]/30"
                   >
                     {/* Text Section */}
                     <div className="pt-7 md:pt-20 pb-5 md:pb-14 px-6 md:px-14 text-left relative z-10">
@@ -116,7 +116,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                         Featured Capability
                       </p>
 
-                      <div className="w-14 h-[2px] bg-[#149911] mb-4 md:mb-7 origin-left scale-x-100 transition-transform duration-500 ease-out group-hover:scale-x-150"></div>
+                      <div className="w-14 h-[2px] bg-[#149911] mb-4 md:mb-7 origin-left scale-x-100 transition-transform duration-500 ease-out md:group-hover:scale-x-150"></div>
 
                       <h3 className="text-[26px] md:text-[52px] font-black text-[#3D5F3B] tracking-tighter uppercase leading-[0.92]">
                         {label}.
@@ -137,15 +137,15 @@ export default async function ProductsPage({ searchParams }: Props) {
                         loop
                         muted
                         playsInline
-                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-[1.5s] ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-[1.5s] ease-[cubic-bezier(0.25,1,0.5,1)] md:group-hover:scale-105"
                       />
 
-                      {/* Tinted duotone overlay -- brand green, not neutral black */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#3D5F3B]/50 via-[#3D5F3B]/5 to-transparent pointer-events-none transition-opacity duration-700 group-hover:opacity-60" />
+                      {/* Tinted duotone overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#3D5F3B]/50 via-[#3D5F3B]/5 to-transparent pointer-events-none transition-opacity duration-700 md:group-hover:opacity-60" />
 
                       {/* Glass CTA badge */}
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
-                        <span className="flex items-center gap-4 text-[12px] font-bold uppercase tracking-[0.25em] text-[#fdfffc] bg-[#fdfffc]/10 backdrop-blur-md px-8 py-4 border border-[#fdfffc]/20 transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:bg-[#fdfffc] group-hover:text-[#3D5F3B] group-hover:border-[#fdfffc] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.4)] scale-95 group-hover:scale-100">
+                        <span className="flex items-center gap-4 text-[12px] font-bold uppercase tracking-[0.25em] text-[#fdfffc] bg-[#fdfffc]/10 backdrop-blur-md px-8 py-4 border border-[#fdfffc]/20 transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] md:group-hover:bg-[#fdfffc] md:group-hover:text-[#3D5F3B] md:group-hover:border-[#fdfffc] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.4)] scale-95 md:group-hover:scale-100">
                           Explore
                           <svg
                             width="16"
@@ -156,7 +156,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                             strokeWidth="2.5"
                             strokeLinecap="square"
                             strokeLinejoin="miter"
-                            className="transition-transform duration-500 group-hover:translate-x-1.5"
+                            className="transition-transform duration-500 md:group-hover:translate-x-1.5"
                           >
                             <path d="M5 12h14M12 5l7 7-7 7" />
                           </svg>
@@ -173,14 +173,14 @@ export default async function ProductsPage({ searchParams }: Props) {
                   as="a"
                   href={`#${slug}`}
                   style={{ transitionDelay: `${delay}ms` }}
-                  className="group relative flex items-end aspect-[4/5] overflow-hidden bg-[#f8f9f7] outline-none cursor-pointer border border-[#3D5F3B]/10 transition-colors duration-500 hover:border-[#149911]/30"
+                  className="group relative flex items-end aspect-[4/5] overflow-hidden bg-[#f8f9f7] outline-none cursor-pointer border border-[#3D5F3B]/10 transition-colors duration-500 md:hover:border-[#149911]/30"
                 >
                   {cardImage ? (
                     <Image
                       src={cardImage}
                       alt={label}
                       fill
-                      className="object-cover transition-transform duration-[1.5s] ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
+                      className="object-cover transition-transform duration-[1.5s] ease-[cubic-bezier(0.25,1,0.5,1)] md:group-hover:scale-105"
                       sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     />
                   ) : (
@@ -189,7 +189,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                     </div>
                   )}
 
-                  {/* Tinted duotone scrim -- brand green, not neutral black */}
+                  {/* Tinted duotone scrim */}
                   <div className="absolute inset-x-0 bottom-0 h-3/4 bg-gradient-to-t from-[#3D5F3B]/85 via-[#3D5F3B]/25 to-transparent pointer-events-none" />
 
                   {/* Eyebrow + bold header + glass Browse badge, bottom-left */}
@@ -197,7 +197,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                     <h3 className="text-[20px] md:text-[26px] font-black uppercase tracking-tight leading-[1.0]">
                       {label}
                     </h3>
-                    <span className="inline-flex items-center gap-2.5 w-fit text-[10px] font-bold uppercase tracking-[0.18em] bg-[#fdfffc]/10 backdrop-blur-md px-3.5 py-2 border border-[#fdfffc]/20 transition-all duration-300 group-hover:bg-[#fdfffc] group-hover:text-[#3D5F3B] group-hover:border-[#fdfffc]">
+                    <span className="inline-flex items-center gap-2.5 w-fit text-[10px] font-bold uppercase tracking-[0.18em] bg-[#fdfffc]/10 backdrop-blur-md px-3.5 py-2 border border-[#fdfffc]/20 transition-all duration-300 md:group-hover:bg-[#fdfffc] md:group-hover:text-[#3D5F3B] md:group-hover:border-[#fdfffc]">
                       Browse
                       <svg
                         width="11"
@@ -208,7 +208,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                         strokeWidth="2"
                         strokeLinecap="round"
                         strokeLinejoin="round"
-                        className="transition-transform duration-300 group-hover:translate-x-0.5"
+                        className="transition-transform duration-300 md:group-hover:translate-x-0.5"
                       >
                         <path d="M9 18l6-6-6-6" />
                       </svg>
@@ -220,11 +220,11 @@ export default async function ProductsPage({ searchParams }: Props) {
           </div>
         )}
 
-        {/* Sticky jump-nav -- mobile gets a compact dropdown, desktop keeps wrapping pill buttons */}
+        {/* Sticky jump-nav */}
         {orderedSlugs.length > 1 && !q && (
           <div className="sticky top-20 md:top-28 z-30 bg-[#fdfffc]/95 backdrop-blur-md border-y border-[#3D5F3B]/10 -mx-6 lg:-mx-12 xl:-mx-20 px-6 lg:px-12 xl:px-20 mb-16 py-3">
             <div className="max-w-[1360px] mx-auto">
-              {/* Mobile: compact native dropdown -- no scrolling, no stacked buttons */}
+              {/* Mobile: compact native dropdown */}
               <div className="sm:hidden">
                 <MobileCategoryJump
                   categories={orderedSlugs.map((slug) => ({
@@ -242,7 +242,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                     <a
                       key={slug}
                       href={`#${slug}`}
-                      className="text-[11px] font-bold uppercase tracking-[0.1em] px-4 py-2 border border-[#3D5F3B]/15 text-[#3D5F3B]/70 hover:border-[#149911] hover:text-[#149911] transition-colors duration-200"
+                      className="text-[11px] font-bold uppercase tracking-[0.1em] px-4 py-2 border border-[#3D5F3B]/15 text-[#3D5F3B]/70 md:hover:border-[#149911] md:hover:text-[#149911] transition-colors duration-200"
                     >
                       {label}
                     </a>
@@ -253,7 +253,7 @@ export default async function ProductsPage({ searchParams }: Props) {
           </div>
         )}
 
-        {/* All Products Listed by Category -- same visual language as the category panels above, denser grid */}
+        {/* All Products Listed by Category */}
         <div className="flex flex-col gap-24 md:gap-36">
           {orderedSlugs.map((slug) => {
             const cat = categoryBySlug[slug];
@@ -297,7 +297,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                             src={imgUrl}
                             alt={material.name}
                             fill
-                            className="object-cover transition-transform duration-[1.5s] ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"
+                            className="object-cover transition-transform duration-[1.5s] ease-[cubic-bezier(0.25,1,0.5,1)] md:group-hover:scale-105"
                             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                           />
                         ) : (
@@ -306,16 +306,14 @@ export default async function ProductsPage({ searchParams }: Props) {
                           </div>
                         )}
 
-                        {/* Gradient so white text stays legible over any photo */}
                         <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/75 via-black/25 to-transparent pointer-events-none" />
 
-                        {/* Bold overlaid title + status + arrow, matching the category panels above */}
                         <div className="relative z-10 p-4 md:p-5 flex flex-col gap-1.5 text-white w-full">
                           <div className="flex items-end justify-between gap-2">
                             <h3 className="text-[#fdfffc] text-[14px] md:text-[16px] font-bold uppercase tracking-tight leading-snug">
                               {material.name}
                             </h3>
-                            <span className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-full border border-white/50 transition-all duration-300 opacity-100 md:opacity-0 md:translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 group-hover:bg-white group-hover:text-black">
+                            <span className="flex-shrink-0 flex items-center justify-center w-7 h-7 rounded-full border border-white/50 transition-all duration-300 opacity-100 md:opacity-0 md:translate-x-1 md:group-hover:opacity-100 md:group-hover:translate-x-0 md:group-hover:bg-white md:group-hover:text-black">
                               <svg
                                 width="12"
                                 height="12"
@@ -325,7 +323,7 @@ export default async function ProductsPage({ searchParams }: Props) {
                                 strokeWidth="2"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
-                                className="transition-transform duration-300 group-hover:translate-x-0.5"
+                                className="transition-transform duration-300 md:group-hover:translate-x-0.5"
                               >
                                 <path d="M9 18l6-6-6-6" />
                               </svg>
