@@ -3,6 +3,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getPayloadClient } from "@/lib/getPayloadClient";
 import DateGranularityFilter from "@/components/DateGranularityFilter";
+import CreateRFQModal from "@/components/CreateRFQModal";
 
 const STATUS_KEYS = [
   "pending",
@@ -108,6 +109,7 @@ export default async function StaffPerformancePage({
   }
   const { start, end } = getGranularityRange(granularity, periodValue);
 
+  // Fetch all users for staff list
   const staffRes = await payload.find({
     collection: "users",
     where: { role: { equals: "user" } },
@@ -115,6 +117,19 @@ export default async function StaffPerformancePage({
     sort: "name",
   });
   const staffList = staffRes.docs as any[];
+
+  // Fetch products for the Create RFQ Modal
+  const productsRes = await payload.find({
+    collection: "products",
+    limit: 300,
+    sort: "name",
+    select: { name: true, unit: true },
+  });
+  const products = productsRes.docs.map((m: any) => ({
+    id: m.id,
+    name: m.name,
+    unit: m.unit || "pcs",
+  }));
 
   const conditions: any[] = [];
   if (staffFilter) conditions.push({ assignedTo: { equals: staffFilter } });
@@ -436,6 +451,9 @@ export default async function StaffPerformancePage({
             )}
           </p>
         </div>
+        <div className="flex items-center gap-3">
+          <CreateRFQModal products={products} />
+        </div>
       </div>
 
       {/* Minimalist Filter Section */}
@@ -609,7 +627,7 @@ export default async function StaffPerformancePage({
       {/* Spreadsheet RFQ Breakdown Table (Intact Logic, Forced to Fit) */}
       <div className="bg-white border border-gray-200 rounded-lg shadow-sm">
         <div className="px-4 py-2 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-          <h2 className="text-[11px] font-semibold uppercase tracking-widest text-gray-600">Detailed Line Items</h2>
+          <h2 className="text-[11px] font-semibold uppercase tracking-widest text-gray-600">Detailed Inquiry</h2>
           <span className="text-[11px] font-medium text-gray-500">
             {requests.length} Record{requests.length !== 1 ? "s" : ""}
           </span>
