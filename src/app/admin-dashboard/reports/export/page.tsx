@@ -150,7 +150,7 @@ export default function ExportCenterPage() {
         csv += `True Net Profit,${sumProfit.toFixed(2)}\n\n`
 
         csv += `SALES PERFORMANCE BREAKDOWN\n`
-        csv += `Sales Agent,Order Count,Gross Revenue,Amount Collected,Receivables,Net Profit\n`
+        csv += `Sales Agent,Order Count,Gross Revenue,Amount Collected,Receivables,Net Profit,Commission (20%)\n`
         
         const bySales: Record<string, {count: number, gross: number, paid: number, ar: number, profit: number}> = {}
         
@@ -166,12 +166,16 @@ export default function ExportCenterPage() {
            bySales[sp].profit += c.profit
         })
 
+        const COMMISSION_RATE = 0.20
+
         Object.entries(bySales).sort((a,b) => b[1].profit - a[1].profit).forEach(([agent, data]) => {
-           csv += `${escape(agent)},${data.count},${data.gross.toFixed(2)},${data.paid.toFixed(2)},${data.ar.toFixed(2)},${data.profit.toFixed(2)}\n`
+           const commission = data.profit * COMMISSION_RATE
+           csv += `${escape(agent)},${data.count},${data.gross.toFixed(2)},${data.paid.toFixed(2)},${data.ar.toFixed(2)},${data.profit.toFixed(2)},${commission.toFixed(2)}\n`
         })
 
         // Grand Total Row
-        csv += `GRAND TOTAL,${processedOrders.length},${sumGross.toFixed(2)},${sumPaid.toFixed(2)},${sumReceivables.toFixed(2)},${sumProfit.toFixed(2)}\n\n`
+        const totalCommission = sumProfit * COMMISSION_RATE
+        csv += `GRAND TOTAL,${processedOrders.length},${sumGross.toFixed(2)},${sumPaid.toFixed(2)},${sumReceivables.toFixed(2)},${sumProfit.toFixed(2)},${totalCommission.toFixed(2)}\n\n`
       }
 
       // Download Trigger

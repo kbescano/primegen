@@ -1,17 +1,23 @@
 'use client'
 
-import { useRouter, useSearchParams, usePathname } from 'next/navigation'
-import { useState, useEffect, useTransition } from 'react'
+import { usePathname, useSearchParams } from 'next/navigation'
+import { useEffect, useState } from 'react'
 
-export default function SearchBar({ initialQuery = '' }: { initialQuery?: string }) {
-  const router = useRouter()
+export default function SearchBar({
+  initialQuery = '',
+  onQueryChange,
+}: {
+  initialQuery?: string
+  onQueryChange?: (query: string) => void
+}) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
   const [query, setQuery] = useState(initialQuery)
-  const [isPending, startTransition] = useTransition()
 
-  // Update URL whenever the debounced query changes
+  // Sync the URL for shareable links, but with history.replaceState instead
+  // of router.replace -- this never triggers a Next.js navigation or a
+  // server re-render, so typing stays instant regardless of debounce timing.
   useEffect(() => {
     const timer = setTimeout(() => {
       const params = new URLSearchParams(searchParams.toString())
@@ -22,27 +28,32 @@ export default function SearchBar({ initialQuery = '' }: { initialQuery?: string
         params.delete('q')
       }
 
-      startTransition(() => {
-        router.replace(`${pathname}?${params.toString()}`, { scroll: false })
-      })
-    }, 400) // 400ms debounce delay (waits for user to stop typing)
+      const newUrl = `${pathname}${params.toString() ? `?${params.toString()}` : ''}`
+      window.history.replaceState(null, '', newUrl)
+    }, 400)
 
     return () => clearTimeout(timer)
-  }, [query, router, pathname, searchParams])
+  }, [query, pathname, searchParams])
+
+  // Filtering itself is instant -- no debounce needed here, since it's just
+  // an in-memory array filter in the parent, not a network call.
+  useEffect(() => {
+    onQueryChange?.(query)
+  }, [query, onQueryChange])
 
   return (
-    <div className="relative w-full md:w-72 flex items-center gap-2.5 border-b border-[#01172f]/15 pb-2.5 transition-colors duration-300 focus-within:border-[#3D5F3B]">
+    <div className="relative w-full flex items-center gap-3 px-4 py-3 transition-colors duration-300 bg-transparent group">
       {/* Magnifying Glass Icon */}
       <svg
-        width="15"
-        height="15"
+        width="16"
+        height="16"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.5"
+        strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className="flex-shrink-0 text-[#01172f]/30"
+        className="flex-shrink-0 text-[#fdfffc]/40 transition-colors group-focus-within:text-[#149911]"
       >
         <circle cx="11" cy="11" r="8"></circle>
         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
@@ -53,13 +64,8 @@ export default function SearchBar({ initialQuery = '' }: { initialQuery?: string
         placeholder="Search products"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        className="w-full bg-transparent border-none text-[14px] text-[#01172f] outline-none placeholder:text-[#01172f]/30 p-0"
+        className="w-full bg-transparent border-none text-[14px] text-[#fdfffc] outline-none placeholder:text-[#fdfffc]/40 p-0 focus:ring-0"
       />
-
-      {/* Loading indicator while Next.js fetches new results */}
-      {isPending && (
-        <div className="w-3 h-3 flex-shrink-0 rounded-full border-2 border-[#3D5F3B]/20 border-t-[#3D5F3B] animate-spin" />
-      )}
     </div>
   )
 }

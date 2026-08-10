@@ -215,10 +215,9 @@ export function StepSupplierPO({ quotation, localOrder, isQuotationApprovedOrBey
 }
 
 export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, handleTabChange, isUpdating }: any) {
-  // Strict Validation
   const isFullyAssigned = Boolean(
-    localOrder?.items?.length > 0 && 
-    localOrder.items.every((item: any) => 
+    localOrder?.items?.length > 0 &&
+    localOrder.items.every((item: any) =>
       item.assignedPOId && linkedPOs.some((po: any) => String(po.id) === String(item.assignedPOId))
     )
   );
@@ -231,17 +230,54 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
     );
   }
 
+  // This is the hard gate: Step 4's real content simply never renders unless
+  // every item has a confirmed supplier PO. There is no path to see this
+  // step's UI by clicking its tab early -- the tab can only ever show this
+  // message until Step 3 is actually complete.
   if (!isFullyAssigned) {
     return (
       <TabSection title="Step 4: Order Fulfilled">
-        <EmptyStep text="Waiting on Step 3: Please assign all order items to a Supplier PO first." />
+        <EmptyStep text="Waiting on Step 3: assign every item to a supplier and click Next Step there first." />
       </TabSection>
     );
   }
 
+  const poById: Record<string, any> = {};
+  linkedPOs.forEach((po: any) => { poById[String(po.id)] = po; });
+
   return (
     <TabSection title="Step 4: Order Fulfilled">
       <div className="w-full flex flex-col gap-6">
+
+        {/* Line items -- shows what's being fulfilled and who's supplying it */}
+        <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm p-5 md:p-6">
+          <h3 className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-4">Order Line Items</h3>
+          <div className="flex flex-col gap-3">
+            {(localOrder.items || []).map((item: any, i: number) => {
+              const po = item.assignedPOId ? poById[item.assignedPOId] : null;
+              return (
+                <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-50 pb-3 last:border-0 last:pb-0">
+                  <div>
+                    <p className="text-[13px] text-gray-800 font-medium leading-tight">
+                      <span className="font-mono text-gray-400 inline-block min-w-[35px]">{Number(item.qty) || 0} {item.unit || "pcs"}</span>
+                      <span className="mx-2 text-gray-200">|</span>
+                      {item.description || "--"}
+                    </p>
+                    {po && (
+                      <p className="text-[11px] text-[#149911] font-semibold mt-1">
+                        {po.poNumber ? `${po.poNumber} -- ` : ''}{po.supplierName || 'Unnamed supplier'}
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-[13px] font-medium font-mono text-gray-900 sm:text-right flex-shrink-0">
+                    {peso((Number(item.qty) || 0) * (Number(item.unitCost) || 0))}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm p-5 md:p-6">
           <OrderSupplierSection
             orderId={localOrder.id}
@@ -284,7 +320,6 @@ export function StepDelivery({ localOrder, linkedPOs, handleUpdateOrderField, ha
     setTempAmount(localOrder.amountPaid || '');
   }, [localOrder.amountPaid]);
 
-  // Strict Validation
   const isFullyAssigned = Boolean(
     localOrder?.items?.length > 0 && 
     localOrder.items.every((item: any) => 
@@ -301,6 +336,12 @@ export function StepDelivery({ localOrder, linkedPOs, handleUpdateOrderField, ha
       </TabSection>
     );
   }
+
+  const PAYMENT_METHOD_OPTIONS = [
+    { label: 'Cash', value: 'cash' },
+    { label: 'Cheque', value: 'cheque' },
+    { label: 'Bank Transfer', value: 'bank_transfer' },
+  ];
 
   return (
     <TabSection title="Step 5: Track Delivery & Payment">
@@ -329,13 +370,38 @@ export function StepDelivery({ localOrder, linkedPOs, handleUpdateOrderField, ha
               colorMap={PAYMENT_COLORS}
               onChange={(val: string) => {
                 handleUpdateOrderField("paymentStatus", val);
-                // Reset amount if they switch away from partial payment
                 if (val !== 'partial') {
                    handleUpdateOrderField("amountPaid", 0);
                 }
+                // Clear mode of payment if reverting to unpaid, since it's
+                // no longer meaningful at that point
+                if (val === 'unpaid') {
+                  handleUpdateOrderField("paymentMethod", null);
+                }
               }}
             />
-            {/* Show amount input only if payment is partially paid */}
+
+            {/* Mode of Payment -- shown once payment tracking has actually
+                started (partial or paid), matching the collection's
+                admin condition */}
+            {(localOrder.paymentStatus === 'partial' || localOrder.paymentStatus === 'paid') && (
+              <div className="w-full sm:w-[200px] ml-auto flex flex-col gap-1.5">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 ml-1">
+                  Mode of Payment
+                </label>
+                <select
+                  value={localOrder.paymentMethod || ''}
+                  onChange={(e) => handleUpdateOrderField("paymentMethod", e.target.value || null)}
+                  className="w-full appearance-none px-3.5 py-2.5 text-[13px] font-medium rounded-xl cursor-pointer focus:outline-none ring-1 ring-inset ring-gray-200 focus:ring-[#149911]/40 transition-all bg-gray-50 hover:bg-gray-100 text-gray-900"
+                >
+                  <option value="" disabled>Select method</option>
+                  {PAYMENT_METHOD_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {localOrder.paymentStatus === 'partial' && (
               <div className="w-full sm:w-[200px] ml-auto bg-amber-50 p-2.5 rounded-xl border border-amber-100/50 flex flex-col gap-2">
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-amber-600 mb-1 ml-1">
@@ -377,7 +443,6 @@ export function StepDelivery({ localOrder, linkedPOs, handleUpdateOrderField, ha
                 Saving Status...
               </div>
             ) : (
-              // ONLY allow completing if FULLY paid and FULLY delivered
               localOrder.fulfillmentStatus === "delivered" && localOrder.paymentStatus === "paid" && (
                 <button
                   onClick={() => handleTabChange("closed")}

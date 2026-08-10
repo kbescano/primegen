@@ -150,5 +150,15 @@ export const Orders: CollectionConfig = {
         condition: (data) => data.paymentStatus === 'partial', 
       },
     },
+    {
+      name: 'paymentMethod',
+      type: 'select',
+      label: 'Mode of Payment',
+      options: [
+        { label: 'Cash', value: 'cash' },
+        { label: 'Cheque', value: 'cheque' },
+        { label: 'Bank Transfer', value: 'bank_transfer' },
+      ],
+    },
   ],
 }

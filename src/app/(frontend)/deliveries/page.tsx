@@ -6,7 +6,7 @@ import Image from 'next/image'
 export const dynamic = 'force-dynamic'
 
 export const metadata = {
-  title: 'Deliveries',
+  title: 'Deliveries | Primegen',
   description: 'Recent deliveries completed by Primegen Trading Corporation across the Philippines.',
 }
 
@@ -21,7 +21,7 @@ function PhotoGrid({ photos, altBase }: { photos: any[]; altBase: string }) {
 
   if (count === 1) {
     return (
-      <div className="relative w-full aspect-[4/3] bg-[#f0f0f0]">
+      <div className="relative w-full aspect-[4/3] bg-[#05100d] rounded-xl overflow-hidden">
         <Image src={photos[0].url} alt={altFor(0)} fill className="object-cover" />
       </div>
     )
@@ -29,9 +29,9 @@ function PhotoGrid({ photos, altBase }: { photos: any[]; altBase: string }) {
 
   if (count === 2) {
     return (
-      <div className="grid grid-cols-2 gap-0.5 aspect-[16/9]">
+      <div className="grid grid-cols-2 gap-1 aspect-[16/9] rounded-xl overflow-hidden">
         {photos.map((p, i) => (
-          <div key={i} className="relative bg-[#f0f0f0]">
+          <div key={i} className="relative bg-[#05100d]">
             <Image src={p.url} alt={altFor(i)} fill className="object-cover" />
           </div>
         ))}
@@ -41,14 +41,14 @@ function PhotoGrid({ photos, altBase }: { photos: any[]; altBase: string }) {
 
   if (count === 3) {
     return (
-      <div className="grid grid-cols-2 grid-rows-2 gap-0.5 aspect-[4/3]">
-        <div className="relative row-span-2 bg-[#f0f0f0]">
+      <div className="grid grid-cols-2 grid-rows-2 gap-1 aspect-[4/3] rounded-xl overflow-hidden">
+        <div className="relative row-span-2 bg-[#05100d]">
           <Image src={photos[0].url} alt={altFor(0)} fill className="object-cover" />
         </div>
-        <div className="relative bg-[#f0f0f0]">
+        <div className="relative bg-[#05100d]">
           <Image src={photos[1].url} alt={altFor(1)} fill className="object-cover" />
         </div>
-        <div className="relative bg-[#f0f0f0]">
+        <div className="relative bg-[#05100d]">
           <Image src={photos[2].url} alt={altFor(2)} fill className="object-cover" />
         </div>
       </div>
@@ -60,13 +60,13 @@ function PhotoGrid({ photos, altBase }: { photos: any[]; altBase: string }) {
   const remaining = count - 4
 
   return (
-    <div className="grid grid-cols-2 grid-rows-2 gap-0.5 aspect-square">
+    <div className="grid grid-cols-2 grid-rows-2 gap-1 aspect-square rounded-xl overflow-hidden">
       {visible.map((p, i) => (
-        <div key={i} className="relative bg-[#f0f0f0]">
+        <div key={i} className="relative bg-[#05100d]">
           <Image src={p.url} alt={altFor(i)} fill className="object-cover" />
           {i === 3 && remaining > 0 && (
-            <div className="absolute inset-0 bg-black/55 flex items-center justify-center">
-              <span className="text-white text-xl md:text-2xl font-bold">+{remaining}</span>
+            <div className="absolute inset-0 bg-[#05100d]/70 backdrop-blur-sm flex items-center justify-center">
+              <span className="text-[#fdfffc] text-xl md:text-2xl font-bold">+{remaining}</span>
             </div>
           )}
         </div>
@@ -117,7 +117,11 @@ export default async function DeliveriesPage({
   }
 
   return (
-    <section className="py-16 md:py-28 bg-[#f0f2f5] min-h-screen">
+    <section className="min-h-screen bg-[#05100d] pt-24 md:pt-32 pb-16 md:pb-24 font-sans selection:bg-[#149911]/30 relative">
+
+      {/* Subtle Background Glow -- matches ProductsCatalog */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[#149911]/10 blur-[120px] rounded-full pointer-events-none" />
+
       {imageObjectsJsonLd.length > 0 && (
         <script
           type="application/ld+json"
@@ -125,20 +129,28 @@ export default async function DeliveriesPage({
         />
       )}
 
-      <div className="max-w-[720px] mx-auto px-6 lg:px-0">
+      <div className="max-w-[720px] mx-auto px-4 sm:px-6 relative z-10">
 
-        <div className="mb-8 bg-[#fdfffc] px-6 md:px-10 py-10">
-          <SectionHeader size="page" eyebrow="Proof of Work" title="Deliveries" accent={true} />
-        </div>
+        <ScrollReveal direction="none" className="mb-10 md:mb-12">
+          <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#149911] mb-3">
+            Proof of Work
+          </p>
+          <h1 className="text-[32px] sm:text-[40px] md:text-[48px] font-medium text-[#fdfffc] tracking-tight leading-none mb-3">
+            Deliveries
+          </h1>
+          <p className="text-[14px] md:text-[16px] text-[#fdfffc]/60 max-w-[560px]">
+            Real deliveries, real sites, nationwide -- a running record of materials we've gotten out the door.
+          </p>
+        </ScrollReveal>
 
         {locations.length > 1 && (
-          <div className="flex flex-wrap gap-2 mb-8 px-6 lg:px-0">
+          <div className="flex flex-wrap gap-2 mb-10">
             <a
               href={buildHref(undefined)}
-              className={`text-[11px] font-bold uppercase tracking-[0.1em] px-4 py-2 border transition-all duration-200 ${
+              className={`text-[11px] font-bold uppercase tracking-[0.15em] px-4 py-2 rounded-full border transition-all duration-200 ${
                 !location
-                  ? 'bg-[#01172f] border-[#01172f] text-white'
-                  : 'bg-white border-[#01172f]/15 text-[#01172f]/60 hover:border-[#01172f]/40'
+                  ? 'bg-[#149911] border-[#149911] text-[#fdfffc]'
+                  : 'bg-[#0a1a15]/80 border-[#fdfffc]/10 text-[#fdfffc]/60 hover:border-[#fdfffc]/30 hover:text-[#fdfffc]'
               }`}
             >
               All Locations
@@ -147,10 +159,10 @@ export default async function DeliveriesPage({
               <a
                 key={loc}
                 href={buildHref(loc)}
-                className={`text-[11px] font-bold uppercase tracking-[0.1em] px-4 py-2 border transition-all duration-200 ${
+                className={`text-[11px] font-bold uppercase tracking-[0.15em] px-4 py-2 rounded-full border transition-all duration-200 ${
                   location === loc
-                    ? 'bg-[#01172f] border-[#01172f] text-white'
-                    : 'bg-white border-[#01172f]/15 text-[#01172f]/60 hover:border-[#01172f]/40'
+                    ? 'bg-[#149911] border-[#149911] text-[#fdfffc]'
+                    : 'bg-[#0a1a15]/80 border-[#fdfffc]/10 text-[#fdfffc]/60 hover:border-[#fdfffc]/30 hover:text-[#fdfffc]'
                 }`}
               >
                 {loc}
@@ -160,15 +172,15 @@ export default async function DeliveriesPage({
         )}
 
         {filteredDocs.length === 0 ? (
-          <div className="border border-dashed border-[#01172f]/15 py-24 text-center bg-white">
-            <p className="text-[15px] text-[#01172f]/40 font-medium">
+          <div className="border border-dashed border-[#fdfffc]/10 rounded-2xl py-24 text-center bg-[#0a1a15]/50">
+            <p className="text-[14px] text-[#fdfffc]/40 font-medium">
               {location
                 ? `No deliveries found for "${location}".`
                 : 'No deliveries added yet -- add one in the admin panel under Deliveries.'}
             </p>
           </div>
         ) : (
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 md:gap-5">
             {filteredDocs.map((d: any, index: number) => {
               const photos = Array.isArray(d.photos) ? d.photos.filter((p: any) => p?.url) : []
               const delay = Math.min(index * STAGGER_STEP, STAGGER_CAP)
@@ -182,43 +194,44 @@ export default async function DeliveriesPage({
               return (
                 <ScrollReveal
                   key={d.id}
+                  direction="none"
                   style={{ transitionDelay: `${delay}ms` }}
-                  className="bg-white border border-[#01172f]/10 overflow-hidden"
+                  className="group bg-[#0a1a15] hover:bg-[#0c201a] border border-[#fdfffc]/5 hover:border-[#fdfffc]/10 rounded-2xl overflow-hidden transition-all duration-300 p-4 md:p-5"
                 >
-                  {/* Post header -- logo + page name + date, mimicking a Facebook post's top row */}
-                  <div className="flex items-center gap-3 px-4 pt-4 pb-3">
-                    <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-[#f4f6f2]">
-                      <Image src="/branding/primegen_trading_logo.png" alt="Primegen Trading Corporation" fill className="object-contain p-1" />
-                    </div>
-                    <div>
-                      <p className="text-[14px] font-bold text-[#01172f] leading-tight">
-                        Primegen Trading Corporation
-                      </p>
-                      <p className="text-[12px] text-[#01172f]/45 font-medium">{date}</p>
-                    </div>
-                  </div>
-
-                  {/* Caption -- title + location */}
-                  <div className="px-4 pb-3">
-                    <p className="text-[15px] font-bold text-[#01172f] leading-snug">{d.title}</p>
+                  {/* Meta tags -- date + location, styled like product card badges */}
+                  <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <span className="bg-[#fdfffc]/5 border border-[#fdfffc]/10 text-[#fdfffc]/60 px-2 py-1 rounded-[4px] text-[9px] font-bold uppercase tracking-widest">
+                      {date}
+                    </span>
                     {d.location && (
-                      <p className="text-[14px] text-[#01172f]/60 font-medium mt-0.5">{d.location}</p>
+                      <span className="bg-[#149911]/10 border border-[#149911]/20 text-[#2dd4bf] px-2 py-1 rounded-[4px] text-[9px] font-bold uppercase tracking-widest flex items-center gap-1.5">
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                          <circle cx="12" cy="10" r="3" />
+                        </svg>
+                        {d.location}
+                      </span>
                     )}
                   </div>
 
+                  {/* Title */}
+                  <h3 className="text-[16px] md:text-[18px] font-medium text-[#fdfffc] leading-snug mb-4">
+                    {d.title}
+                  </h3>
+
                   <PhotoGrid photos={photos} altBase={altBase} />
 
-                  {/* Footer -- genuine link only, no fabricated engagement numbers */}
+                  {/* Footer CTA -- genuine link only, no fabricated engagement numbers */}
                   {d.permalinkUrl && (
-                    <div className="px-4 py-3 border-t border-[#01172f]/10">
+                    <div className="pt-4 mt-1">
                       <a
                         href={d.permalinkUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide text-[#3D5F3B] hover:text-[#149911] transition-colors"
+                        className="inline-flex items-center gap-2 text-[12px] md:text-[13px] font-medium text-[#2dd4bf] hover:text-[#5eead4] transition-colors"
                       >
-                        View Original Post
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        View original post
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover:translate-x-1">
                           <path d="M7 17L17 7M17 7H8M17 7V16" />
                         </svg>
                       </a>

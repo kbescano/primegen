@@ -38,28 +38,22 @@ export default function AssignSuppliersModal({
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
   const [addingNew, setAddingNew] = useState(false)
-  
-  // ALL 4 fields are required for new suppliers
   const [newSupplier, setNewSupplier] = useState({ name: '', company: '', phone: '', address: '' })
-  
   const [orderSalesPerson, setOrderSalesPerson] = useState('')
+
+  // Local working copies -- updated in place after each assignment so the
+  // modal can stay open and support assigning multiple suppliers to
+  // different items in one continuous session, instead of forcing a
+  // close/reopen cycle per supplier.
+  const [localItems, setLocalItems] = useState<OrderItem[]>(items)
+  const [localPOs, setLocalPOs] = useState<any[]>(linkedPOs)
+  const [lastAssigned, setLastAssigned] = useState<string | null>(null)
 
   const poById = useMemo(() => {
     const map: Record<string, any> = {}
-    for (const po of linkedPOs) {
-      map[String(po.id)] = po
-    }
+    for (const po of localPOs) map[String(po.id)] = po
     return map
-  }, [linkedPOs])
-
-  // Automatically skip to 'select-supplier' if ALL items are unassigned
-  useEffect(() => {
-    const allUnassigned = items.every(item => !item.assignedPOId)
-    if (allUnassigned && items.length > 0) {
-      setSelected(new Set(items.map((_, i) => i)))
-      setStep('select-supplier')
-    }
-  }, [items])
+  }, [localPOs])
 
   // Fetch Suppliers
   useEffect(() => {
@@ -69,9 +63,7 @@ export default function AssignSuppliersModal({
         .then((res) => res.json())
         .then((data) => {
           setSuppliers(data.docs || [])
-          if (!data.docs || data.docs.length === 0) {
-            setAddingNew(true)
-          }
+          if (!data.docs || data.docs.length === 0) setAddingNew(true)
         })
         .catch(() => setSuppliers([]))
         .finally(() => setLoadingSuppliers(false))
@@ -84,9 +76,7 @@ export default function AssignSuppliersModal({
       fetch(`/api/orders/${orderId}?depth=0`, { credentials: 'include' })
         .then((res) => res.json())
         .then((data) => {
-          if (data?.salesPerson) {
-            setOrderSalesPerson(data.salesPerson)
-          }
+          if (data?.salesPerson) setOrderSalesPerson(data.salesPerson)
         })
         .catch(() => {})
     }
@@ -101,7 +91,6 @@ export default function AssignSuppliersModal({
     })
   }
 
-  // CORE ASSIGNMENT & CLEANUP FLOW
   async function assignSelectedItemsToSupplier(supplier: { name: string; company?: string; address?: string; phone?: string }) {
     setCreating(true)
     setError('')
@@ -110,23 +99,20 @@ export default function AssignSuppliersModal({
       if (selectedIndices.length === 0) throw new Error('Please select at least one item.')
 
       const selectedItemsPayload = selectedIndices.map((i) => ({
-        description: items[i].description,
-        qty: items[i].qty,
-        unit: items[i].unit,
-        unitPrice: items[i].unitCost || 0,
+        description: localItems[i].description,
+        qty: localItems[i].qty,
+        unit: localItems[i].unit,
+        unitPrice: localItems[i].unitCost || 0,
       }))
 
-      // 1. Check if an active Draft PO already exists for this exact supplier on this order to avoid duplicates
-      let targetPO = linkedPOs.find(
-        (po) =>
-          po.status === 'draft' &&
-          po.supplierName?.toLowerCase().trim() === supplier.name.toLowerCase().trim()
+      let targetPO = localPOs.find(
+        (po) => po.status === 'draft' && po.supplierName?.toLowerCase().trim() === supplier.name.toLowerCase().trim()
       )
 
       let targetPOId: string | number
+      let updatedPOs = localPOs
 
       if (targetPO) {
-        // RE-USE existing draft PO: append items cleanly
         const existingItems = targetPO.items || []
         const combinedItems = [...existingItems, ...selectedItemsPayload].map(({ id, ...rest }: any) => rest)
 
@@ -138,8 +124,8 @@ export default function AssignSuppliersModal({
         })
         if (!patchRes.ok) throw new Error('Failed to update existing supplier PO')
         targetPOId = targetPO.id
+        updatedPOs = localPOs.map((po) => (String(po.id) === String(targetPOId) ? { ...po, items: combinedItems } : po))
       } else {
-        // CREATE new PO if none exists for this supplier yet
         const poRes = await fetch('/api/supplier-purchase-orders', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -159,18 +145,15 @@ export default function AssignSuppliersModal({
         if (!poRes.ok) throw new Error('Failed to create Supplier PO')
         const poData = await poRes.json()
         targetPOId = poData.doc.id
+        updatedPOs = [...localPOs, { ...poData.doc, supplierName: supplier.name, status: 'draft', items: selectedItemsPayload }]
       }
 
-      // 2. Track old PO IDs that were previously attached to these items so we can check for orphaned cleanups
       const oldPOIdsToCheck = new Set<string>()
       selectedIndices.forEach((i) => {
-        if (items[i].assignedPOId) {
-          oldPOIdsToCheck.add(String(items[i].assignedPOId))
-        }
+        if (localItems[i].assignedPOId) oldPOIdsToCheck.add(String(localItems[i].assignedPOId))
       })
 
-      // 3. Update Order items mapping
-      const updatedItems = items.map((item, i) =>
+      const updatedItems = localItems.map((item, i) =>
         selected.has(i) ? { ...item, assignedPOId: String(targetPOId) } : item
       )
 
@@ -182,44 +165,58 @@ export default function AssignSuppliersModal({
       })
       if (!orderRes.ok) throw new Error('Failed to update order items')
 
-      // 4. AUTOMATIC CLEANUP: Check if any old POs now have zero items pointing to them. If so, delete them!
+      // Clean up any old draft POs that now have zero items
       for (const oldId of oldPOIdsToCheck) {
         if (String(oldId) !== String(targetPOId)) {
           const stillHasItems = updatedItems.some((it) => String(it.assignedPOId) === String(oldId))
           if (!stillHasItems) {
-            await fetch(`/api/supplier-purchase-orders/${oldId}`, {
-              method: 'DELETE',
-              credentials: 'include',
-            }).catch(() => {})
+            await fetch(`/api/supplier-purchase-orders/${oldId}`, { method: 'DELETE', credentials: 'include' }).catch(() => {})
+            updatedPOs = updatedPOs.filter((po) => String(po.id) !== String(oldId))
           }
         }
       }
 
-      // Trigger server refresh and force close the modal
+      // Commit locally and stay open -- don't close the modal. This is what
+      // enables assigning a second (or third) supplier to the remaining
+      // items without leaving and reopening.
+      setLocalItems(updatedItems)
+      setLocalPOs(updatedPOs)
+      setLastAssigned(supplier.name)
+      setSelected(new Set())
+      setStep('select-items')
       router.refresh()
-      onClose()
-      
     } catch (err: any) {
       setError(err?.message || 'Something went wrong -- please try again.')
+    } finally {
       setCreating(false)
     }
   }
 
-  // Validation: Require all 4 fields for creating a new supplier
   const isNewSupplierValid =
     newSupplier.name.trim() !== '' &&
     newSupplier.company.trim() !== '' &&
     newSupplier.phone.trim() !== '' &&
     newSupplier.address.trim() !== ''
 
-  // Determine if all items are selected or assigned
-  const allCompleted = selected.size === items.length || items.every((item) => Boolean(item.assignedPOId))
+  const unassignedCount = localItems.filter((i) => !i.assignedPOId).length
+  const allAssigned = localItems.length > 0 && unassignedCount === 0
+
+  // Group current assignments by supplier for the summary banner
+  const assignmentSummary = useMemo(() => {
+    const bySupplier: Record<string, number> = {}
+    localItems.forEach((item) => {
+      if (item.assignedPOId && poById[item.assignedPOId]) {
+        const name = poById[item.assignedPOId].supplierName || 'Unknown'
+        bySupplier[name] = (bySupplier[name] || 0) + 1
+      }
+    })
+    return bySupplier
+  }, [localItems, poById])
 
   return (
     <div className="fixed inset-0 bg-[#1d1d1f]/40 backdrop-blur-sm z-[120] flex items-center justify-center p-4 antialiased">
       <div className="bg-white max-w-lg w-full max-h-[85vh] flex flex-col rounded-[2rem] shadow-[0_24px_48px_rgba(0,0,0,0.15)] overflow-hidden ring-1 ring-white/50 relative">
         
-        {/* Loading Overlay when saving/creating PO */}
         {creating && (
           <div className="absolute inset-0 bg-white/85 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-3">
             <div className="w-8 h-8 border-4 border-[#149911] border-t-transparent rounded-full animate-spin" />
@@ -234,15 +231,35 @@ export default function AssignSuppliersModal({
           </h2>
           <p className="text-[13px] text-gray-500 leading-relaxed">
             {step === 'select-items'
-              ? 'Select the items you want to assign (or re-assign) to a supplier.'
+              ? 'Select the items you want to assign (or re-assign) to a supplier. You can assign different items to different suppliers in this same session.'
               : 'Choose the supplier for the selected items.'}
           </p>
+
+          {/* Live progress + last-assignment feedback, so multi-supplier
+              splitting is visible instead of feeling like a black box */}
+          {(Object.keys(assignmentSummary).length > 0 || lastAssigned) && (
+            <div className="mt-4 p-3 bg-[#149911]/[0.06] border border-[#149911]/20 rounded-xl">
+              {lastAssigned && (
+                <p className="text-[12px] font-semibold text-[#149911] mb-1">
+                  ✓ Assigned to {lastAssigned}
+                </p>
+              )}
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-gray-600 font-medium">
+                {Object.entries(assignmentSummary).map(([name, count]) => (
+                  <span key={name}>{name}: {count} item{count > 1 ? 's' : ''}</span>
+                ))}
+                {unassignedCount > 0 && (
+                  <span className="text-amber-600">{unassignedCount} unassigned</span>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-[#fbfbfd]">
           {step === 'select-items' ? (
             <div className="flex flex-col gap-3">
-              {items.map((item, i) => {
+              {localItems.map((item, i) => {
                 const currentSupplierName = item.assignedPOId && poById[item.assignedPOId]
                   ? poById[item.assignedPOId].supplierName
                   : null
@@ -320,7 +337,7 @@ export default function AssignSuppliersModal({
                       />
                     </div>
                   </div>
-                  
+
                   <div className="flex gap-3 mt-3 pt-4 border-t border-gray-100">
                     <button
                       onClick={() => setAddingNew(false)}
@@ -342,10 +359,7 @@ export default function AssignSuppliersModal({
                           })
                           if (!res.ok) throw new Error('Failed to save new supplier')
                           const savedSupplier = await res.json()
-                          setSuppliers((prev) => [
-                            { id: savedSupplier.doc.id, ...newSupplier },
-                            ...prev,
-                          ])
+                          setSuppliers((prev) => [{ id: savedSupplier.doc.id, ...newSupplier }, ...prev])
                           const tempSupplierData = { ...newSupplier }
                           setNewSupplier({ name: '', company: '', phone: '', address: '' })
                           setAddingNew(false)
@@ -370,7 +384,7 @@ export default function AssignSuppliersModal({
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                     Create New Supplier
                   </button>
-                  
+
                   {loadingSuppliers ? (
                     <div className="py-8 text-center text-[13px] text-gray-500 font-medium">Loading suppliers...</div>
                   ) : suppliers.length === 0 ? (
@@ -421,9 +435,13 @@ export default function AssignSuppliersModal({
           <button
             onClick={onClose}
             disabled={creating}
-            className="flex-1 py-3.5 rounded-full text-[13px] font-medium border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors focus:outline-none shadow-sm disabled:opacity-50"
+            className={`flex-1 py-3.5 rounded-full text-[13px] font-medium transition-colors focus:outline-none shadow-sm disabled:opacity-50 ${
+              allAssigned
+                ? 'bg-[#149911] text-white hover:bg-[#103900]'
+                : 'border border-gray-200 text-gray-700 hover:bg-gray-50'
+            }`}
           >
-            {allCompleted ? 'Close' : 'Cancel'}
+            {allAssigned ? 'Done' : 'Close'}
           </button>
         </div>
       </div>

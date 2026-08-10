@@ -92,6 +92,7 @@ export const QuotationRequests: CollectionConfig = {
         { label: 'Processing', value: 'processing' },
         { label: 'Quote Sent', value: 'quote-sent' },
         { label: 'Completed', value: 'completed' },
+        { label: 'Rejected', value: 'rejected' },
       ],
       admin: {
         description: 'Admin updates this manually to track follow-up progress.',

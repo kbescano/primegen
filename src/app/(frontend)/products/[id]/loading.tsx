@@ -3,7 +3,7 @@ import Image from "next/image";
 
 export default function GlobalLoading() {
   return (
-    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#3D5F3B] px-6">
+    <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#05100d] px-6">
       <div className="flex flex-col items-center justify-center animate-[riseIn_0.7s_cubic-bezier(0.16,1,0.3,1)_both]">
 
         <div className="relative w-24 h-24 sm:w-28 sm:h-28">

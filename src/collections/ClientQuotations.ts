@@ -24,7 +24,7 @@ export const ClientQuotations: CollectionConfig = {
             where: { quotationNumber: { like: `${year}-` } },
             sort: '-quotationNumber',
             limit: 1,
-          })
+          })  
           let next = 1
           if (existing.docs.length > 0) {
             const last = existing.docs[0].quotationNumber as string

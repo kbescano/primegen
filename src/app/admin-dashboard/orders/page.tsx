@@ -26,6 +26,40 @@ const PAYMENT_COLORS: Record<string, string> = {
   paid: 'bg-[#149911]/10 text-[#149911]',
 }
 
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cash: 'Cash',
+  cheque: 'Cheque',
+  bank_transfer: 'Bank Transfer',
+}
+
+function PaymentMethodIcon({ method }: { method: string }) {
+  if (method === 'cash') {
+    return (
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="6" width="20" height="12" rx="2" />
+        <circle cx="12" cy="12" r="2" />
+      </svg>
+    )
+  }
+  if (method === 'cheque') {
+    return (
+      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="2" y="4" width="20" height="16" rx="2" />
+        <line x1="6" y1="14" x2="12" y2="14" />
+        <line x1="6" y1="17" x2="10" y2="17" />
+      </svg>
+    )
+  }
+  // bank_transfer
+  return (
+    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 21h18" />
+      <path d="M5 21V9l7-5 7 5v12" />
+      <path d="M9 21v-6h6v6" />
+    </svg>
+  )
+}
+
 const peso = (n: number) =>
   '\u20B1' + n.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
@@ -46,7 +80,7 @@ function orderTotal(o: any): number {
 function MinimalStepper({ status }: { status: string }) {
   if (status === 'cancelled') {
     return (
-      <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 bg-red-50 text-red-600 rounded">
+      <span className="text-[10px] font-bold uppercase tracking-widest px-2.5 py-1 bg-red-50 text-red-600 rounded-md">
         Cancelled
       </span>
     )
@@ -91,24 +125,17 @@ export default async function OrdersPage({
   const { status: activeStatus, id: highlightId, pipelineId } = await searchParams
   const payload = await getPayloadClient()
 
-  // =========================================================================
-  // 🔒 STRICT ROLE-BASED ACCESS CONTROL (SERVER-SIDE)
-  // =========================================================================
   const reqHeaders = await headers()
   const { user } = await payload.auth({ headers: reqHeaders })
 
-  // If the user is NOT an admin ('user' role or undefined)
   if (user?.role !== 'admin') {
-    // 1. Block access to the main list (no ID)
     if (!highlightId) {
       redirect('/admin-dashboard')
     }
-    // 2. Block access to a specific order if they don't have pipeline context
     if (highlightId && !pipelineId) {
       redirect('/admin-dashboard')
     }
   }
-  // =========================================================================
 
   const { docs } = await payload.find({
     collection: 'orders',
@@ -117,7 +144,6 @@ export default async function OrdersPage({
     where: activeStatus ? { fulfillmentStatus: { equals: activeStatus } } : undefined,
   })
 
-  // Bulk lookup for POs
   const orderIds = docs.map((d: any) => String(d.id))
   const linkedPOsRes =
     orderIds.length > 0
@@ -160,7 +186,7 @@ export default async function OrdersPage({
             <Link
               key={pill.value || 'all'}
               href={href}
-              className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded transition-all ${
+              className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-md transition-all ${
                 isActive
                   ? 'bg-[#01172f] text-white'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -173,7 +199,7 @@ export default async function OrdersPage({
       </div>
 
       {docs.length === 0 ? (
-        <div className="border border-dashed border-gray-200 py-12 text-center rounded">
+        <div className="border border-dashed border-gray-200 py-12 text-center rounded-xl">
           <p className="text-xs text-gray-400 font-medium">No orders found.</p>
         </div>
       ) : (
@@ -182,29 +208,29 @@ export default async function OrdersPage({
             const total = orderTotal(o)
             const orderItems = o.items || []
             const orderPOs = posByOrderId[String(o.id)] || []
-            
-            // Financial Math
+
             const subtotal = orderItems.reduce((sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitPrice) || 0), 0)
             const discount = Number(o.discountAmount) || 0
             const delivery = Number(o.deliveryFee) || 0
             const netRevenue = subtotal - discount + delivery
-            
+
             const vatAmount = netRevenue * ((Number(o.vatRate) || 0) / 100)
             const grossRevenue = netRevenue + vatAmount
 
             const cogs = orderItems.reduce((sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitCost) || 0), 0)
             const markupTotal = netRevenue - cogs
-            
+
             const liquidatedOpex = (o.opex || []).reduce((sum: number, exp: any) => sum + (exp.status === 'liquidated' ? Number(exp.amount) || 0 : 0), 0)
             const pendingOpex = (o.opex || []).reduce((sum: number, exp: any) => sum + (exp.status === 'pending' ? Number(exp.amount) || 0 : 0), 0)
             const trueNet = markupTotal - liquidatedOpex
 
-            // Receivables calculation
             const amountPaid = Number(o.amountPaid) || 0
             const paymentStatusLabel = o.paymentStatus === 'partial' ? 'Partial' : (o.paymentStatus || 'unpaid')
-            const receivables = o.paymentStatus === 'partial' 
-                ? grossRevenue - amountPaid 
+            const receivables = o.paymentStatus === 'partial'
+                ? grossRevenue - amountPaid
                 : (o.paymentStatus === 'paid' ? 0 : grossRevenue)
+
+            const showPaymentMethod = (o.paymentStatus === 'partial' || o.paymentStatus === 'paid') && o.paymentMethod
 
             const isHighlighted = highlightId && String(o.id) === String(highlightId)
             const date = o.orderDate
@@ -218,8 +244,8 @@ export default async function OrdersPage({
             return (
               <div
                 key={o.id}
-                className={`bg-white border rounded p-5 md:p-7 transition-all ${
-                  isHighlighted ? 'border-[#149911] shadow-sm' : 'border-gray-200 hover:border-gray-300'
+                className={`bg-white border rounded-2xl p-5 md:p-7 transition-all ${
+                  isHighlighted ? 'border-[#149911] shadow-[0_8px_30px_-12px_rgba(20,153,17,0.25)]' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                 }`}
               >
                 {/* Top Tracker Bar */}
@@ -230,7 +256,7 @@ export default async function OrdersPage({
                     </span>
                     <span className="text-[10px] text-gray-400">{date}</span>
                   </div>
-                  
+
                   <MinimalStepper status={o.fulfillmentStatus || 'preparing'} />
                 </div>
 
@@ -249,21 +275,27 @@ export default async function OrdersPage({
                     </p>
                   </div>
 
-                  <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
-                    <span className={`px-2 py-0.5 text-[9px] font-bold uppercase rounded ${PAYMENT_COLORS[o.paymentStatus || 'unpaid'] || PAYMENT_COLORS['unpaid']}`}>
-                      Payment: {paymentStatusLabel}
-                    </span>
-                    <div className="text-right">
-                      <p className="text-[14px] font-black font-mono text-[#01172f]">
-                        {peso(total - receivables)}
-                      </p>
+                  <div className="flex flex-col items-end gap-2 w-full md:w-auto">
+                    <div className="flex items-center gap-2 flex-wrap justify-end">
+                      <span className={`px-2.5 py-1 text-[9px] font-bold uppercase rounded-md ${PAYMENT_COLORS[o.paymentStatus || 'unpaid'] || PAYMENT_COLORS['unpaid']}`}>
+                        Payment: {paymentStatusLabel}
+                      </span>
+                      {showPaymentMethod && (
+                        <span className="flex items-center gap-1.5 px-2.5 py-1 text-[9px] font-bold uppercase rounded-md bg-blue-50 text-blue-700">
+                          <PaymentMethodIcon method={o.paymentMethod} />
+                          {PAYMENT_METHOD_LABELS[o.paymentMethod] || o.paymentMethod}
+                        </span>
+                      )}
                     </div>
+                    <p className="text-[15px] font-black font-mono text-[#01172f]">
+                      {peso(total - receivables)}
+                    </p>
                   </div>
                 </div>
 
                 {/* Items & POs - SIDE BY SIDE ROW */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-8">
-                  
+
                   {/* Left Column: Order Items */}
                   <div>
                     <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-3">
@@ -294,8 +326,8 @@ export default async function OrdersPage({
                     <div className="flex flex-col gap-2">
                       {orderPOs.length > 0 ? (
                         orderPOs.map(po => (
-                          <Link 
-                            key={po.id} 
+                          <Link
+                            key={po.id}
                             href={`/admin-dashboard/supplier-po?listSupplier=${encodeURIComponent(po.supplierName || '')}`}
                             className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100 hover:border-gray-300 hover:shadow-sm transition-all text-[11px]"
                           >
@@ -317,16 +349,16 @@ export default async function OrdersPage({
 
                 {/* OPEX Section */}
                 <div className="mb-6">
-                  <OrderOpexSection 
-                    orderId={o.id} 
-                    opex={o.opex || []} 
+                  <OrderOpexSection
+                    orderId={o.id}
+                    opex={o.opex || []}
                     allowApprove={true}
                   />
                 </div>
 
                 {/* Financial Summary */}
                 <div className="flex flex-col md:flex-row justify-end items-start md:items-end border-t border-gray-100 pt-6 gap-4 mt-2">
-                  <div className="bg-gray-50 p-4 md:p-5 rounded flex flex-col gap-2.5 border border-gray-200 w-full md:w-[340px]">
+                  <div className="bg-gray-50 p-4 md:p-5 rounded-xl flex flex-col gap-2.5 border border-gray-200 w-full md:w-[340px]">
                     <div className="flex justify-between items-center text-[11px] text-gray-500">
                       <span>Subtotal</span>
                       <span className="font-mono">{peso(subtotal)}</span>
@@ -347,30 +379,40 @@ export default async function OrdersPage({
                       <span>VAT ({o.vatRate || 0}%)</span>
                       <span className="font-mono">+{peso(vatAmount)}</span>
                     </div>
-                    
+
                     <div className="flex justify-between items-center text-[11px] font-semibold text-gray-800 border-t border-gray-200 pt-2 mt-1">
                       <span>Gross Revenue</span>
                       <span className="font-mono">{peso(grossRevenue)}</span>
                     </div>
 
-                    {/* Show Receivables / Amount Paid block if partial */}
                     {o.paymentStatus === 'partial' && (
                         <div className="bg-amber-50/50 border border-amber-100/50 -mx-3 px-3 py-2.5 rounded-lg flex flex-col gap-2 my-1">
                             <div className="flex justify-between items-center text-[11px] text-amber-600/80">
                                 <span>Amount Paid</span>
                                 <span className="font-mono">-{peso(amountPaid)}</span>
                             </div>
+                            {showPaymentMethod && (
+                              <div className="flex justify-between items-center text-[10px] text-amber-600/70">
+                                <span>Mode of Payment</span>
+                                <span className="font-semibold uppercase tracking-wide">{PAYMENT_METHOD_LABELS[o.paymentMethod] || o.paymentMethod}</span>
+                              </div>
+                            )}
                             <div className="flex justify-between items-center text-[11px] font-semibold text-amber-600">
                                 <span>Receivables (Unpaid)</span>
                                 <span className="font-mono">{peso(receivables)}</span>
                             </div>
                         </div>
                     )}
-                     {/* Show Receivables block if unpaid */}
                     {o.paymentStatus !== 'paid' && o.paymentStatus !== 'partial' && (
                          <div className="flex justify-between items-center text-[11px] font-semibold text-amber-600 bg-amber-50/50 border border-amber-100/50 -mx-3 px-3 py-2.5 rounded-lg my-1">
                             <span>Receivables (Unpaid)</span>
                             <span className="font-mono">{peso(grossRevenue)}</span>
+                        </div>
+                    )}
+                    {o.paymentStatus === 'paid' && showPaymentMethod && (
+                        <div className="flex justify-between items-center text-[10px] text-[#149911]/70 bg-[#149911]/[0.04] border border-[#149911]/10 -mx-3 px-3 py-2 rounded-lg my-1">
+                            <span>Mode of Payment</span>
+                            <span className="font-semibold uppercase tracking-wide">{PAYMENT_METHOD_LABELS[o.paymentMethod] || o.paymentMethod}</span>
                         </div>
                     )}
 
@@ -380,7 +422,7 @@ export default async function OrdersPage({
                     </div>
                     <div className="flex justify-between items-center text-[11px] text-gray-500">
                       <span>
-                        Liquidated OPEX 
+                        Liquidated OPEX
                         {pendingOpex > 0 && <span className="text-amber-500 italic ml-1">(+ {peso(pendingOpex)} pending)</span>}
                       </span>
                       <span className="font-mono text-red-500">-{peso(liquidatedOpex)}</span>

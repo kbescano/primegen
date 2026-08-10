@@ -1,11 +1,10 @@
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import WeightCalculatorForm, { type CalcProduct } from '@/components/WeightCalculatorForm'
-import SectionHeader from '@/components/SectionHeader'
 
 export const revalidate = 60
 
 export const metadata = {
-  title: 'Weight Calculator',
+  title: 'Weight Calculator | Primegen',
   description: 'Estimate the weight of steel products by shape and dimension before you request a quote.',
 }
 
@@ -55,14 +54,30 @@ export default async function CalculatorPage() {
       : FALLBACK_PRODUCTS
 
   return (
-    <section className="py-16 mb-10 md:py-28 px-6 lg:px-20 max-w-[1360px] mx-auto bg-[#fdfffc] min-h-screen">
-      <SectionHeader
-        size="page"
-        eyebrow="Tools"
-        title="Weight Calculator"
-        description="Estimate the weight of steel products by shape and dimension -- useful for planning orders and checking delivery loads before you request a quote."
-      />
-      <WeightCalculatorForm products={products} />
+    <section className="min-h-screen bg-[#05100d] pt-24 md:pt-32 pb-16 md:pb-24 font-sans selection:bg-[#149911]/30 relative">
+
+      {/* Subtle Background Glow -- matches ProductsCatalog / Deliveries */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[#149911]/10 blur-[120px] rounded-full pointer-events-none" />
+
+      <div className="max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-12 relative z-10">
+
+        <div className="mb-8 md:mb-12">
+          <p className="text-[11px] font-bold uppercase tracking-[0.25em] text-[#149911] mb-3">
+            Tools
+          </p>
+          <h1 className="text-[32px] sm:text-[40px] md:text-[56px] font-medium text-[#fdfffc] tracking-tight leading-none mb-3 md:mb-4">
+            Weight Calculator
+          </h1>
+          <p className="text-[14px] md:text-[16px] text-[#fdfffc]/60 max-w-[600px]">
+            Estimate the weight of steel products by shape and dimension -- useful for planning orders and checking delivery loads before you request a quote.
+          </p>
+        </div>
+
+        <div className="bg-[#0a1a15]/80 backdrop-blur-xl border border-[#fdfffc]/5 rounded-2xl p-5 md:p-8">
+          <WeightCalculatorForm products={products} />
+        </div>
+
+      </div>
     </section>
   )
 }

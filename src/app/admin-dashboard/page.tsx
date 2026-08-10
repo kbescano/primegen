@@ -9,12 +9,14 @@ const STATUS_OPTIONS = [
   { value: 'processing', label: 'Processing' },
   { value: 'quote-sent', label: 'Quote Sent' },
   { value: 'completed', label: 'Completed' },
+  { value: 'rejected', label: 'Rejected' },
 ]
 const STATUS_LABELS: Record<string, string> = {
   pending: 'Pending',
   processing: 'Processing',
   'quote-sent': 'Quote Sent',
   completed: 'Completed',
+  rejected: 'Rejected',
 }
 
 const PAGE_SIZE = 25
