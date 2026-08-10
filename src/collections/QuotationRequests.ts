@@ -1,24 +1,61 @@
 import type { CollectionConfig } from 'payload'
 
-// Captures quotation requests submitted from the public site.
-// IMPORTANT: This collection only stores and displays requests for the admin
-// to review. Nothing here auto-sends a quotation to the customer -- the admin
-// follows up manually through whatever channel they choose (call, email, etc.)
-// and then marks the request as "Quote Sent" once they've sent it externally.
 export const QuotationRequests: CollectionConfig = {
   slug: 'quotation-requests',
   admin: {
     useAsTitle: 'customerName',
-    defaultColumns: ['customerName', 'projectType', 'status', 'createdAt'],
+    defaultColumns: ['customerName', 'assignedTo', 'projectType', 'status', 'createdAt'],
     group: 'Leads',
     description:
       'Customer quotation requests. Review here and follow up manually -- nothing is sent automatically.',
   },
   access: {
     create: () => true,
-    read: ({ req }) => Boolean(req.user),
-    update: ({ req }) => Boolean(req.user),
-    delete: ({ req }) => Boolean(req.user),
+    // Admins see everything. Staff (role: 'user') only see requests
+    // assigned to them.
+    read: ({ req }) => {
+      if (!req.user) return false
+      if (req.user.role === 'admin') return true
+      return { assignedTo: { equals: req.user.id } }
+    },
+    update: ({ req }) => {
+      if (!req.user) return false
+      if (req.user.role === 'admin') return true
+      // Staff can update (e.g. change status) only on their own assigned
+      // requests -- they cannot reassign or touch anyone else's.
+      return { assignedTo: { equals: req.user.id } }
+    },
+    delete: ({ req }) => Boolean(req.user && req.user.role === 'admin'),
+  },
+  hooks: {
+    afterChange: [
+      // Fire a notification when a request is newly assigned or
+      // reassigned to a staff member.
+      async ({ doc, previousDoc, operation, req }) => {
+        if (
+          operation === 'update' &&
+          doc.assignedTo &&
+          String(doc.assignedTo) !== String(previousDoc?.assignedTo || '')
+        ) {
+          try {
+            await req.payload.create({
+              // Notifications may be provided by an optional plugin and are
+              // not included in the generated Payload collection union.
+              collection: 'notifications' as any,
+              data: {
+                recipient: doc.assignedTo,
+                message: `You've been assigned a new RFQ from ${doc.customerName || 'a customer'}`,
+                link: `/admin-dashboard/pipeline/${doc.id}`,
+                read: false,
+              },
+            })
+          } catch {
+            // non-critical
+          }
+        }
+        return doc
+      },
+    ],
   },
   fields: [
     {
@@ -34,6 +71,21 @@ export const QuotationRequests: CollectionConfig = {
     {
       name: 'email',
       type: 'email',
+    },
+    {
+      name: 'assignedTo',
+      type: 'relationship',
+      relationTo: 'users',
+      label: 'Assigned Staff',
+      filterOptions: {
+        role: { equals: 'user' },
+      },
+      admin: {
+        description: 'Which sales staff member owns following up on this request. Only admins can change this.',
+      },
+      access: {
+        update: ({ req }) => Boolean(req.user && req.user.role === 'admin')
+      },
     },
     {
       name: 'projectType',

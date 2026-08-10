@@ -8,6 +8,7 @@ import NotificationBell from '@/components/NotificationBell'
 // 1. ADDED `adminOnly` FLAGS TO ROUTES
 const NAV_ITEMS = [
   { href: '/admin-dashboard', label: 'Quotation Inbox', adminOnly: false },
+  { href: '/admin-dashboard/staff-performance', label: 'Staff Performance', adminOnly: true },
   { href: '/admin-dashboard/client-quotation', label: 'Client Quotation', adminOnly: true },
   { href: '/admin-dashboard/orders', label: 'Orders', adminOnly: true },
   { href: '/admin-dashboard/supplier-po', label: 'Supplier PO', adminOnly: true },
@@ -85,13 +86,13 @@ export default function AdminLayout({
               &larr; Site
             </Link>
             <div className="ml-2 pl-2 border-l border-[#01172f]/10">
-              <NotificationBell />
+              <NotificationBell role={"user"} />
             </div>
           </nav>
 
           {/* Mobile: bell + hamburger */}
           <div className="flex md:hidden items-center gap-0.5 flex-shrink-0">
-          <NotificationBell />
+          <NotificationBell role={isAdmin ? "admin" : "user"} />
           <button
             className="flex items-center justify-center w-10 h-10 flex-shrink-0"
             aria-label={open ? 'Close menu' : 'Open menu'}

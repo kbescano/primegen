@@ -36,6 +36,33 @@ export const ClientQuotations: CollectionConfig = {
       },
     ],
     afterChange: [
+      // Trigger when status changes TO 'pending_approval': this is the
+      // "Send for Internal Approval" transition. Mirrors the sourceRequestId
+      // lookup pattern used below for order_confirmed, just targeting the
+      // quotation-requests collection's status instead of creating an order.
+      async ({ doc, previousDoc, operation, req }) => {
+  if (
+    operation === 'update' &&
+    doc.status === 'pending_approval' &&
+    previousDoc?.status !== 'pending_approval' &&
+    doc.sourceRequestId
+  ) {
+    try {
+      const targetId = isNaN(Number(doc.sourceRequestId))
+        ? doc.sourceRequestId
+        : Number(doc.sourceRequestId)
+
+      await req.payload.update({
+        collection: 'quotation-requests',
+        id: targetId,
+        data: { status: 'processing' },
+      })
+    } catch (err) {
+      console.error('Failed to update quotation-request status to processing:', err)
+    }
+  }
+  return doc
+},
       async ({ doc, previousDoc, operation, req }) => {
         // Trigger only when status changes TO 'order_confirmed'
         if (

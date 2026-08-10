@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 
-type NotificationItem = { id: string; customerName: string; createdAt: string }
+type NotificationItem = { id: string; message: string; link?: string; createdAt: string }
 
 const STORAGE_KEY = 'admin_notifications_last_seen'
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000
@@ -25,7 +25,7 @@ function timeAgo(iso: string): string {
   return `${days}d ago`
 }
 
-export default function NotificationBell() {
+export default function NotificationBell({ role }: { role: 'admin' | 'user' }) {
   const [count, setCount] = useState(0)
   const [items, setItems] = useState<NotificationItem[]>([])
   const [open, setOpen] = useState(false)
@@ -33,14 +33,43 @@ export default function NotificationBell() {
 
   async function fetchNotifications() {
     try {
-      const since = getLastSeen()
-      const res = await fetch(`/api/admin-notifications?since=${encodeURIComponent(since)}`, {
-        credentials: 'include',
-      })
-      if (!res.ok) return
-      const data = await res.json()
-      setCount(data.count || 0)
-      setItems(data.items || [])
+      if (role === 'admin') {
+        // Unchanged from before: admin sees new pending quotation requests
+        // site-wide via the existing endpoint.
+        const since = getLastSeen()
+        const res = await fetch(`/api/admin-notifications?since=${encodeURIComponent(since)}`, {
+          credentials: 'include',
+        })
+        if (!res.ok) return
+        const data = await res.json()
+        setCount(data.count || 0)
+        setItems(
+          (data.items || []).map((i: any) => ({
+            id: i.id,
+            message: `New request from ${i.customerName || 'a customer'}`,
+            link: '/admin-dashboard',
+            createdAt: i.createdAt,
+          }))
+        )
+      } else {
+        // Staff: pull their own assignment notifications from the new
+        // notifications collection.
+        const res = await fetch(
+          `/api/notifications?where[read][equals]=false&sort=-createdAt&limit=20`,
+          { credentials: 'include' }
+        )
+        if (!res.ok) return
+        const data = await res.json()
+        setCount(data.totalDocs || 0)
+        setItems(
+          (data.docs || []).map((d: any) => ({
+            id: d.id,
+            message: d.message,
+            link: d.link,
+            createdAt: d.createdAt,
+          }))
+        )
+      }
     } catch {
       // fail silently -- notifications are non-critical
     }
@@ -48,9 +77,9 @@ export default function NotificationBell() {
 
   useEffect(() => {
     fetchNotifications()
-    const interval = setInterval(fetchNotifications, 30000) // poll every 30s
+    const interval = setInterval(fetchNotifications, 30000)
     return () => clearInterval(interval)
-  }, [])
+  }, [role])
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -62,12 +91,27 @@ export default function NotificationBell() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [open])
 
-  function handleToggle() {
+  async function handleToggle() {
     const willOpen = !open
     setOpen(willOpen)
     if (willOpen) {
-      // Mark everything as seen right now -- badge clears immediately.
-      localStorage.setItem(STORAGE_KEY, new Date().toISOString())
+      if (role === 'admin') {
+        localStorage.setItem(STORAGE_KEY, new Date().toISOString())
+      } else {
+        // Mark staff notifications read server-side
+        try {
+          await Promise.all(
+            items.map((item) =>
+              fetch(`/api/notifications/${item.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ read: true }),
+              })
+            )
+          )
+        } catch {}
+      }
       setCount(0)
     }
   }
@@ -98,22 +142,20 @@ export default function NotificationBell() {
 
           {items.length === 0 ? (
             <p className="px-4 py-8 text-center text-[13px] text-[#01172f]/40 font-medium">
-              No new quotation requests.
+              {role === 'admin' ? 'No new quotation requests.' : 'No new assignments.'}
             </p>
           ) : (
             <div className="max-h-80 overflow-y-auto">
               {items.map((item) => (
                 <Link
                   key={item.id}
-                  href="/admin-dashboard"
+                  href={item.link || '/admin-dashboard'}
                   onClick={() => setOpen(false)}
                   className="flex items-center gap-3 px-4 py-3 border-b border-[#01172f]/5 hover:bg-[#f4f6f2] transition-colors"
                 >
                   <span className="w-2 h-2 rounded-full bg-[#149911] flex-shrink-0" />
                   <div className="min-w-0">
-                    <p className="text-[13px] font-bold text-[#01172f] truncate">
-                      New request from {item.customerName || 'a customer'}
-                    </p>
+                    <p className="text-[13px] font-bold text-[#01172f] truncate">{item.message}</p>
                     <p className="text-[11px] text-[#01172f]/40 font-medium">{timeAgo(item.createdAt)}</p>
                   </div>
                 </Link>
@@ -122,11 +164,11 @@ export default function NotificationBell() {
           )}
 
           <Link
-            href="/admin-dashboard?status=pending"
+            href={role === 'admin' ? '/admin-dashboard?status=pending' : '/admin-dashboard'}
             onClick={() => setOpen(false)}
             className="block px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-[#3D5F3B] hover:text-[#149911] transition-colors border-t border-[#01172f]/10"
           >
-            View All Pending
+            {role === 'admin' ? 'View All Pending' : 'View My RFQs'}
           </Link>
         </div>
       )}

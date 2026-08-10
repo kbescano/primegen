@@ -35,8 +35,60 @@ export function StepQuotation({ quotation, localOrder, request }: any) {
 }
 
 export function StepConfirmation({ quotation, isQuotationApprovedOrBeyond, handleTabChange, request }: any) {
+  const [confirmSendOpen, setConfirmSendOpen] = useState(false);
+  const [sendingQuote, setSendingQuote] = useState(false);
+
+  async function confirmQuoteSentAndProceed() {
+    setSendingQuote(true);
+    try {
+      await fetch(`/api/quotation-requests/${request.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'quote-sent' }),
+      });
+    } catch (e) {
+      console.error('Failed to update quotation-request status to quote-sent:', e);
+      // Non-blocking: still proceed to Step 3 even if this status update
+      // fails, so a transient network issue doesn't trap the admin here.
+    } finally {
+      setSendingQuote(false);
+      setConfirmSendOpen(false);
+      handleTabChange("supplierPO");
+    }
+  }
+
   return (
     <TabSection title="Step 2: Quotation Approval">
+      {confirmSendOpen && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white max-w-md w-full p-6 rounded-2xl shadow-[0_30px_80px_-20px_rgba(1,23,47,0.35)]">
+            <div className="w-8 h-[3px] bg-[#149911] mb-3" />
+            <h2 className="text-[15px] font-semibold tracking-tight text-gray-900 mb-1.5">
+              Confirm Quotation Sent
+            </h2>
+            <p className="text-[13px] text-gray-500 leading-relaxed mb-6">
+              Has this quotation actually been sent to and accepted by the client? This will mark the request as <strong className="text-gray-700">Quote Sent</strong> and unlock Step 3 (Create PO).
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmSendOpen(false)}
+                disabled={sendingQuote}
+                className="flex-1 py-2.5 rounded-full text-[13px] font-medium border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors focus:outline-none disabled:opacity-50"
+              >
+                Not Yet
+              </button>
+              <button
+                onClick={confirmQuoteSentAndProceed}
+                disabled={sendingQuote}
+                className="flex-1 py-2.5 rounded-full text-[13px] font-medium bg-[#149911] text-white hover:bg-[#103900] transition-colors focus:outline-none disabled:opacity-50 shadow-sm"
+              >
+                {sendingQuote ? 'Confirming...' : 'Yes, Proceed to Step 3'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {!quotation ? (
         <EmptyStep text="Waiting on Step 1: create a quotation first." />
       ) : (
@@ -47,7 +99,7 @@ export function StepConfirmation({ quotation, isQuotationApprovedOrBeyond, handl
             {isQuotationApprovedOrBeyond ? (
               <div className="flex flex-col items-start gap-3">
                 <p className="text-[13px] font-medium text-gray-900 leading-relaxed">
-                  <strong className="text-[#149911] mr-1">Approved!</strong> The client has accepted this quotation. You can now print the formal document and proceed to confirm the internal order.
+                  <strong className="text-[#149911] mr-1">Approved!</strong> The admin has accepted this quotation. You can now print the formal document and proceed to confirm the internal order.
                 </p>
                 <Link
                   href={`/admin-dashboard/client-quotation?id=${quotation.id}&pipelineId=${request.id}`}
@@ -78,8 +130,11 @@ export function StepConfirmation({ quotation, isQuotationApprovedOrBeyond, handl
           </div>
           {isQuotationApprovedOrBeyond && (
             <div className="border-t border-gray-100 pt-5 mt-2 flex justify-start">
+              {/* Opens the confirmation modal instead of navigating directly --
+                  this is the only path into Step 3, so Step 3 can never be
+                  reached without this confirmation firing first. */}
               <button
-                onClick={() => handleTabChange("supplierPO")}
+                onClick={() => setConfirmSendOpen(true)}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[11px] font-medium shadow-sm"
               >
                 Next Step: Confirm Order & Create PO &rarr;
