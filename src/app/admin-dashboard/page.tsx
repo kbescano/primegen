@@ -230,7 +230,7 @@ export default async function QuotationInboxPage({
   const filterPills = [{ value: "", label: "All" }, ...STATUS_OPTIONS];
 
   return (
-    <div className="w-full max-w-[1000px] mx-auto py-6 px-4 sm:px-6 overflow-x-hidden">
+    <div className="w-full max-w-[1000px] mx-auto py-6 overflow-x-hidden">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
         <div className="w-full">
