@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import { useEffect, useMemo, useState } from 'react'
 import SupplierPickerModal from '@/components/SupplierPickerModal'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
 type LineItem = {
   description: string
@@ -54,23 +54,24 @@ const TERMS = [
   'This PO and these Terms constitute the entire agreement between Buyer and Seller and supersede all prior communications.',
 ]
 
-// Accurately finds the true Pipeline ID by tracing the database relationships 
-// (Order -> Quotation -> Pipeline/Request)
 async function getDeepPipelineId(oid: string): Promise<string | undefined> {
   try {
-    const oRes = await fetch(`/api/orders/${oid}`, { credentials: 'include' })
+    const oRes = await fetch(`/api/orders/${oid}?depth=0`, { credentials: 'include' })
     if (!oRes.ok) return undefined
     const oData = await oRes.json()
 
-    const qId = oData?.sourceQuotationId
+    const qId = typeof oData?.sourceQuotationId === 'object' ? oData.sourceQuotationId?.id : oData?.sourceQuotationId
     if (!qId) return undefined
 
-    const qRes = await fetch(`/api/client-quotations/${qId}`, { credentials: 'include' })
+    const qRes = await fetch(`/api/client-quotations/${qId}?depth=0`, { credentials: 'include' })
     if (!qRes.ok) return undefined
     const qData = await qRes.json()
-    const reqId = qData?.sourceRequestId
+    
+    const reqId = typeof qData?.sourceRequestId === 'object' ? qData.sourceRequestId?.id : qData?.sourceRequestId
     if (reqId) return String(reqId)
-  } catch (e) {}
+  } catch (e) {
+    console.error("Failed resolving Deep Pipeline ID", e)
+  }
   return undefined
 }
 
@@ -88,6 +89,8 @@ export default function SupplierPOGenerator({
   orderSalesPerson?: string
 }) {
   const router = useRouter() 
+  const searchParams = useSearchParams()
+  
   const [poNumber, setPoNumber] = useState(initial?.poNumber ?? '')
   const [poDate, setPoDate] = useState(initial?.poDate ?? new Date().toISOString().slice(0, 10))
   const [supplierName, setSupplierName] = useState(initial?.supplierName ?? '')
@@ -112,7 +115,6 @@ export default function SupplierPOGenerator({
   const [isPrintMode, setIsPrintMode] = useState(false)
   const [isFulfilled, setIsFulfilled] = useState(initial?.status === 'fulfilled')
 
-  // Fetch true PO status on load to auto-lock the form if it was already fulfilled
   useEffect(() => {
     if (initial?.id && initial?.status !== 'fulfilled') {
       fetch(`/api/supplier-purchase-orders/${initial.id}`)
@@ -126,23 +128,16 @@ export default function SupplierPOGenerator({
     }
   }, [initial?.id, initial?.status])
 
-  // STRICT ROUTING FIX: Rely solely on the actual Order ID to lookup the correct Pipeline.
   useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    const urlParams = new URLSearchParams(window.location.search)
-    
-    // Check if user came explicitly with pipeline/order context in the URL search params
-    const hasParamContext = urlParams.has('orderId') || urlParams.has('requestId') || urlParams.has('pipelineId') || urlParams.has('from')
+    const hasParamContext = searchParams.has('orderId') || searchParams.has('requestId') || searchParams.has('pipelineId') || searchParams.has('from')
     setHasUrlContext(hasParamContext)
 
-    // Auto-lock the form if opened from Step 4
-    if (urlParams.get('mode') === 'print') {
+    if (searchParams.get('mode') === 'print') {
       setIsPrintMode(true)
     }
 
-    const uOrderId = urlParams.get('orderId') || initial?.sourceOrderId
-    const uReqId = urlParams.get('pipelineId') || urlParams.get('requestId') || initial?.sourceRequestId
+    const uOrderId = searchParams.get('orderId') || initial?.sourceOrderId
+    const uReqId = searchParams.get('pipelineId') || searchParams.get('requestId') || initial?.sourceRequestId
 
     if (uReqId) {
       setPipelineId(String(uReqId))
@@ -156,9 +151,8 @@ export default function SupplierPOGenerator({
         }
       })
     }
-  }, [initial])
+  }, [initial, searchParams])
 
-  // Computed Lock State: Lock if explicitly instructed via URL (print mode) OR if the PO is already fulfilled
   const isLocked = isPrintMode || isFulfilled
 
   const subtotal = useMemo(() => items.reduce((sum, i) => sum + i.qty * i.unitPrice, 0), [items])
@@ -242,15 +236,16 @@ export default function SupplierPOGenerator({
   async function savePO() {
     setSaving('saving')
     try {
-      const targetOrderId = initial?.sourceOrderId || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('orderId') : null)
+      const targetOrderId = initial?.sourceOrderId || searchParams.get('orderId')
       let finalPipelineId = pipelineId
 
       if (!finalPipelineId && targetOrderId) {
-        finalPipelineId = await getDeepPipelineId(targetOrderId)
+        finalPipelineId = await getDeepPipelineId(String(targetOrderId))
       }
 
       const url = isEditing ? `/api/supplier-purchase-orders/${initial?.id}` : '/api/supplier-purchase-orders'
       const method = isEditing ? 'PATCH' : 'POST'
+      
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
@@ -282,14 +277,45 @@ export default function SupplierPOGenerator({
       const saved = await res.json()
       setPoNumber(saved.doc.poNumber)
       await upsertSupplierRecord()
-      setSaving('saved')
-      
-      router.refresh()
 
+      // CRITICAL FIX: Bulletproof Auto-Assign for "One Single Supplier"
+      if (!isEditing && targetOrderId && saved.doc?.id) {
+        // Force Next.js to fetch the absolute latest order state by skipping cache
+        const orderRes = await fetch(`/api/orders/${targetOrderId}?depth=0`, { 
+          credentials: 'include',
+          cache: 'no-store'
+        })
+        
+        if (orderRes.ok) {
+          const orderData = await orderRes.json()
+          
+          // Since the user selected "One Single Supplier", explicitly assign ALL order items to this new PO.
+          const updatedItems = (orderData.items || []).map((item: any) => ({
+            ...item,
+            assignedPOId: String(saved.doc.id)
+          }))
+
+          const patchRes = await fetch(`/api/orders/${targetOrderId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ items: updatedItems })
+          })
+          
+          if (!patchRes.ok) {
+            console.error("Auto-assign failed in Payload CMS")
+          }
+        }
+      }
+
+      setSaving('saved')
+
+      // CRITICAL FIX: Use window.location.href to force the browser to reload the page.
+      // This entirely bypasses Next.js's route cache and guarantees the Pipeline UI is 100% fresh.
       if (hasUrlContext && finalPipelineId && finalPipelineId !== 'undefined' && finalPipelineId !== 'null') { 
-        router.push(`/admin-dashboard/pipeline/${finalPipelineId}?step=supplierPO`)
+        window.location.href = `/admin-dashboard/pipeline/${finalPipelineId}?step=supplierPO`
       } else {
-        router.push('/admin-dashboard/supplier-po') 
+        window.location.href = '/admin-dashboard/supplier-po'
       }
       
     } catch (err: any) {
@@ -362,11 +388,11 @@ export default function SupplierPOGenerator({
             <button
               onClick={(e) => {
                 e.preventDefault()
-                // Only route back to pipeline if explicit URL context exists
+                // Also hard-reload on the back button to be safe
                 if (hasUrlContext && pipelineId && pipelineId !== 'undefined' && pipelineId !== 'null') {
-                  router.push(`/admin-dashboard/pipeline/${pipelineId}?step=${isLocked ? 'fulfilled' : 'supplierPO'}`)
+                  window.location.href = `/admin-dashboard/pipeline/${pipelineId}?step=${isLocked ? 'fulfilled' : 'supplierPO'}`
                 } else {
-                  router.push('/admin-dashboard/supplier-po')
+                  window.location.href = '/admin-dashboard/supplier-po'
                 }
               }}
               className="inline-flex items-center gap-1.5 text-[12px] font-medium text-gray-400 hover:text-gray-900 transition-colors mb-6 focus:outline-none"
@@ -557,7 +583,6 @@ export default function SupplierPOGenerator({
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3 mb-8 w-full">
-          {/* Hide Save Purchase Order button if locked/fulfilled/print mode */}
           {!isLocked && (
             <button
               onClick={() => {
@@ -581,7 +606,6 @@ export default function SupplierPOGenerator({
           <button
             type="button"
             onClick={async () => {
-              // Auto-update status to "Issued" when printed ONLY if not already fulfilled
               if (initial?.id && isPrintMode && !isFulfilled) {
                 try {
                   await fetch(`/api/supplier-purchase-orders/${initial.id}`, {
@@ -601,8 +625,8 @@ export default function SupplierPOGenerator({
         </div>
         
         {saving === 'error' && (
-          <p className="text-[13px] font-medium text-red-500 mb-8">
-            Save failed: {saveErrorDetail || "Please try again."}
+          <p className="text-[13px] font-medium text-red-500 mb-8 bg-red-50 border border-red-100 p-4 rounded-xl">
+            {saveErrorDetail || "Save failed. Please try again."}
           </p>
         )}
 

@@ -54,9 +54,14 @@ export default async function PipelinePage({ params }: { params: Promise<{ id: s
     linkedPOs = posRes.docs
   }
 
-  // Strict completion checks
-  const isQuotationApproved = Boolean(
-    quotation && (['quotation_approved', 'order_confirmed'].includes(quotation.status || '') || Boolean(order))
+  // Gate for unlocking Step 3 and beyond is purely: did the Step 2
+  // "Confirm Quotation Sent" modal actually fire? Quotation approval
+  // status (quotation_approved) no longer factors into this gate on its
+  // own -- an admin approving the quotation elsewhere in the app must not
+  // silently unlock later steps without the explicit Step 2 click. Once
+  // an order exists, that's unambiguous proof the whole flow completed.
+  const isStepTwoConfirmed = Boolean(
+    ['quote-sent', 'completed'].includes(request.status || '') || order
   )
   
   // STRICT FIX: The item must have an assignedPOId AND that PO must actively exist in linkedPOs
@@ -80,10 +85,10 @@ export default async function PipelinePage({ params }: { params: Promise<{ id: s
   // Step key completion mapping
   const completedSteps: Record<StepKey, boolean> = {
     quotation: Boolean(quotation),
-    confirmation: isQuotationApproved,
-    supplierPO: isQuotationApproved && allItemsAssigned && linkedPOs.length > 0,
-    fulfilled: isQuotationApproved && allItemsAssigned && allPOsFulfilled,
-    delivery: isQuotationApproved && allItemsAssigned && allPOsFulfilled && isDeliveredAndPaid,
+    confirmation: isStepTwoConfirmed,
+    supplierPO: isStepTwoConfirmed && allItemsAssigned && linkedPOs.length > 0,
+    fulfilled: isStepTwoConfirmed && allItemsAssigned && allPOsFulfilled,
+    delivery: isStepTwoConfirmed && allItemsAssigned && allPOsFulfilled && isDeliveredAndPaid,
     closed: request.status === 'completed',
   }
 
@@ -98,8 +103,6 @@ export default async function PipelinePage({ params }: { params: Promise<{ id: s
   const currentStep: StepKey = stepOrder.find((s) => !completedSteps[s]) || 'closed'
 
   // --- FORMAT LINE ITEMS FOR PIPELINE STEPPER ---
-  // We safely concatenate the sizeDescription into the main name/description fields here.
-  // PipelineStepper will automatically render the concatenated text without needing UI updates.
   const displayRequest = request ? {
     ...request,
     items: Array.isArray(request.items) ? request.items.map((item: any) => ({

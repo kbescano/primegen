@@ -11,7 +11,7 @@ type OrderItem = {
   description: string
   qty: number
   unit: string
-  assignedPOId?: string
+  assignedPOId?: string | any // Updated to accept Payload's populated objects
 }
 
 type LinkedPO = {
@@ -53,6 +53,13 @@ function isPOComplete(po: LinkedPO): boolean {
   )
 }
 
+// 🛠️ CRITICAL FIX: Safely extract the ID whether Payload sends a string or a populated object
+function extractId(val: any): string | undefined {
+  if (!val) return undefined
+  if (typeof val === 'object' && val !== null) return String(val.id)
+  return String(val)
+}
+
 export default function OrderSupplierSection({
   orderId,
   items,
@@ -69,12 +76,14 @@ export default function OrderSupplierSection({
   const [assignModalOpen, setAssignModalOpen] = useState(false)
   const [mergeModalOpen, setMergeModalOpen] = useState(false)
 
-  const hasUnassigned = items.some((i) => !i.assignedPOId)
+  // Use the helper to check for unassigned items safely
+  const hasUnassigned = items.some((i) => !extractId(i.assignedPOId))
   
   // ============================================================================
   // STRICT FILTER: Only get POs that are currently assigned to at least one item
   // ============================================================================
-  const assignedPOIds = new Set(items.map((i) => i.assignedPOId).filter(Boolean))
+  // Safely extract all IDs so Set matching works perfectly
+  const assignedPOIds = new Set(items.map((i) => extractId(i.assignedPOId)).filter(Boolean))
   const activePOs = linkedPOs.filter((po) => assignedPOIds.has(String(po.id)))
   
   // If there is only 1 ACTIVE PO overall, we only show the PO controls on the 1st row.
@@ -133,7 +142,9 @@ export default function OrderSupplierSection({
         <div className="flex flex-col gap-3">
           {/* Mapping loop putting Items and POs directly inline on the same row */}
           {items.map((item, i) => {
-            const po = item.assignedPOId ? poById[item.assignedPOId] : undefined
+            // Safely grab the string ID before looking it up in the dictionary
+            const poIdStr = extractId(item.assignedPOId)
+            const po = poIdStr ? poById[poIdStr] : undefined
             
             // Logic: If Single PO, only show controls on the 1st row. If Multiple POs, show on every row.
             const showPOControls = po ? (isSinglePO ? !renderedPOs.has(String(po.id)) : true) : false

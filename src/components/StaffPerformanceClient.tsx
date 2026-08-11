@@ -24,6 +24,19 @@ const STATUS_COLORS: Record<string, string> = {
   rejected: "#dc2626",
 };
 
+// Helper for dynamic badge colors
+function getStatusBadgeStyle(val: string) {
+  if (!val || val === "—") return "bg-gray-100 text-gray-500";
+  const lower = val.toLowerCase();
+  if (lower === "paid" || lower === "delivered" || lower === "fulfilled") {
+    return "bg-[#149911]/10 text-[#149911]";
+  }
+  if (lower === "pending" || lower === "processing" || lower === "unpaid") {
+    return "bg-amber-50 text-amber-600";
+  }
+  return "bg-gray-100 text-gray-600";
+}
+
 type TableRow = {
   reqId: string;
   isFirstOfRequest: boolean;
@@ -34,6 +47,9 @@ type TableRow = {
   contact?: string;
   assignedStaff?: string;
   status?: string;
+  paymentStatus?: string;
+  paymentMethod?: string;
+  fulfillmentStatus?: string;
   pipelineHref?: string;
   quoteId?: string | null;
   orderId?: string | null;
@@ -180,9 +196,15 @@ export default function StaffPerformanceClient({
         }
       }
 
+      // Populate tracking fields (using standard Payload property names for Orders)
+      const paymentStatus = linkedOrder?.paymentStatus || "—";
+      const paymentMethod = linkedOrder?.paymentMethod || linkedOrder?.modeOfPayment || "—";
+      const fulfillmentStatus = linkedOrder?.fulfillmentStatus || "—";
+
       const baseMeta = {
         reqId: safeReqId, reqDate, customerName: req.customerName || "Unnamed Client", company: req.company || "",
         contact: req?.email ? `${req.email} | ${req.phone}` : req.phone || "", assignedStaff: assignedStaffName, status: req.status,
+        paymentStatus, paymentMethod, fulfillmentStatus,
         pipelineHref: `/admin-dashboard/pipeline/${safeReqId}`, quoteId: safeQuoteId, orderId: safeOrderId,
       };
 
@@ -235,7 +257,7 @@ export default function StaffPerformanceClient({
   const tdClass = "px-2.5 py-3 border border-gray-200 align-top text-[10px] break-words";
 
   return (
-    <div className="max-w-[1100px] mx-auto py-6 sm:py-10 lg:px-4 sm:px-0 font-sans text-gray-800">
+    <div className="w-full max-w-[1400px] mx-auto py-6 sm:py-10 lg:px-4 sm:px-0 font-sans text-gray-800 overflow-x-hidden">
       
       {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
@@ -413,8 +435,8 @@ export default function StaffPerformanceClient({
             </span>
           </div>
           
-          {/* --- MOBILE CARD VIEW (No Carousel) --- */}
-          <div className="block lg:hidden w-full flex-col">
+          {/* --- MOBILE CARD VIEW --- */}
+          <div className="block xl:hidden w-full flex-col">
             {tableRows.length === 0 ? (
               <div className="px-5 py-8 text-center text-gray-400 italic text-[11px]">
                 No requests found matching criteria.
@@ -441,11 +463,30 @@ export default function StaffPerformanceClient({
                         <div className="font-bold text-[#01172f] text-[13px] leading-tight mb-1">{row.customerName}</div>
                         {row.company && <div className="text-[11px] text-gray-500 leading-tight mb-1">{row.company}</div>}
                         <div className="text-[11px] text-gray-500 mb-2">{row.contact || "\u2014"}</div>
-                        <div className="text-[11px] pt-2 border-t border-gray-200 flex items-center justify-between">
-                          <span className="text-gray-400">Assigned Rep:</span>
-                          <span className={row.assignedStaff === "Unassigned" ? "text-amber-600 font-semibold italic" : "text-[#01172f] font-medium"}>
-                            {row.assignedStaff}
-                          </span>
+                        
+                        <div className="text-[11px] pt-3 mt-3 border-t border-gray-200 grid grid-cols-2 gap-3">
+                          <div>
+                            <span className="text-gray-400 block text-[9px] uppercase tracking-wider font-semibold">Rep</span>
+                            <span className={row.assignedStaff === "Unassigned" ? "text-amber-600 font-semibold italic" : "text-[#01172f] font-medium"}>
+                              {row.assignedStaff}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block text-[9px] uppercase tracking-wider font-semibold">Pay Mode</span>
+                            <span className="font-medium text-[#01172f] capitalize">{row.paymentMethod}</span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block text-[9px] uppercase tracking-wider font-semibold mb-1">Pay Status</span>
+                            <span className={`inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getStatusBadgeStyle(row.paymentStatus || "")}`}>
+                              {row.paymentStatus}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-gray-400 block text-[9px] uppercase tracking-wider font-semibold mb-1">Shipping</span>
+                            <span className={`inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getStatusBadgeStyle(row.fulfillmentStatus || "")}`}>
+                              {row.fulfillmentStatus}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -480,25 +521,28 @@ export default function StaffPerformanceClient({
             )}
           </div>
 
-          {/* --- DESKTOP SPREADSHEET VIEW (Unchanged) --- */}
-          <div className="hidden lg:block w-full overflow-x-auto">
-            <table className="w-full min-w-[900px] table-fixed border-collapse text-left break-words">
+          {/* --- DESKTOP SPREADSHEET VIEW (Overflow Hidden, No Horizontal Scroll) --- */}
+          <div className="hidden xl:block w-full overflow-hidden">
+            <table className="w-full table-fixed border-collapse text-left break-words">
               <thead>
                 <tr>
-                  <th className={`${thClass} w-[9%]`}>ID & Date</th>
-                  <th className={`${thClass} w-[15%]`}>Client</th>
-                  <th className={`${thClass} w-[13%]`}>Contact</th>
-                  <th className={`${thClass} w-[10%]`}>Rep</th>
-                  <th className={`${thClass} w-[9%]`}>Status</th>
-                  <th className={`${thClass} w-[19%]`}>PO / Supplier</th>
-                  <th className={`${thClass} w-[15%]`}>Item</th>
+                  <th className={`${thClass} w-[8%]`}>ID & Date</th>
+                  <th className={`${thClass} w-[12%]`}>Client</th>
+                  <th className={`${thClass} w-[9%]`}>Contact</th>
+                  <th className={`${thClass} w-[8%]`}>Rep</th>
+                  <th className={`${thClass} w-[8%]`}>Status</th>
+                  <th className={`${thClass} w-[7%]`}>Pay Mode</th>
+                  <th className={`${thClass} w-[7%]`}>Pay Status</th>
+                  <th className={`${thClass} w-[8%]`}>Shipping</th>
+                  <th className={`${thClass} w-[14%]`}>PO / Supplier</th>
+                  <th className={`${thClass} w-[14%]`}>Item</th>
                   <th className={`${thClass} w-[5%]`}>Qty</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
                 {tableRows.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="px-5 py-8 text-center text-gray-400 italic text-[11px]">
+                    <td colSpan={11} className="px-5 py-8 text-center text-gray-400 italic text-[11px]">
                       No requests found matching criteria.
                     </td>
                   </tr>
@@ -526,6 +570,19 @@ export default function StaffPerformanceClient({
                             <td className={tdClass} rowSpan={row.rowSpan}>
                               <span className="inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ backgroundColor: `${STATUS_COLORS[row.status || ""] || "#94a3b8"}1a`, color: STATUS_COLORS[row.status || ""] || "#64748b" }}>
                                 {STATUS_LABELS[row.status || ""] || row.status}
+                              </span>
+                            </td>
+                            <td className={`${tdClass} font-medium text-[#01172f] capitalize`} rowSpan={row.rowSpan}>
+                              {row.paymentMethod}
+                            </td>
+                            <td className={tdClass} rowSpan={row.rowSpan}>
+                              <span className={`inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getStatusBadgeStyle(row.paymentStatus || "")}`}>
+                                {row.paymentStatus}
+                              </span>
+                            </td>
+                            <td className={tdClass} rowSpan={row.rowSpan}>
+                              <span className={`inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getStatusBadgeStyle(row.fulfillmentStatus || "")}`}>
+                                {row.fulfillmentStatus}
                               </span>
                             </td>
                           </>

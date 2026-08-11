@@ -153,7 +153,7 @@ export default async function StaffPerformancePage({
       ...(o as any),
       items: Array.isArray((o as any).items) ? (o as any).items.map((item: any) => ({
         ...item,
-        description: item.sizeDescription ? `${item.description} - ${item.sizeDescription}` : item.description
+        description: item.sizeDescription ? `${item.description}` : item.description
       })) : []
     };
   }
