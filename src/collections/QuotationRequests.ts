@@ -25,7 +25,6 @@ export const QuotationRequests: CollectionConfig = {
   },
   hooks: {
     afterChange: [
-      // New RFQ submitted -> notify every admin
       async ({ doc, operation, req }) => {
         if (operation !== 'create') return doc
         try {
@@ -52,7 +51,6 @@ export const QuotationRequests: CollectionConfig = {
         }
         return doc
       },
-      // RFQ assigned to a staff member -> notify that staff member
       async ({ doc, previousDoc, operation, req }) => {
         if (operation === 'update') {
           const currentStaffId = doc.assignedTo && typeof doc.assignedTo === 'object' ? doc.assignedTo.id : doc.assignedTo;
@@ -80,9 +78,6 @@ export const QuotationRequests: CollectionConfig = {
         }
         return doc
       },
-      // Status changed (by anyone, typically staff working their assigned
-      // RFQ) -> notify every admin, so they have visibility into staff
-      // progress without needing to check the inbox manually.
       async ({ doc, previousDoc, operation, req }) => {
         if (
           operation === 'update' &&
@@ -155,10 +150,12 @@ export const QuotationRequests: CollectionConfig = {
     {
       name: 'source',
       type: 'select',
+      required: true, // Explicitly required
       defaultValue: 'website',
       options: [
-        { label: 'Website form', value: 'website' },
-        { label: 'Facebook ad', value: 'facebook-ad' },
+        { label: 'Website', value: 'website' },
+        { label: 'Facebook', value: 'facebook' },
+        { label: 'Google', value: 'google' },
         { label: 'Other', value: 'other' },
       ],
     },

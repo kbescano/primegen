@@ -172,6 +172,7 @@ export default async function StaffPerformancePage({
 
   return (
     <StaffPerformanceClient
+      currentUserRole={user?.role}
       initialStaff={initialStaff}
       initialStatus={initialStatus}
       granularity={effectiveGranularity}

@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useTransition } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import DateGranularityFilter from "@/components/DateGranularityFilter";
 import CreateRFQModal from "@/components/CreateRFQModal";
 
@@ -24,7 +24,6 @@ const STATUS_COLORS: Record<string, string> = {
   rejected: "#dc2626",
 };
 
-// Helper for dynamic badge colors
 function getStatusBadgeStyle(val: string) {
   if (!val || val === "—") return "bg-gray-100 text-gray-500";
   const lower = val.toLowerCase();
@@ -37,15 +36,26 @@ function getStatusBadgeStyle(val: string) {
   return "bg-gray-100 text-gray-600";
 }
 
+function getSourceBadgeStyle(val: string) {
+  if (!val) return "bg-gray-100 text-gray-500";
+  const lower = val.toLowerCase();
+  if (lower.includes("facebook")) return "bg-blue-50 text-blue-600";
+  if (lower.includes("google")) return "bg-red-50 text-red-600";
+  if (lower.includes("website")) return "bg-gray-100 text-gray-600";
+  return "bg-gray-100 text-gray-600";
+}
+
 type TableRow = {
   reqId: string;
   isFirstOfRequest: boolean;
   rowSpan: number;
   reqDate?: string;
+  source?: string;
   customerName?: string;
   company?: string;
   contact?: string;
   assignedStaff?: string;
+  assignedStaffId?: string;
   status?: string;
   paymentStatus?: string;
   paymentMethod?: string;
@@ -63,6 +73,7 @@ type TableRow = {
 };
 
 export default function StaffPerformanceClient({
+  currentUserRole,
   initialStaff,
   initialStatus,
   granularity,
@@ -74,6 +85,7 @@ export default function StaffPerformanceClient({
   orderByQuotationId,
   posByOrderId,
 }: {
+  currentUserRole: string;
   initialStaff?: string;
   initialStatus?: string;
   granularity: string;
@@ -85,14 +97,15 @@ export default function StaffPerformanceClient({
   orderByQuotationId: Record<string, any>;
   posByOrderId: Record<string, any[]>;
 }) {
+  const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
   const [activeStaff, setActiveStaff] = useState<string | undefined>(initialStaff);
   const [activeStatus, setActiveStatus] = useState<string | undefined>(initialStatus);
+  const [updatingReqId, setUpdatingReqId] = useState<string | null>(null);
 
-  // Sync state if user uses browser Back/Forward navigation
   useEffect(() => {
     setActiveStaff(searchParams.get("staff") || undefined);
     setActiveStatus(searchParams.get("status") || undefined);
@@ -114,7 +127,24 @@ export default function StaffPerformanceClient({
     startTransition(() => setActiveStatus(status));
   };
 
-  // Process and shape all data instantly on the client whenever filters change
+  async function handleAssignStaff(reqId: string, newStaffId: string) {
+    setUpdatingReqId(reqId);
+    try {
+      const res = await fetch(`/api/quotation-requests/${reqId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assignedTo: newStaffId || null }),
+      });
+      if (res.ok) {
+        router.refresh();
+      }
+    } catch (e) {
+      console.error("Failed to assign staff", e);
+    } finally {
+      setUpdatingReqId(null);
+    }
+  }
+
   const {
     filteredRequests,
     staffRows,
@@ -128,7 +158,6 @@ export default function StaffPerformanceClient({
     const filtered = requests.filter((r) => {
       let pass = true;
       if (activeStaff) {
-        // String conversion handles payload DB ID mismatches automatically
         const assignedId = r.assignedTo ? String(typeof r.assignedTo === "object" ? r.assignedTo.id : r.assignedTo) : null;
         if (assignedId !== activeStaff) pass = false;
       }
@@ -171,8 +200,12 @@ export default function StaffPerformanceClient({
     const computedTableRows: TableRow[] = [];
     for (const req of filtered) {
       const assignedStaffName = req.assignedTo ? (typeof req.assignedTo === "object" ? req.assignedTo.name || req.assignedTo.email : req.assignedTo) : "Unassigned";
+      const assignedStaffId = req.assignedTo ? (typeof req.assignedTo === "object" ? String(req.assignedTo.id) : String(req.assignedTo)) : "";
+      
       const reqDate = new Date(req.createdAt).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
       const safeReqId = String(req.id || "");
+      const safeSource = String(req.source || "website").replace("-", " ");
+      
       const linkedQuotation = quotationByRequestId[safeReqId] || null;
       const safeQuoteId = linkedQuotation ? String(linkedQuotation.id) : null;
       const linkedOrder = safeQuoteId ? orderByQuotationId[safeQuoteId] || null : null;
@@ -196,14 +229,13 @@ export default function StaffPerformanceClient({
         }
       }
 
-      // Populate tracking fields (using standard Payload property names for Orders)
       const paymentStatus = linkedOrder?.paymentStatus || "—";
       const paymentMethod = linkedOrder?.paymentMethod || linkedOrder?.modeOfPayment || "—";
       const fulfillmentStatus = linkedOrder?.fulfillmentStatus || "—";
 
       const baseMeta = {
-        reqId: safeReqId, reqDate, customerName: req.customerName || "Unnamed Client", company: req.company || "",
-        contact: req?.email ? `${req.email} | ${req.phone}` : req.phone || "", assignedStaff: assignedStaffName, status: req.status,
+        reqId: safeReqId, reqDate, source: safeSource, customerName: req.customerName || "Unnamed Client", company: req.company || "",
+        contact: req?.email ? `${req.email} | ${req.phone}` : req.phone || "", assignedStaff: assignedStaffName, assignedStaffId, status: req.status,
         paymentStatus, paymentMethod, fulfillmentStatus,
         pipelineHref: `/admin-dashboard/pipeline/${safeReqId}`, quoteId: safeQuoteId, orderId: safeOrderId,
       };
@@ -253,6 +285,8 @@ export default function StaffPerformanceClient({
     return { filteredRequests: filtered, staffRows: computedStaffRows, unassignedCount: unassigned, overallCounts: computedOverallCounts, overallTotal: computedOverallTotal, overallCompletionRate: computedOverallCompletionRate, tableRows: computedTableRows };
   }, [requests, activeStaff, activeStatus, staffList, quotationByRequestId, orderByQuotationId, posByOrderId]);
 
+  const canAssignStaff = currentUserRole === "admin" || currentUserRole === "marketing";
+
   const thClass = "bg-[#01172f] text-white text-[9px] font-bold uppercase tracking-widest px-2.5 py-2.5 text-left border-r border-[#1a2d42] last:border-0";
   const tdClass = "px-2.5 py-3 border border-gray-200 align-top text-[10px] break-words";
 
@@ -281,7 +315,6 @@ export default function StaffPerformanceClient({
 
       {/* Minimalist Filter Section */}
       <div className="flex flex-col gap-5 mb-12">
-        {/* Staff Filter */}
         <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-6">
           <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 w-20 shrink-0">
             Staff
@@ -309,7 +342,6 @@ export default function StaffPerformanceClient({
           </div>
         </div>
 
-        {/* Status Filter */}
         <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-6">
           <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 w-20 shrink-0">
             Status
@@ -337,7 +369,6 @@ export default function StaffPerformanceClient({
           </div>
         </div>
 
-        {/* Date Range Filter */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
           <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 w-20 shrink-0">
             Date
@@ -348,10 +379,8 @@ export default function StaffPerformanceClient({
 
       <div className={`transition-opacity duration-300 ${isPending ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
         
-        {/* Summary Cards Layout (Staff vs Overall) */}
+        {/* Summary Cards Layout */}
         <div className="flex flex-col lg:flex-row gap-8 mb-16 items-start">
-          
-          {/* Staff Overview (Left Side) */}
           <div className="flex-1 w-full">
             <h2 className="text-[12px] font-semibold tracking-widest text-gray-400 uppercase mb-5">Staff Overview</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -390,7 +419,6 @@ export default function StaffPerformanceClient({
             </div>
           </div>
 
-          {/* Overall Overview (Right Side) */}
           <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0">
             <h2 className="text-[12px] font-semibold tracking-widest text-gray-400 uppercase mb-5">Overall Overview</h2>
             <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
@@ -424,7 +452,6 @@ export default function StaffPerformanceClient({
               </div>
             </div>
           </div>
-
         </div>
 
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
@@ -452,7 +479,12 @@ export default function StaffPerformanceClient({
                       <div className="flex justify-between items-start">
                         <div>
                           <div className="font-mono font-bold text-[#01172f] text-sm leading-none">{row.reqId.substring(0, 8).toUpperCase()}</div>
-                          <div className="text-gray-500 text-[10px] mt-1">{row.reqDate}</div>
+                          <div className="flex items-center gap-2 text-gray-500 text-[10px] mt-1">
+                            {row.reqDate}
+                            <span className={`inline-block text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getSourceBadgeStyle(row.source || "")}`}>
+                              {row.source}
+                            </span>
+                          </div>
                         </div>
                         <span className="inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded" style={{ backgroundColor: `${STATUS_COLORS[row.status || ""] || "#94a3b8"}1a`, color: STATUS_COLORS[row.status || ""] || "#64748b" }}>
                           {STATUS_LABELS[row.status || ""] || row.status}
@@ -466,10 +498,24 @@ export default function StaffPerformanceClient({
                         
                         <div className="text-[11px] pt-3 mt-3 border-t border-gray-200 grid grid-cols-2 gap-3">
                           <div>
-                            <span className="text-gray-400 block text-[9px] uppercase tracking-wider font-semibold">Rep</span>
-                            <span className={row.assignedStaff === "Unassigned" ? "text-amber-600 font-semibold italic" : "text-[#01172f] font-medium"}>
-                              {row.assignedStaff}
-                            </span>
+                            <span className="text-gray-400 block text-[9px] uppercase tracking-wider font-semibold mb-1">Rep</span>
+                            {canAssignStaff ? (
+                              <select
+                                value={row.assignedStaffId || ""}
+                                onChange={(e) => handleAssignStaff(row.reqId, e.target.value)}
+                                disabled={updatingReqId === row.reqId}
+                                className={`w-[90%] bg-transparent border-b ${row.assignedStaffId ? 'border-transparent text-[#01172f]' : 'border-amber-300 text-amber-600'} hover:border-gray-300 focus:border-[#149911] focus:outline-none text-[11px] font-medium py-0.5 transition-colors cursor-pointer disabled:opacity-50 appearance-none`}
+                              >
+                                <option value="" disabled>Unassigned</option>
+                                {staffList.map((s: any) => (
+                                  <option key={s.id} value={s.id} className="text-[#01172f]">{s.name || s.email}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className={row.assignedStaff === "Unassigned" ? "text-amber-600 font-semibold italic" : "text-[#01172f] font-medium"}>
+                                {row.assignedStaff}
+                              </span>
+                            )}
                           </div>
                           <div>
                             <span className="text-gray-400 block text-[9px] uppercase tracking-wider font-semibold">Pay Mode</span>
@@ -521,7 +567,7 @@ export default function StaffPerformanceClient({
             )}
           </div>
 
-          {/* --- DESKTOP SPREADSHEET VIEW (Overflow Hidden, No Horizontal Scroll) --- */}
+          {/* --- DESKTOP SPREADSHEET VIEW --- */}
           <div className="hidden xl:block w-full overflow-hidden">
             <table className="w-full table-fixed border-collapse text-left break-words">
               <thead>
@@ -555,18 +601,37 @@ export default function StaffPerformanceClient({
                           <>
                             <td className={tdClass} rowSpan={row.rowSpan}>
                               <div className="font-mono font-bold text-[#01172f] mb-1">{row.reqId.substring(0, 8).toUpperCase()}</div>
-                              <div className="text-gray-500">{row.reqDate}</div>
+                              <div className="text-gray-500 mb-1.5">{row.reqDate}</div>
+                              <span className={`inline-block text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getSourceBadgeStyle(row.source || "")}`}>
+                                {row.source}
+                              </span>
                             </td>
                             <td className={tdClass} rowSpan={row.rowSpan}>
                               <div className="font-bold text-[#01172f] leading-tight">{row.customerName}</div>
                               {row.company && <div className="text-[9px] text-gray-500 mt-1 leading-tight">{row.company}</div>}
                             </td>
                             <td className={`${tdClass} text-gray-500`} rowSpan={row.rowSpan}>{row.contact || "\u2014"}</td>
+                            
                             <td className={tdClass} rowSpan={row.rowSpan}>
-                              <span className={row.assignedStaff === "Unassigned" ? "text-amber-600 font-semibold italic" : "text-[#01172f] font-medium"}>
-                                {row.assignedStaff}
-                              </span>
+                              {canAssignStaff ? (
+                                <select
+                                  value={row.assignedStaffId || ""}
+                                  onChange={(e) => handleAssignStaff(row.reqId, e.target.value)}
+                                  disabled={updatingReqId === row.reqId}
+                                  className={`w-[95%] bg-transparent border-b ${row.assignedStaffId ? 'border-transparent text-[#01172f]' : 'border-amber-300 text-amber-600'} hover:border-gray-300 focus:border-[#149911] focus:outline-none text-[10px] font-medium py-1 transition-colors cursor-pointer disabled:opacity-50 appearance-none`}
+                                >
+                                  <option value="" disabled>Unassigned</option>
+                                  {staffList.map((s: any) => (
+                                    <option key={s.id} value={s.id} className="text-[#01172f]">{s.name || s.email}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <span className={row.assignedStaff === "Unassigned" ? "text-amber-600 font-semibold italic" : "text-[#01172f] font-medium"}>
+                                  {row.assignedStaff}
+                                </span>
+                              )}
                             </td>
+
                             <td className={tdClass} rowSpan={row.rowSpan}>
                               <span className="inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ backgroundColor: `${STATUS_COLORS[row.status || ""] || "#94a3b8"}1a`, color: STATUS_COLORS[row.status || ""] || "#64748b" }}>
                                 {STATUS_LABELS[row.status || ""] || row.status}

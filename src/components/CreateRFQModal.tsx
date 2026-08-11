@@ -31,16 +31,15 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
   const [view, setView] = useState<"idle" | "picker" | "form" | "submitting" | "done">("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
-  // Client Picker State
   const [clients, setClients] = useState<ClientOption[]>([]);
   const [loadingClients, setLoadingClients] = useState(true);
 
-  // Form State (Controlled inputs for auto-filling)
   const [formData, setFormData] = useState({
     customerName: "",
     phone: "",
     email: "",
     projectType: "residential",
+    source: "website", // New Default Source
     message: "",
   });
 
@@ -84,6 +83,7 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
       phone: "",
       email: "",
       projectType: "residential",
+      source: "website",
       message: "",
     });
     setItems([
@@ -100,7 +100,7 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
 
   function closeModal() {
     setIsOpen(false);
-    setTimeout(resetForm, 300); // Reset after closing animation
+    setTimeout(resetForm, 300);
   }
 
   function addItem() {
@@ -141,7 +141,7 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
       email: formData.email,
       projectType: formData.projectType,
       message: finalMessage,
-      source: "website",
+      source: formData.source, // Passing explicitly
       items: isProductsTBC
         ? []
         : items.filter((i) => i.materialId).map((i) => ({
@@ -167,7 +167,6 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
 
   return (
     <>
-      {/* Trigger Button */}
       <button
         onClick={openModal}
         className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#01172f] text-white rounded-lg text-[11px] font-bold uppercase tracking-widest hover:bg-[#149911] transition-colors shadow-md hover:shadow-lg"
@@ -178,14 +177,11 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
         Create new Inquiry
       </button>
 
-      {/* Modal Overlay */}
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-[#01172f]/40 backdrop-blur-sm transition-opacity">
           
-          {/* Modal Container */}
           <div className="bg-white w-full max-w-[680px] max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl relative custom-scrollbar flex flex-col">
             
-            {/* Close Button */}
             <button
               onClick={closeModal}
               className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-full transition-colors z-10"
@@ -196,7 +192,6 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
               </svg>
             </button>
 
-            {/* STEP 1: Client Picker View */}
             {view === "picker" && (
               <div className="p-6 sm:p-10 flex flex-col h-full">
                 <div className="mb-6 pr-8 shrink-0">
@@ -251,7 +246,6 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
               </div>
             )}
 
-            {/* STEP 2: Success View */}
             {view === "done" && (
               <div className="p-10 md:p-16 text-center my-auto flex flex-col items-center justify-center h-full">
                 <div className="w-12 h-[3px] bg-[#149911] mx-auto mb-8" />
@@ -270,7 +264,6 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
               </div>
             )}
 
-            {/* STEP 3: Form View */}
             {(view === "form" || view === "submitting") && (
               <div className="p-6 sm:p-10">
                 <div className="mb-8 pr-8 flex items-center justify-between">
@@ -347,6 +340,25 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
                         <option value="residential">Residential</option>
                         <option value="commercial">Commercial</option>
                         <option value="renovation">Renovation</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-6">
+                    <div>
+                      <label className={labelClass} htmlFor="source">Lead Source *</label>
+                      <select 
+                        id="source" 
+                        name="source" 
+                        value={formData.source}
+                        onChange={handleFormChange}
+                        required 
+                        className={`${fieldClass} appearance-none pr-9 bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2301172f%22 stroke-width=%222%22><path d=%22M6 9l6 6 6-6%22/></svg>')] bg-no-repeat bg-[right_16px_center]`}
+                      >
+                        <option value="website">Website Form</option>
+                        <option value="facebook">Facebook</option>
+                        <option value="google">Google</option>
                         <option value="other">Other</option>
                       </select>
                     </div>
