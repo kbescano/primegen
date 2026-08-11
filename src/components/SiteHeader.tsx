@@ -68,19 +68,19 @@ export default function SiteHeader() {
       {/* Main Header - Sleek Dark Theme */}
       <header
         style={{ backgroundColor: `rgba(1, 23, 47, ${bgOpacity})` }}
-        className={`fixed top-0 w-full z-[65] backdrop-blur-xl border-b border-[#fdfffc]/5 transition-[transform,opacity] duration-1000 ease-out
+        className={`fixed top-0 left-0 right-0 w-full z-[65] backdrop-blur-xl border-b border-[#fdfffc]/5 transition-[transform,opacity] duration-1000 ease-out
           ${isMounted ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"}
         `}
       >
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-12 h-[68px] md:h-20 flex items-center justify-between">
+        <div className="w-full max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12 h-[60px] sm:h-[68px] md:h-20 flex items-center justify-between">
           
           {/* 1. Logo & Brand Identity */}
           <Link
             href="/"
-            className="group flex items-center gap-2.5 z-[60] outline-none"
+            className="group flex items-center gap-2 sm:gap-2.5 z-[60] outline-none shrink-0"
             onClick={() => setOpen(false)}
           >
-            <div className="relative w-9 h-9 md:w-11 md:h-11 rounded-lg p-1 transition-transform duration-500 group-hover:scale-105">
+            <div className="relative w-8 h-8 sm:w-9 sm:h-9 md:w-11 md:h-11 rounded-lg p-1 transition-transform duration-500 group-hover:scale-105">
               <Image
                 src="/branding/primegen_trading_logo.png"
                 alt="Primegen Logo"
@@ -91,11 +91,11 @@ export default function SiteHeader() {
 
             <div className="flex flex-col justify-center">
               <span
-                className={`${playfair.className} text-[15px] md:text-[19px] font-black tracking-tight text-[#fdfffc] leading-none transition-colors duration-300 group-hover:text-[#149911]`}
+                className={`${playfair.className} text-[14px] sm:text-[15px] md:text-[19px] font-black tracking-tight text-[#fdfffc] drop-shadow-md leading-none transition-colors duration-300 group-hover:text-[#149911]`}
               >
                 Primegen
               </span>
-              <span className="text-[6px] md:text-[7px] font-bold uppercase tracking-[0.22em] text-[#149911]">
+              <span className="text-[5px] sm:text-[6px] md:text-[7px] font-bold uppercase tracking-[0.22em] text-[#149911] drop-shadow-sm">
                 Trading Corporation
               </span>
             </div>
@@ -126,7 +126,7 @@ export default function SiteHeader() {
           </nav>
 
           {/* 3. Right Utilities & CTA */}
-          <div className="hidden lg:flex items-center gap-2">
+          <div className="hidden lg:flex items-center gap-2 shrink-0">
             
             {/* Email/Inbox Contact Toggle */}
             <div className="relative">
@@ -196,21 +196,35 @@ export default function SiteHeader() {
             </Link>
           </div>
 
-          {/* Mobile Menu Toggle */}
+          {/* Mobile Menu Toggle (Hamburger) */}
+          {/* Strictly forcing width, height, and color via inline styles to bypass Tailwind purging issues */}
           <button
-            className="lg:hidden flex flex-col justify-center items-end gap-[5px] w-8 h-8 z-[60] outline-none"
+            className="flex lg:hidden flex-col justify-center items-end z-[70] ml-auto shrink-0 outline-none cursor-pointer py-2 pl-4"
             onClick={() => setOpen(!open)}
             aria-label="Toggle menu"
+            style={{ gap: "5px" }}
           >
-            <span
-              className={`block h-[2px] bg-[#fdfffc] transition-all duration-500 ease-in-out origin-center
-                ${open ? "w-6 rotate-45 translate-y-[3px]" : "w-6"}
-              `}
+            <div
+              className={`transition-transform duration-300 ease-in-out origin-center ${
+                open ? "rotate-45 translate-y-[3.5px]" : ""
+              }`}
+              style={{
+                width: "24px",
+                height: "2px",
+                backgroundColor: "#ffffff",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
+              }}
             />
-            <span
-              className={`block h-[2px] bg-[#fdfffc] transition-all duration-500 ease-in-out origin-center
-                ${open ? "w-6 -rotate-45 -translate-y-[4px]" : "w-4"}
-              `}
+            <div
+              className={`transition-all duration-300 ease-in-out origin-center ${
+                open ? "-rotate-45 -translate-y-[3.5px]" : ""
+              }`}
+              style={{
+                width: open ? "24px" : "16px",
+                height: "2px",
+                backgroundColor: "#ffffff",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
+              }}
             />
           </button>
         </div>
@@ -222,12 +236,12 @@ export default function SiteHeader() {
           ${open ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}
         `}
       >
-        <nav className="flex flex-col px-10 gap-7 max-w-sm mx-auto w-full">
+        <nav className="flex flex-col px-6 sm:px-10 gap-5 sm:gap-7 max-w-sm mx-auto w-full">
           {NAV_LINKS.map((link, i) => (
             <Link
               key={link.href}
               href={link.href}
-              className={`text-xl font-light tracking-wide text-[#fdfffc] transition-all duration-700
+              className={`text-[22px] sm:text-[24px] font-light tracking-wide text-[#fdfffc] transition-all duration-700
                 ${open ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}
               `}
               style={{ transitionDelay: `${open ? i * 100 + 200 : 0}ms` }}
@@ -238,22 +252,22 @@ export default function SiteHeader() {
           ))}
 
           <div
-            className={`pt-2 flex flex-col gap-3 transition-all duration-700
+            className={`pt-2 flex flex-col gap-2.5 sm:gap-3 transition-all duration-700
               ${open ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}
             `}
             style={{ transitionDelay: `${open ? NAV_LINKS.length * 100 + 150 : 0}ms` }}
           >
-            <a href="tel:09171859127" className="text-[13px] tracking-widest text-[#fdfffc]/60">
+            <a href="tel:09171859127" className="text-[12px] sm:text-[13px] tracking-widest text-[#fdfffc]/60">
               0917-185-9127
             </a>
-            <a href="mailto:sales@primegentradingcorp.com" className="text-[13px] tracking-wide text-[#fdfffc]/60">
+            <a href="mailto:sales@primegentradingcorp.com" className="text-[12px] sm:text-[13px] tracking-wide text-[#fdfffc]/60">
               sales@primegentradingcorp.com
             </a>
           </div>
 
           <Link
             href="/quote"
-            className={`mt-2 py-4 border-t border-[#fdfffc]/10 text-sm uppercase tracking-[0.2em] font-medium text-[#149911] flex items-center justify-between group transition-all duration-700
+            className={`mt-2 py-3 sm:py-4 border-t border-[#fdfffc]/10 text-[12px] sm:text-[14px] uppercase tracking-[0.2em] font-medium text-[#149911] flex items-center justify-between group transition-all duration-700
               ${open ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}
             `}
             style={{
@@ -278,39 +292,39 @@ export default function SiteHeader() {
       </div>
 
       {/* Mobile Floating Contact (Sleek FAB) */}
-      <div className="lg:hidden fixed bottom-6 right-6 z-40 flex flex-col items-end pointer-events-none">
+      <div className="lg:hidden fixed bottom-4 sm:bottom-6 right-4 sm:right-6 z-[60] flex flex-col items-end pointer-events-none">
         <div
-          className={`mb-4 p-6 bg-white/95 backdrop-blur-lg border border-[#3D5F3B]/5 shadow-2xl rounded-xl w-[260px] origin-bottom-right transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]
+          className={`mb-3 sm:mb-4 p-5 sm:p-6 bg-white/95 backdrop-blur-lg border border-[#3D5F3B]/5 shadow-2xl rounded-xl w-[240px] sm:w-[260px] origin-bottom-right transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]
             ${contactOpen ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"}
           `}
         >
-          <div className="flex flex-col gap-5">
+          <div className="flex flex-col gap-4 sm:gap-5">
             <div>
-              <span className="block text-[8px] uppercase tracking-[0.25em] text-[#3D5F3B]/40 mb-3 font-medium">
+              <span className="block text-[8px] uppercase tracking-[0.25em] text-[#3D5F3B]/40 mb-2.5 sm:mb-3 font-medium">
                 Direct Lines
               </span>
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col gap-2.5 sm:gap-3">
                 <a
                   href="tel:09171859127"
-                  className="text-sm tracking-widest text-[#3D5F3B] md:hover:text-[#149911] transition-colors"
+                  className="text-[13px] sm:text-[14px] tracking-widest text-[#3D5F3B] active:text-[#149911] transition-colors"
                 >
                   0917-185-9127
                 </a>
                 <a
                   href="tel:09171339515"
-                  className="text-sm tracking-widest text-[#3D5F3B] md:hover:text-[#149911] transition-colors"
+                  className="text-[13px] sm:text-[14px] tracking-widest text-[#3D5F3B] active:text-[#149911] transition-colors"
                 >
                   0917-133-9515
                 </a>
               </div>
             </div>
-            <div className="pt-5 border-t border-[#3D5F3B]/5">
-              <span className="block text-[8px] uppercase tracking-[0.25em] text-[#3D5F3B]/40 mb-3 font-medium">
+            <div className="pt-4 sm:pt-5 border-t border-[#3D5F3B]/5">
+              <span className="block text-[8px] uppercase tracking-[0.25em] text-[#3D5F3B]/40 mb-2.5 sm:mb-3 font-medium">
                 Email
               </span>
               <a
                 href="mailto:sales@primegentradingcorp.com"
-                className="text-[11px] tracking-wide text-[#3D5F3B] md:hover:text-[#149911] transition-colors break-all"
+                className="text-[10px] sm:text-[11px] tracking-wide text-[#3D5F3B] active:text-[#149911] transition-colors break-all"
               >
                 sales@primegentradingcorp.com
               </a>
@@ -320,8 +334,8 @@ export default function SiteHeader() {
 
         <button
           onClick={() => setContactOpen(!contactOpen)}
-          className={`pointer-events-auto w-11 h-11 rounded-full flex items-center justify-center shadow-lg transition-all duration-500 ease-out active:scale-95
-            ${contactOpen ? "bg-white text-[#3D5F3B] border border-[#3D5F3B]/10" : "bg-[#3D5F3B] text-white md:hover:bg-[#149911]"}
+          className={`pointer-events-auto w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center shadow-lg transition-all duration-500 ease-out active:scale-95
+            ${contactOpen ? "bg-white text-[#3D5F3B] border border-[#3D5F3B]/10" : "bg-[#3D5F3B] text-white active:bg-[#149911]"}
           `}
           aria-label="Contact options"
         >

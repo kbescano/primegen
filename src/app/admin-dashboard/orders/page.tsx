@@ -301,18 +301,21 @@ export default async function OrdersPage({
                     <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-3">
                       Order Items ({orderItems.length})
                     </p>
-                    <div className="flex flex-col gap-2.5">
+                    <div className="flex flex-col gap-3">
                       {orderItems.map((item: any, i: number) => (
-                        <div key={i} className="flex items-start justify-between gap-3 text-[11px] text-gray-700">
-                          <p className="leading-snug">
-                            <span className="font-mono text-gray-400 font-bold inline-block min-w-[35px] pr-2">
+                        <div key={i} className="flex items-baseline justify-between gap-2 text-[11px] text-gray-700">
+                          <div className="flex items-baseline gap-1.5 sm:gap-2 min-w-0">
+                            <span className="font-mono text-gray-400 font-bold whitespace-nowrap shrink-0">
                               {Number(item.qty) || 0} {item.unit || 'x'}
                             </span>
-                            {item.description || '--'}
-                          </p>
-                          <p className="font-mono font-bold text-[#01172f] flex-shrink-0">
+                            <span className="leading-snug break-words">
+                              {item.description || '--'}
+                              {item.sizeDescription ? ` - ${item.sizeDescription}` : ''}
+                            </span>
+                          </div>
+                          <span className="font-mono font-bold text-[#01172f] shrink-0 text-right">
                             {peso((Number(item.qty) || 0) * (Number(item.unitPrice) || 0))}
-                          </p>
+                          </span>
                         </div>
                       ))}
                     </div>

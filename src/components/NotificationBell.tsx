@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 
-type NotificationItem = { id: string; message: string; link?: string; createdAt: string }
+type NotificationItem = { id: string; message: string; link?: string; createdAt: string; read?: boolean }
 
 const STORAGE_KEY = 'admin_notifications_last_seen'
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000
@@ -34,8 +34,6 @@ export default function NotificationBell({ role }: { role: 'admin' | 'user' }) {
   async function fetchNotifications() {
     try {
       if (role === 'admin') {
-        // Unchanged from before: admin sees new pending quotation requests
-        // site-wide via the existing endpoint.
         const since = getLastSeen()
         const res = await fetch(`/api/admin-notifications?since=${encodeURIComponent(since)}`, {
           credentials: 'include',
@@ -43,32 +41,14 @@ export default function NotificationBell({ role }: { role: 'admin' | 'user' }) {
         if (!res.ok) return
         const data = await res.json()
         setCount(data.count || 0)
-        setItems(
-          (data.items || []).map((i: any) => ({
-            id: i.id,
-            message: `New request from ${i.customerName || 'a customer'}`,
-            link: '/admin-dashboard',
-            createdAt: i.createdAt,
-          }))
-        )
+        setItems(data.items || [])
       } else {
-        // Staff: pull their own assignment notifications from the new
-        // notifications collection.
-        const res = await fetch(
-          `/api/notifications?where[read][equals]=false&sort=-createdAt&limit=20`,
-          { credentials: 'include' }
-        )
+        // Calls the new, secure Staff endpoint
+        const res = await fetch(`/api/user-notifications`, { credentials: 'include' })
         if (!res.ok) return
         const data = await res.json()
-        setCount(data.totalDocs || 0)
-        setItems(
-          (data.docs || []).map((d: any) => ({
-            id: d.id,
-            message: d.message,
-            link: d.link,
-            createdAt: d.createdAt,
-          }))
-        )
+        setCount(data.count || 0)
+        setItems(data.items || [])
       }
     } catch {
       // fail silently -- notifications are non-critical
@@ -91,28 +71,31 @@ export default function NotificationBell({ role }: { role: 'admin' | 'user' }) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [open])
 
+  async function markAsRead(id: string) {
+    if (role === 'admin') return // Admin synthetic feed updates based on localStorage when bell opens
+    try {
+      await fetch('/api/user-notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ id })
+      })
+      // Optimistically update UI
+      setItems(prev => prev.map(i => i.id === id ? { ...i, read: true } : i))
+      setCount(prev => Math.max(0, prev - 1))
+    } catch {}
+  }
+
   async function handleToggle() {
     const willOpen = !open
     setOpen(willOpen)
     if (willOpen) {
       if (role === 'admin') {
         localStorage.setItem(STORAGE_KEY, new Date().toISOString())
-      } else {
-        // Mark staff notifications read server-side
-        try {
-          await Promise.all(
-            items.map((item) =>
-              fetch(`/api/notifications/${item.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({ read: true }),
-              })
-            )
-          )
-        } catch {}
+        setCount(0) // Instantly clear the red badge
+        setItems(prev => prev.map(i => ({ ...i, read: true }))) // Visually mark all as read in UI
       }
-      setCount(0)
+      // Note: User (Staff) does NOT auto-clear. They must explicitly click "View" to dismiss it.
     }
   }
 
@@ -142,7 +125,7 @@ export default function NotificationBell({ role }: { role: 'admin' | 'user' }) {
 
           {items.length === 0 ? (
             <p className="px-4 py-8 text-center text-[13px] text-[#01172f]/40 font-medium">
-              {role === 'admin' ? 'No new quotation requests.' : 'No new assignments.'}
+              {role === 'admin' ? 'No recent activity.' : 'No new assignments.'}
             </p>
           ) : (
             <div className="max-h-80 overflow-y-auto">
@@ -150,14 +133,20 @@ export default function NotificationBell({ role }: { role: 'admin' | 'user' }) {
                 <Link
                   key={item.id}
                   href={item.link || '/admin-dashboard'}
-                  onClick={() => setOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 border-b border-[#01172f]/5 hover:bg-[#f4f6f2] transition-colors"
+                  onClick={() => {
+                    setOpen(false)
+                    if (!item.read) markAsRead(item.id)
+                  }}
+                  className={`flex items-center gap-3 px-4 py-3 border-b border-[#01172f]/5 hover:bg-[#f4f6f2] transition-colors ${!item.read ? 'bg-blue-50/20' : 'opacity-70'}`}
                 >
-                  <span className="w-2 h-2 rounded-full bg-[#149911] flex-shrink-0" />
-                  <div className="min-w-0">
-                    <p className="text-[13px] font-bold text-[#01172f] truncate">{item.message}</p>
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${!item.read ? 'bg-[#149911]' : 'bg-gray-300'}`} />
+                  <div className="min-w-0 flex-1">
+                    <p className={`text-[13px] text-[#01172f] truncate ${!item.read ? 'font-bold' : 'font-medium'}`}>{item.message}</p>
                     <p className="text-[11px] text-[#01172f]/40 font-medium">{timeAgo(item.createdAt)}</p>
                   </div>
+                  {!item.read && (
+                    <span className="text-[10px] font-bold text-[#149911] ml-2">View</span>
+                  )}
                 </Link>
               ))}
             </div>
@@ -168,7 +157,7 @@ export default function NotificationBell({ role }: { role: 'admin' | 'user' }) {
             onClick={() => setOpen(false)}
             className="block px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-[#3D5F3B] hover:text-[#149911] transition-colors border-t border-[#01172f]/10"
           >
-            {role === 'admin' ? 'View All Pending' : 'View My RFQs'}
+            {role === 'admin' ? 'View All Activity' : 'View My RFQs'}
           </Link>
         </div>
       )}

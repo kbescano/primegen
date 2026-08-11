@@ -97,6 +97,44 @@ export default async function PipelinePage({ params }: { params: Promise<{ id: s
   ]
   const currentStep: StepKey = stepOrder.find((s) => !completedSteps[s]) || 'closed'
 
+  // --- FORMAT LINE ITEMS FOR PIPELINE STEPPER ---
+  // We safely concatenate the sizeDescription into the main name/description fields here.
+  // PipelineStepper will automatically render the concatenated text without needing UI updates.
+  const displayRequest = request ? {
+    ...request,
+    items: Array.isArray(request.items) ? request.items.map((item: any) => ({
+      ...item,
+      material: item.sizeDescription && typeof item.material === 'object' && item.material !== null
+        ? { ...item.material, name: `${item.material.name} - ${item.sizeDescription}` }
+        : item.material
+    })) : []
+  } : null;
+
+  const displayQuotation = quotation ? {
+    ...quotation,
+    items: Array.isArray(quotation.items) ? quotation.items.map((item: any) => ({
+      ...item,
+      description: item.sizeDescription ? `${item.description} - ${item.sizeDescription}` : item.description
+    })) : []
+  } : null;
+
+  const displayOrder = order ? {
+    ...order,
+    items: Array.isArray(order.items) ? order.items.map((item: any) => ({
+      ...item,
+      description: item.sizeDescription ? `${item.description} - ${item.sizeDescription}` : item.description
+    })) : []
+  } : null;
+
+  const displayPOs = linkedPOs.map((po: any) => ({
+    ...po,
+    items: Array.isArray(po.items) ? po.items.map((item: any) => ({
+      ...item,
+      description: item.sizeDescription ? `${item.description} - ${item.sizeDescription}` : item.description
+    })) : []
+  }));
+  // ----------------------------------------------
+
   return (
     <div className="fixed inset-0 z-[100] bg-[#1d1d1f]/30 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 md:p-6 antialiased">
       <div className="bg-[#fbfbfd] w-full max-w-[1100px] h-full max-h-[98vh] rounded-[1.5rem] md:rounded-[2rem] shadow-[0_24px_48px_rgba(0,0,0,0.15)] flex flex-col overflow-hidden ring-1 ring-white/50">
@@ -122,10 +160,10 @@ export default async function PipelinePage({ params }: { params: Promise<{ id: s
 
         <div className="flex-1 overflow-y-auto relative w-full">
           <PipelineStepper
-            request={request}
-            quotation={quotation}
-            order={order}
-            linkedPOs={linkedPOs}
+            request={displayRequest}
+            quotation={displayQuotation}
+            order={displayOrder}
+            linkedPOs={displayPOs}
             completedSteps={completedSteps}
             currentStep={currentStep}
           />

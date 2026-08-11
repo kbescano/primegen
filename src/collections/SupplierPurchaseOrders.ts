@@ -37,14 +37,7 @@ export const SupplierPurchaseOrders: CollectionConfig = {
     ],
   },
   fields: [
-    {
-      name: 'poNumber',
-      type: 'text',
-      unique: true,
-      admin: {
-        description: 'Auto-generated on create (SPO-YYYY-####). Editable to override.',
-      },
-    },
+    { name: 'poNumber', type: 'text', unique: true, admin: { description: 'Auto-generated on create (SPO-YYYY-####). Editable to override.' } },
     { name: 'poDate', type: 'date', required: true, defaultValue: () => new Date().toISOString() },
     { name: 'project', type: 'text', label: 'Project Name / Site' },
     { name: 'deliveryDate', type: 'text', label: 'Delivery / Service Date' },
@@ -52,11 +45,7 @@ export const SupplierPurchaseOrders: CollectionConfig = {
     { name: 'supplierCompany', type: 'text', label: 'Supplier Company' },
     { name: 'supplierAddress', type: 'textarea' },
     { name: 'supplierPhone', type: 'text', label: 'Supplier Phone' },
-    {
-      name: 'sourceOrderId',
-      type: 'text',
-      admin: { readOnly: true, description: 'Internal: links back to the Order this PO was created from, if any. An order can have multiple POs.' },
-    },
+    { name: 'sourceOrderId', type: 'text', admin: { readOnly: true, description: 'Internal: links back to the Order this PO was created from, if any. An order can have multiple POs.' } },
     { name: 'preparedBy', type: 'text', label: 'Prepared By (Name)' },
     { name: 'preparedByRole', type: 'text', label: 'Prepared By (Role)', defaultValue: 'Sales Rep.' },
     {
@@ -65,6 +54,8 @@ export const SupplierPurchaseOrders: CollectionConfig = {
       label: 'Line Items',
       fields: [
         { name: 'description', type: 'text', required: true },
+        // NEW FIELD ADDED HERE
+        { name: 'sizeDescription', type: 'text', label: 'Size / Specs (Optional)' },
         { name: 'qty', type: 'number', required: true, defaultValue: 1 },
         { name: 'unit', type: 'text', defaultValue: 'pcs', label: 'Unit' },
         { name: 'unitPrice', type: 'number', required: true, defaultValue: 0 },

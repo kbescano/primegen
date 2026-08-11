@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 type Product = { id: string; name: string; unit: string };
-type LineItem = { materialId: string; quantity: number };
+type LineItem = { materialId: string; quantity: number; sizeDescription?: string };
 
 const fieldClass =
   "w-full px-4 py-3.5 bg-white border border-[#01172f]/15 text-[15px] text-[#01172f] placeholder:text-[#01172f]/35 focus:outline-none focus:border-[#149911] transition-colors duration-300";
@@ -26,13 +26,14 @@ export default function QuoteForm({ products }: { products: Product[] }) {
     {
       materialId: preselectedMaterial?.id ?? products[0]?.id ?? "",
       quantity: 1,
+      sizeDescription: "",
     },
   ]);
 
   function addItem() {
     setItems((prev) => [
       ...prev,
-      { materialId: products[0]?.id ?? "", quantity: 1 },
+      { materialId: products[0]?.id ?? "", quantity: 1, sizeDescription: "" },
     ]);
   }
   function removeItem(index: number) {
@@ -61,7 +62,11 @@ export default function QuoteForm({ products }: { products: Product[] }) {
       source: "website",
       items: items
         .filter((i) => i.materialId)
-        .map((i) => ({ material: i.materialId, quantity: i.quantity })),
+        .map((i) => ({ 
+          material: i.materialId, 
+          quantity: i.quantity,
+          sizeDescription: i.sizeDescription || "",
+        })),
     };
     try {
       const res = await fetch("/api/quotation-requests", {
@@ -157,7 +162,7 @@ export default function QuoteForm({ products }: { products: Product[] }) {
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#01172f]/40 mb-4">
           Products Needed
         </p>
-        <div className="flex flex-col gap-3.5 sm:gap-2.5">
+        <div className="flex flex-col gap-3.5 sm:gap-4">
           {items.map((item, index) => {
             const selected =
               products.find((m) => String(m.id) === String(item.materialId)) ??
@@ -165,49 +170,62 @@ export default function QuoteForm({ products }: { products: Product[] }) {
             return (
               <div
                 key={index}
-                className="flex flex-col sm:flex-row gap-3 sm:gap-2 sm:items-center bg-slate-50/60 sm:bg-transparent p-3.5 sm:p-0 border border-slate-200/70 sm:border-none shadow-xs sm:shadow-none"
+                className="flex flex-col gap-2 bg-slate-50/60 sm:bg-transparent p-3.5 sm:p-0 border border-slate-200/70 sm:border-none shadow-xs sm:shadow-none"
               >
-                <select
-                  value={item.materialId}
-                  onChange={(e) =>
-                    updateItem(index, { materialId: e.target.value })
-                  }
-                  className={`${fieldClass} w-full sm:flex-1 sm:min-w-0 h-[48px] sm:h-[52px] py-0 appearance-none pr-9 bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2301172f%22 stroke-width=%222%22><path d=%22M6 9l6 6 6-6%22/></svg>')] bg-no-repeat bg-[right_14px_center]`}
-                >
-                  {products.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
-
-                <div className="flex items-center justify-between sm:justify-start sm:flex-none gap-3 pt-2 sm:pt-0 border-t border-slate-200/60 sm:border-none">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      min={1}
-                      value={item.quantity}
-                      onChange={(e) =>
-                        updateItem(index, { quantity: Number(e.target.value) })
-                      }
-                      className={`${fieldClass} !w-[72px] px-2 flex-shrink-0 text-center h-[48px] sm:h-[52px] py-0`}
-                      aria-label="Quantity"
-                    />
-                    <span className="text-[11px] font-medium uppercase tracking-wide text-[#01172f]/50 w-[56px] flex-shrink-0 truncate">
-                      {selected?.unit ?? ""}
-                    </span>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => removeItem(index)}
-                    aria-label="Remove item"
-                    disabled={items.length === 1}
-                    className="w-9 h-9 sm:w-7 sm:h-7 flex items-center justify-center flex-shrink-0 text-[#01172f]/40 hover:text-red-600 disabled:opacity-0 disabled:pointer-events-none transition-colors text-xl sm:text-lg bg-slate-200/40 sm:bg-transparent"
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-2 sm:items-center">
+                  <select
+                    value={item.materialId}
+                    onChange={(e) =>
+                      updateItem(index, { materialId: e.target.value })
+                    }
+                    className={`${fieldClass} w-full sm:flex-1 sm:min-w-0 h-[48px] sm:h-[52px] py-0 appearance-none pr-9 bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2301172f%22 stroke-width=%222%22><path d=%22M6 9l6 6 6-6%22/></svg>')] bg-no-repeat bg-[right_14px_center]`}
                   >
-                    &times;
-                  </button>
+                    {products.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+
+                  <div className="flex items-center justify-between sm:justify-start sm:flex-none gap-3 pt-2 sm:pt-0 border-t border-slate-200/60 sm:border-none">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min={1}
+                        value={item.quantity}
+                        onChange={(e) =>
+                          updateItem(index, { quantity: Number(e.target.value) })
+                        }
+                        className={`${fieldClass} !w-[72px] px-2 flex-shrink-0 text-center h-[48px] sm:h-[52px] py-0`}
+                        aria-label="Quantity"
+                      />
+                      <span className="text-[11px] font-medium uppercase tracking-wide text-[#01172f]/50 w-[56px] flex-shrink-0 truncate">
+                        {selected?.unit ?? ""}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => removeItem(index)}
+                      aria-label="Remove item"
+                      disabled={items.length === 1}
+                      className="w-9 h-9 sm:w-7 sm:h-7 flex items-center justify-center flex-shrink-0 text-[#01172f]/40 hover:text-red-600 disabled:opacity-0 disabled:pointer-events-none transition-colors text-xl sm:text-lg bg-slate-200/40 sm:bg-transparent"
+                    >
+                      &times;
+                    </button>
+                  </div>
                 </div>
+                
+                {/* Size / Specs Field */}
+                <input
+                  type="text"
+                  placeholder="Size / Specs (optional) e.g., 20mm, 6m length"
+                  value={item.sizeDescription || ""}
+                  onChange={(e) =>
+                    updateItem(index, { sizeDescription: e.target.value })
+                  }
+                  className={`${fieldClass} h-[44px] py-0 text-[13px]`}
+                />
               </div>
             );
           })}
@@ -227,7 +245,7 @@ export default function QuoteForm({ products }: { products: Product[] }) {
         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#01172f]/40 mb-4">
           Quote Summary
         </p>
-        <ul className="flex flex-col gap-2.5 m-0 p-0 list-none">
+        <ul className="flex flex-col gap-3 m-0 p-0 list-none">
           {items.map((item, index) => {
             const mat =
               products.find((m) => String(m.id) === String(item.materialId)) ??
@@ -238,9 +256,16 @@ export default function QuoteForm({ products }: { products: Product[] }) {
                 key={index}
                 className="flex justify-between items-start gap-4 text-[14px]"
               >
-                <span className="font-medium text-[#01172f] leading-snug">
-                  {mat.name}
-                </span>
+                <div className="flex flex-col">
+                  <span className="font-medium text-[#01172f] leading-snug">
+                    {mat.name}
+                  </span>
+                  {item.sizeDescription && (
+                    <span className="text-[12px] text-[#01172f]/50 mt-0.5">
+                      {item.sizeDescription}
+                    </span>
+                  )}
+                </div>
                 <span className="font-mono text-[#01172f]/50 whitespace-nowrap pt-0.5">
                   {item.quantity} {mat.unit ?? ""}
                 </span>
@@ -267,7 +292,7 @@ export default function QuoteForm({ products }: { products: Product[] }) {
           id="message"
           name="message"
           rows={4}
-          placeholder="Size, timeline, delivery location, etc."
+          placeholder="Timeline, delivery location, special instructions, etc."
           className={`${fieldClass} resize-y`}
         />
       </div>

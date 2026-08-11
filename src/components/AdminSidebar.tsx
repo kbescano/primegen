@@ -5,10 +5,9 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import NotificationBell from '@/components/NotificationBell'
 
-// 1. ADDED `adminOnly` FLAGS TO ROUTES
 const NAV_ITEMS = [
   { href: '/admin-dashboard', label: 'Quotation Inbox', adminOnly: false },
-  { href: '/admin-dashboard/staff-performance', label: 'Staff Performance', adminOnly: true },
+  { href: '/admin-dashboard/inquiry-tracker', label: 'Inquiry Tracker', adminOnly: true },
   { href: '/admin-dashboard/client-quotation', label: 'Client Quotation', adminOnly: true },
   { href: '/admin-dashboard/orders', label: 'Orders', adminOnly: true },
   { href: '/admin-dashboard/supplier-po', label: 'Supplier PO', adminOnly: true },
@@ -29,11 +28,8 @@ export default function AdminLayout({
   const [open, setOpen] = useState(false)
 
   const displayName = user?.name?.trim() || user?.email
-  
-  // 2. CHECK ROLE
   const isAdmin = user?.role === 'admin'
 
-  // 3. FILTER NAV ITEMS BASED ON ROLE
   const visibleNavItems = NAV_ITEMS.filter((item) => {
     if (item.adminOnly && !isAdmin) return false
     return true
@@ -62,14 +58,13 @@ export default function AdminLayout({
 
           {/* Desktop nav */}
           <nav className="hidden md:flex items-center gap-1 h-full">
-            {/* 4. RENDER ONLY VISIBLE ITEMS */}
             {visibleNavItems.map((item) => {
               const isActive = pathname === item.href
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`flex items-center h-full px-4 text-[12px] font-bold uppercase tracking-[0.08em] border-b-2 transition-colors duration-200 ${
+                  className={`flex items-center h-full px-2 text-[8px] font-bold uppercase tracking-[0.08em] border-b-2 transition-colors duration-200 ${
                     isActive
                       ? 'border-[#149911] text-[#01172f]'
                       : 'border-transparent text-[#01172f]/40 hover:text-[#01172f] hover:border-[#01172f]/15'
@@ -86,7 +81,7 @@ export default function AdminLayout({
               &larr; Site
             </Link>
             <div className="ml-2 pl-2 border-l border-[#01172f]/10">
-              <NotificationBell role={"user"} />
+              <NotificationBell role={isAdmin ? "admin" : "user"} />
             </div>
           </nav>
 
@@ -145,7 +140,6 @@ export default function AdminLayout({
           </div>
 
           <nav className="flex flex-col gap-1">
-            {/* 5. RENDER ONLY VISIBLE ITEMS FOR MOBILE */}
             {visibleNavItems.map((item) => {
               const isActive = pathname === item.href
               return (

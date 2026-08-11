@@ -127,25 +127,25 @@ function FunnelStep({
 }) {
   return (
     <div
-      className={`flex-1 min-w-[140px] p-6 rounded-3xl border transition-shadow shadow-sm ${
+      className={`flex-1 min-w-[120px] sm:min-w-[140px] p-4 sm:p-5 rounded-2xl sm:rounded-3xl border transition-shadow shadow-sm overflow-hidden ${
         highlight
           ? 'bg-[#149911] border-[#149911] text-white shadow-md'
           : 'bg-white border-gray-100 text-gray-900'
       }`}
     >
       <p
-        className={`text-[11px] font-semibold uppercase tracking-wider mb-2 ${
+        className={`text-[10px] sm:text-[11px] font-semibold uppercase tracking-wider mb-1.5 sm:mb-2 truncate ${
           highlight ? 'text-white/80' : 'text-gray-400'
         }`}
       >
         {label}
       </p>
-      <p className="text-[32px] md:text-[40px] font-semibold tracking-tight leading-none mb-2">
+      <p className="text-[28px] sm:text-[32px] md:text-[40px] font-semibold tracking-tight leading-none mb-1.5 sm:mb-2 truncate">
         {value}
       </p>
       {sublabel && (
         <p
-          className={`text-[12px] font-medium ${
+          className={`text-[11px] sm:text-[12px] font-medium truncate ${
             highlight ? 'text-white/80' : 'text-gray-500'
           }`}
         >
@@ -171,21 +171,19 @@ function BarRow({
 }) {
   const pct = maxValue > 0 ? Math.max(2, Math.round((value / maxValue) * 100)) : 0
   return (
-    <div className="flex items-center gap-4 py-3.5 border-b border-gray-50 last:border-0">
-      <span
-        className={`text-[10px] font-semibold uppercase tracking-wider px-3 py-1.5 rounded-full flex-shrink-0 w-[130px] text-center ${chipClass}`}
-      >
-        {label}
-      </span>
-      <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
-        <div className="h-full bg-[#149911] rounded-full" style={{ width: `${pct}%` }} />
+    <div className="py-3.5 border-b border-gray-50 last:border-0 w-full overflow-hidden">
+      <div className="flex justify-between items-center gap-2 mb-2.5 w-full">
+        <span className={`text-[9px] sm:text-[10px] font-semibold uppercase tracking-wider px-2 sm:px-3 py-1 sm:py-1.5 rounded-full inline-block truncate min-w-0 max-w-[120px] sm:max-w-none ${chipClass}`}>
+          {label}
+        </span>
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 min-w-0">
+          <span className="text-[11px] sm:text-[12px] text-gray-500 font-medium truncate">{count}</span>
+          <span className="text-[12px] sm:text-[13px] font-medium text-gray-900 font-mono truncate">{peso(value)}</span>
+        </div>
       </div>
-      <span className="text-[12px] text-gray-500 font-medium w-8 text-right flex-shrink-0">
-        {count}
-      </span>
-      <span className="text-[13px] font-medium text-gray-900 font-mono w-[110px] text-right flex-shrink-0">
-        {peso(value)}
-      </span>
+      <div className="w-full h-1.5 sm:h-2 bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-full bg-[#149911] rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
+      </div>
     </div>
   )
 }
@@ -324,26 +322,27 @@ export default async function ReportsPage({
     { v: '10', l: 'October' }, { v: '11', l: 'November' }, { v: '12', l: 'December' }
   ]
 
-  const sectionTitle = 'text-[13px] font-semibold uppercase tracking-wider text-gray-400 mb-5'
-  const card = 'bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-sm'
+  const sectionTitle = 'text-[12px] sm:text-[13px] font-semibold uppercase tracking-wider text-gray-400 mb-5 truncate'
+  const card = 'bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 md:p-8 shadow-sm w-full overflow-hidden'
 
   return (
-    <div className="max-w-[1000px] mx-auto p-4 md:p-8 antialiased">
+    // ADDED: overflow-x-hidden strictly traps all horizontal bleeding 
+    <div className="w-full max-w-[1000px] mx-auto antialiased overflow-x-hidden pb-10">
       
       {/* EXPORT HEADER BUTTON */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
-        <div>
-          <h1 className="text-[26px] md:text-[32px] font-semibold tracking-tight text-gray-900 leading-none mb-3">
+        <div className="w-full">
+          <h1 className="text-[26px] md:text-[32px] font-semibold tracking-tight text-gray-900 leading-none mb-3 truncate">
             Reports
           </h1>
-          <p className="text-[14px] text-gray-500 font-medium max-w-[560px]">
+          <p className="text-[13px] sm:text-[14px] text-gray-500 font-medium w-full sm:max-w-[560px]">
             Financial metrics, sales funnel, and pipeline tracking. Standard reporting operates on an accrual basis for confirmed orders.
           </p>
         </div>
         
         <Link
           href="/admin-dashboard/reports/export"
-          className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[13px] font-medium shadow-sm flex-shrink-0"
+          className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[13px] font-medium shadow-sm w-full sm:w-auto flex-shrink-0"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -353,12 +352,12 @@ export default async function ReportsPage({
       </div>
 
       {/* Auto-Submitting Filter Form */}
-      <form id="filter-form" method="GET" className="flex flex-wrap items-center gap-3 mb-8">
-        <div className="relative">
+      <form id="filter-form" method="GET" className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 mb-8 w-full">
+        <div className="relative w-full sm:w-auto">
           <select 
             name="month" 
             defaultValue={activeMonth} 
-            className="appearance-none bg-white border border-gray-200 rounded-full pl-5 pr-9 py-2.5 text-[13px] font-medium text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all cursor-pointer shadow-sm"
+            className="w-full appearance-none bg-white border border-gray-200 rounded-full pl-5 pr-9 py-2.5 text-[13px] font-medium text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all cursor-pointer shadow-sm"
           >
             <option value="all">All Months</option>
             {filterMonths.map(m => <option key={m.v} value={m.v}>{m.l}</option>)}
@@ -368,11 +367,11 @@ export default async function ReportsPage({
           </div>
         </div>
 
-        <div className="relative">
+        <div className="relative w-full sm:w-auto">
           <select 
             name="year" 
             defaultValue={activeYear} 
-            className="appearance-none bg-white border border-gray-200 rounded-full pl-5 pr-9 py-2.5 text-[13px] font-medium text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all cursor-pointer shadow-sm"
+            className="w-full appearance-none bg-white border border-gray-200 rounded-full pl-5 pr-9 py-2.5 text-[13px] font-medium text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-200 transition-all cursor-pointer shadow-sm"
           >
             <option value="all">All Years</option>
             {filterYears.map(y => <option key={y} value={y}>{y}</option>)}
@@ -390,76 +389,76 @@ export default async function ReportsPage({
       </form>
 
       {/* True Profit Card -- All confirmed orders */}
-      <div className="bg-[#1d1d1f] text-white rounded-[2rem] p-6 md:p-8 mb-6 flex items-center justify-between flex-wrap gap-8 shadow-lg">
-        <div>
-          <p className="text-[12px] font-semibold uppercase tracking-wider text-gray-400 mb-3">
+      <div className="bg-[#1d1d1f] text-white rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-6 md:p-8 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 md:gap-8 shadow-lg w-full overflow-hidden">
+        <div className="w-full min-w-0 md:w-auto">
+          <p className="text-[11px] sm:text-[12px] font-semibold uppercase tracking-wider text-gray-400 mb-3 truncate">
             True Net Profit (All Confirmed Orders)
           </p>
-          <p className="text-[36px] md:text-[48px] font-semibold tracking-tight leading-none text-[#149911]">
+          <p className="text-[32px] sm:text-[36px] md:text-[48px] font-semibold tracking-tight leading-none text-[#149911] break-words">
             {peso(totalNetProfit)}
           </p>
-          <p className="text-[13px] text-gray-400 font-medium mt-3">
+          <p className="text-[12px] sm:text-[13px] text-gray-400 font-medium mt-3 truncate">
             {orderCount} total confirmed order{orderCount === 1 ? '' : 's'} &middot; {actualMarkupPercent.toFixed(1)}% avg. markup
           </p>
         </div>
         
-        <div className="flex flex-col gap-1.5 text-[13px] text-gray-400 font-medium md:text-right flex-shrink-0 min-w-[200px]">
-           <p className="flex justify-between md:justify-end gap-6"><span>Gross Revenue:</span> <span>{peso(totalGrossRevenue)}</span></p>
-           <p className="flex justify-between md:justify-end gap-6 text-amber-500/80"><span>Less VAT:</span> <span>-{peso(totalVat)}</span></p>
-           <p className="flex justify-between md:justify-end gap-6 text-red-400/80"><span>Less Costs:</span> <span>-{peso(totalCosts)}</span></p>
+        <div className="flex flex-col gap-1.5 text-[12px] sm:text-[13px] text-gray-400 font-medium w-full md:w-auto min-w-0 md:text-right">
+           <p className="flex justify-between md:justify-end gap-4 sm:gap-6"><span>Gross Revenue:</span> <span className="truncate">{peso(totalGrossRevenue)}</span></p>
+           <p className="flex justify-between md:justify-end gap-4 sm:gap-6 text-amber-500/80"><span>Less VAT:</span> <span className="truncate">-{peso(totalVat)}</span></p>
+           <p className="flex justify-between md:justify-end gap-4 sm:gap-6 text-red-400/80"><span>Less Costs:</span> <span className="truncate">-{peso(totalCosts)}</span></p>
            <div className="w-full h-[1px] bg-gray-800 my-1" />
-           <p className="flex justify-between md:justify-end gap-6 text-[#149911] font-semibold"><span>Net Profit:</span> <span>{peso(totalNetProfit)}</span></p>
+           <p className="flex justify-between md:justify-end gap-4 sm:gap-6 text-[#149911] font-semibold"><span>Net Profit:</span> <span className="truncate">{peso(totalNetProfit)}</span></p>
         </div>
       </div>
 
       {/* Cleaner 3-Column Accounting Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5 mb-8 w-full">
         
-        <div className="bg-white border border-gray-100 rounded-[1.5rem] p-5 shadow-sm flex flex-col">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Gross Revenue</p>
-          <p className="text-[24px] font-semibold tracking-tight text-gray-900 mb-3">{peso(totalGrossRevenue)}</p>
+        <div className="bg-white border border-gray-100 rounded-[1.5rem] p-5 shadow-sm flex flex-col overflow-hidden w-full">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1 truncate">Gross Revenue</p>
+          <p className="text-[20px] sm:text-[24px] font-semibold tracking-tight text-gray-900 mb-3 truncate">{peso(totalGrossRevenue)}</p>
           <div className="mt-auto">
-            <p className="text-[11px] text-gray-500 font-medium">All confirmed</p>
+            <p className="text-[11px] text-gray-500 font-medium truncate">All confirmed</p>
           </div>
         </div>
 
-        <div className="bg-[#149911]/5 border border-[#149911]/20 rounded-[1.5rem] p-5 shadow-sm flex flex-col">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#149911]/80 mb-1">Amount Paid</p>
-          <p className="text-[24px] font-semibold tracking-tight text-[#149911] mb-3">{peso(totalAmountPaid)}</p>
+        <div className="bg-[#149911]/5 border border-[#149911]/20 rounded-[1.5rem] p-5 shadow-sm flex flex-col overflow-hidden w-full">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-[#149911]/80 mb-1 truncate">Amount Paid</p>
+          <p className="text-[20px] sm:text-[24px] font-semibold tracking-tight text-[#149911] mb-3 truncate">{peso(totalAmountPaid)}</p>
           <div className="mt-auto">
-            <p className="text-[11px] text-[#149911]/80 font-medium">Full & partial payments</p>
+            <p className="text-[11px] text-[#149911]/80 font-medium truncate">Full & partial payments</p>
           </div>
         </div>
 
-        <div className="bg-amber-50/50 border border-amber-100 rounded-[1.5rem] p-5 shadow-sm flex flex-col">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600/80 mb-1">Receivables</p>
-          <p className="text-[24px] font-semibold tracking-tight text-amber-600 mb-3">{peso(totalReceivables)}</p>
+        <div className="bg-amber-50/50 border border-amber-100 rounded-[1.5rem] p-5 shadow-sm flex flex-col overflow-hidden w-full">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-600/80 mb-1 truncate">Receivables</p>
+          <p className="text-[20px] sm:text-[24px] font-semibold tracking-tight text-amber-600 mb-3 truncate">{peso(totalReceivables)}</p>
           <div className="mt-auto">
-            <p className="text-[11px] text-amber-600/80 font-medium">{receivablesCount} pending balances</p>
+            <p className="text-[11px] text-amber-600/80 font-medium truncate">{receivablesCount} pending balances</p>
           </div>
         </div>
         
-        <div className="bg-white border border-gray-100 rounded-[1.5rem] p-5 shadow-sm flex flex-col">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Total Costs</p>
-          <p className="text-[24px] font-semibold tracking-tight text-red-500 mb-3">-{peso(totalCosts)}</p>
+        <div className="bg-white border border-gray-100 rounded-[1.5rem] p-5 shadow-sm flex flex-col overflow-hidden w-full">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1 truncate">Total Costs</p>
+          <p className="text-[20px] sm:text-[24px] font-semibold tracking-tight text-red-500 mb-3 truncate">-{peso(totalCosts)}</p>
           <div className="mt-auto">
-            <p className="text-[11px] text-gray-500 font-medium">COGS + OPEX</p>
+            <p className="text-[11px] text-gray-500 font-medium truncate">COGS + OPEX</p>
           </div>
         </div>
 
-        <div className="bg-white border border-gray-100 rounded-[1.5rem] p-5 shadow-sm flex flex-col">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">VAT Payable</p>
-          <p className="text-[24px] font-semibold tracking-tight text-gray-600 mb-3">-{peso(totalVat)}</p>
+        <div className="bg-white border border-gray-100 rounded-[1.5rem] p-5 shadow-sm flex flex-col overflow-hidden w-full">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1 truncate">VAT Payable</p>
+          <p className="text-[20px] sm:text-[24px] font-semibold tracking-tight text-gray-600 mb-3 truncate">-{peso(totalVat)}</p>
           <div className="mt-auto">
-            <p className="text-[11px] text-gray-500 font-medium">Tax liability</p>
+            <p className="text-[11px] text-gray-500 font-medium truncate">Tax liability</p>
           </div>
         </div>
 
-        <div className="bg-[#1d1d1f] rounded-[1.5rem] p-5 shadow-lg flex flex-col text-white">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1">Net Profit</p>
-          <p className="text-[24px] font-semibold tracking-tight text-[#149911] mb-3">{peso(totalNetProfit)}</p>
+        <div className="bg-[#1d1d1f] rounded-[1.5rem] p-5 shadow-lg flex flex-col text-white overflow-hidden w-full">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1 truncate">Net Profit</p>
+          <p className="text-[20px] sm:text-[24px] font-semibold tracking-tight text-[#149911] mb-3 truncate">{peso(totalNetProfit)}</p>
           <div className="mt-auto">
-            <p className="text-[11px] text-gray-400 font-medium">Accrual Tally</p>
+            <p className="text-[11px] text-gray-400 font-medium truncate">Accrual Tally</p>
           </div>
         </div>
 
@@ -467,24 +466,24 @@ export default async function ReportsPage({
 
       {/* Google Reviews */}
       {googleReviews && (
-        <div className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 mb-8 flex items-center justify-between flex-wrap gap-4 shadow-sm">
-          <div>
-            <p className="text-[12px] font-semibold uppercase tracking-wider text-gray-400 mb-2">
+        <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 md:p-8 mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm w-full overflow-hidden">
+          <div className="w-full min-w-0">
+            <p className="text-[11px] sm:text-[12px] font-semibold uppercase tracking-wider text-gray-400 mb-2 truncate">
               Google Reviews
             </p>
             <div className="flex items-baseline gap-3">
               <p className="text-[32px] md:text-[40px] font-semibold tracking-tight leading-none text-gray-900">
                 {googleReviews.rating.toFixed(1)}
               </p>
-              <p className="text-[20px] text-[#149911] tracking-[0.1em]">
+              <p className="text-[18px] sm:text-[20px] text-[#149911] tracking-[0.1em] shrink-0">
                 {'★'.repeat(Math.round(googleReviews.rating))}
               </p>
             </div>
-            <p className="text-[13px] text-gray-500 font-medium mt-2">
+            <p className="text-[12px] sm:text-[13px] text-gray-500 font-medium mt-2 truncate">
               from {googleReviews.count.toLocaleString()} review{googleReviews.count === 1 ? '' : 's'} on Google
             </p>
           </div>
-          <p className="text-[13px] text-gray-400 font-medium max-w-[280px] leading-relaxed">
+          <p className="text-[12px] sm:text-[13px] text-gray-400 font-medium w-full md:max-w-[280px] leading-relaxed">
             {googleReviews.isPlaceholder
               ? 'Placeholder values -- edit PLACEHOLDER_REVIEWS in this page\u2019s code, or configure the Google Places API for live data.'
               : 'Live from your Google Business Profile. Google\u2019s API provides the average and count only -- not the star-by-star breakdown.'}
@@ -493,7 +492,7 @@ export default async function ReportsPage({
       )}
 
       {/* Conversion funnel */}
-      <div className="flex flex-wrap gap-4 mb-8">
+      <div className="flex flex-wrap gap-3 sm:gap-4 mb-8 w-full">
         <FunnelStep label="Requests" value={requestCount} />
         <FunnelStep
           label="Quotations"
@@ -513,7 +512,7 @@ export default async function ReportsPage({
         />
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6 mb-6">
+      <div className="grid lg:grid-cols-2 gap-5 sm:gap-6 mb-6 w-full">
         {/* Quotation pipeline */}
         <div className={card}>
           <h2 className={sectionTitle}>Quotation Pipeline</h2>
@@ -545,7 +544,7 @@ export default async function ReportsPage({
         </div>
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid lg:grid-cols-2 gap-5 sm:gap-6 w-full">
         {/* Top materials */}
         <div className={card}>
           <h2 className={sectionTitle}>Material Demand (Top 8)</h2>
@@ -557,13 +556,13 @@ export default async function ReportsPage({
             topMaterials.map(([name, qty]) => {
               const pct = maxMaterialQty > 0 ? Math.max(3, Math.round((qty / maxMaterialQty) * 100)) : 0
               return (
-                <div key={name} className="py-3.5 border-b border-gray-50 last:border-0">
-                  <div className="flex justify-between items-baseline gap-3 mb-2">
-                    <p className="text-[13px] font-medium text-gray-900 truncate">{name}</p>
-                    <p className="text-[12px] text-gray-500 font-mono flex-shrink-0">{qty}</p>
+                <div key={name} className="py-3.5 border-b border-gray-50 last:border-0 w-full overflow-hidden">
+                  <div className="flex justify-between items-baseline gap-3 mb-2 w-full min-w-0">
+                    <p className="text-[12px] sm:text-[13px] font-medium text-gray-900 truncate min-w-0">{name}</p>
+                    <p className="text-[11px] sm:text-[12px] text-gray-500 font-mono shrink-0">{qty}</p>
                   </div>
-                  <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-[#149911] rounded-full" style={{ width: `${pct}%` }} />
+                  <div className="w-full h-1.5 sm:h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div className="h-full bg-[#149911] rounded-full transition-all duration-500" style={{ width: `${pct}%` }} />
                   </div>
                 </div>
               )
@@ -582,24 +581,25 @@ export default async function ReportsPage({
             salesPersonRows.map(([name, v]) => (
               <div
                 key={name}
-                className="flex items-center justify-between gap-4 py-4 border-b border-gray-50 last:border-0"
+                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-4 border-b border-gray-50 last:border-0 w-full overflow-hidden"
               >
-                <div className="flex-1 min-w-0">
-                  <p className={`text-[13px] font-semibold truncate ${name === 'Unassigned' ? 'italic text-gray-400' : 'text-gray-900'}`}>
+                <div className="flex-1 min-w-0 w-full">
+                  <p className={`text-[13px] font-semibold truncate w-full ${name === 'Unassigned' ? 'italic text-gray-400' : 'text-gray-900'}`}>
                     {name}
                   </p>
-                  <div className="flex items-center gap-2 mt-2 flex-wrap">
-                    <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{v.count} orders</span>
-                    <span className="text-[11px] font-medium text-gray-500">Gross: {peso(v.gross)}</span>
-                    <span className="text-[11px] font-medium text-[#149911]">Paid: {peso(v.paid)}</span>
-                    <span className="text-[11px] font-medium text-amber-500">AR: {peso(v.ar)}</span>
+                  <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                    <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded truncate">{v.count} orders</span>
+                    <span className="text-[11px] font-medium text-gray-500 truncate">Gross: {peso(v.gross)}</span>
+                    <span className="text-[11px] font-medium text-[#149911] truncate">Paid: {peso(v.paid)}</span>
+                    <span className="text-[11px] font-medium text-amber-500 truncate">AR: {peso(v.ar)}</span>
                   </div>
                 </div>
-                <div className="flex flex-col items-end flex-shrink-0">
-                  <p className="text-[14px] font-semibold text-[#149911] font-mono leading-none">
+                <div className="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center w-full sm:w-auto shrink-0 pt-2 sm:pt-0 mt-1 sm:mt-0 border-t sm:border-0 border-gray-100 min-w-0">
+                  <span className="sm:hidden text-[9px] uppercase tracking-wider font-semibold text-gray-400 truncate">Net Profit</span>
+                  <p className="text-[14px] font-semibold text-[#149911] font-mono leading-none truncate">
                     {peso(v.profit)}
                   </p>
-                  <p className="text-[9px] uppercase tracking-wider font-semibold text-gray-400 mt-1.5">
+                  <p className="hidden sm:block text-[9px] uppercase tracking-wider font-semibold text-gray-400 mt-1.5 truncate">
                     Net Profit
                   </p>
                 </div>

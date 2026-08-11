@@ -100,26 +100,26 @@ export default async function HomePage() {
 
       <PainPointsResponse />
 
-      <section className="py-28 bg-[#05100d] border-t border-[#fdfffc]/5">
-        <div className="max-w-[1360px] mx-auto px-6 lg:px-20">
+      <section className="py-16 sm:py-20 lg:py-28 bg-[#05100d] border-t border-[#fdfffc]/5">
+        <div className="max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-20">
           <ScrollReveal>
-          <h2 className="mb-2 normal-case text-[#fdfffc] text-[28px] md:text-[36px] font-medium">
+          <h2 className="mb-2 normal-case text-[#fdfffc] text-[24px] sm:text-[28px] md:text-[36px] font-medium leading-tight">
             Featured Products.{" "}
-            <span className="font-normal text-[#fdfffc]/50">
+            <span className="font-normal text-[#fdfffc]/50 block sm:inline mt-1 sm:mt-0">
               Browse what&apos;s currently in stock.
             </span>
           </h2>
           </ScrollReveal>
 
-          <div className="mt-10">
+          <div className="mt-8 sm:mt-10">
             <FeaturedCarousel categories={categories.docs as any} featuredVideo={featuredVideo} />
           </div>
         </div>
       </section>
 
-      <footer className="py-2 bg-sage-tint border-t border-[#01172f]/5">
-        <div className="max-w-[1360px] mx-auto px-6">
-          <p className="text-center text-xs tracking-wide text-[#01172f]">
+      <footer className="py-4 md:py-2 bg-sage-tint border-t border-[#01172f]/5">
+        <div className="max-w-[1360px] mx-auto px-4 sm:px-6">
+          <p className="text-center text-[10px] sm:text-xs tracking-wide text-[#01172f]">
             &copy; {new Date().getFullYear()} Primegen Trading Corporation
           </p>
         </div>

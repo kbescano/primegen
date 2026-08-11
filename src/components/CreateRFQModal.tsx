@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 type Product = { id: string; name: string; unit: string };
-type LineItem = { materialId: string; quantity: number };
+type LineItem = { materialId: string; quantity: number; sizeDescription?: string };
 
 const fieldClass =
   "w-full px-4 py-3.5 bg-white border border-[#01172f]/15 text-[14px] text-[#01172f] placeholder:text-[#01172f]/35 focus:outline-none focus:border-[#149911] transition-colors duration-300 rounded-lg shadow-sm";
@@ -29,6 +29,7 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
     {
       materialId: preselectedMaterial?.id ?? products[0]?.id ?? "",
       quantity: 1,
+      sizeDescription: "",
     },
   ]);
 
@@ -37,6 +38,7 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
       {
         materialId: preselectedMaterial?.id ?? products[0]?.id ?? "",
         quantity: 1,
+        sizeDescription: "",
       },
     ]);
     setIsProductsTBC(false);
@@ -51,7 +53,7 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
   function addItem() {
     setItems((prev) => [
       ...prev,
-      { materialId: products[0]?.id ?? "", quantity: 1 },
+      { materialId: products[0]?.id ?? "", quantity: 1, sizeDescription: "" },
     ]);
   }
   
@@ -89,7 +91,8 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
         ? [] 
         : items.filter((i) => i.materialId).map((i) => ({ 
             material: i.materialId, 
-            quantity: i.quantity 
+            quantity: i.quantity,
+            sizeDescription: i.sizeDescription || "",
           })),
     };
 
@@ -190,7 +193,7 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div>
                       <label className={labelClass} htmlFor="email">Email</label>
-                      <input id="email" name="email" type="email" placeholder="you@company.com" className={fieldClass} />
+                      <input id="email" name="email" type="email" placeholder="you@company.com" required className={fieldClass} />
                     </div>
                     <div>
                       <label className={labelClass} htmlFor="projectType">Project Type</label>
@@ -242,56 +245,71 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
                       </div>
                     ) : (
                       // Dynamic product rows matching screenshot
-                      <div className="flex flex-col gap-3">
+                      <div className="flex flex-col gap-5">
                         {items.map((item, index) => {
                           const selected = products.find((m) => String(m.id) === String(item.materialId)) ?? products[0];
 
                           return (
-                            <div key={index} className="flex flex-col sm:flex-row gap-3 items-center w-full">
+                            <div key={index} className="flex flex-col gap-3 w-full">
                               
-                              {/* Product Select (Left Box) */}
-                              <div className="w-full sm:w-[55%] relative">
-                                <select
-                                  value={item.materialId}
-                                  onChange={(e) => updateItem(index, { materialId: e.target.value })}
-                                  className="w-full px-4 py-3.5 bg-white border border-gray-200 text-[14px] text-[#01172f] focus:outline-none focus:border-[#149911] transition-colors duration-300 rounded-lg shadow-sm appearance-none pr-9 bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2301172f%22 stroke-width=%222%22><path d=%22M6 9l6 6 6-6%22/></svg>')] bg-no-repeat bg-[right_14px_center]"
-                                >
-                                  {products.map((m) => (
-                                    <option key={m.id} value={m.id}>
-                                      {m.name}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-
-                              {/* Quantity + Unit (Right Box) */}
-                              <div className="w-full sm:w-[45%] flex items-center gap-2">
-                                <div className="flex-1 flex items-center bg-white border border-gray-200 rounded-lg shadow-sm px-4 py-3.5 focus-within:border-[#149911] transition-colors duration-300">
-                                  <input
-                                    type="number"
-                                    min={1}
-                                    required
-                                    value={item.quantity}
-                                    onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })}
-                                    className="w-full text-center text-[14px] text-[#01172f] focus:outline-none bg-transparent"
-                                    aria-label="Quantity"
-                                  />
-                                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-3 whitespace-nowrap">
-                                    {selected?.unit ?? "pcs"}
-                                  </span>
+                              <div className="flex flex-col sm:flex-row gap-3 items-center w-full">
+                                {/* Product Select (Left Box) */}
+                                <div className="w-full sm:w-[55%] relative">
+                                  <select
+                                    value={item.materialId}
+                                    onChange={(e) => updateItem(index, { materialId: e.target.value })}
+                                    className="w-full px-4 py-3.5 bg-white border border-gray-200 text-[14px] text-[#01172f] focus:outline-none focus:border-[#149911] transition-colors duration-300 rounded-lg shadow-sm appearance-none pr-9 bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2301172f%22 stroke-width=%222%22><path d=%22M6 9l6 6 6-6%22/></svg>')] bg-no-repeat bg-[right_14px_center]"
+                                  >
+                                    {products.map((m) => (
+                                      <option key={m.id} value={m.id}>
+                                        {m.name}
+                                      </option>
+                                    ))}
+                                  </select>
                                 </div>
 
-                                <button
-                                  type="button"
-                                  onClick={() => removeItem(index)}
-                                  aria-label="Remove item"
-                                  disabled={items.length === 1}
-                                  className="w-10 h-10 flex items-center justify-center flex-shrink-0 text-gray-400 hover:text-red-500 disabled:opacity-0 disabled:pointer-events-none transition-colors"
-                                >
-                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
-                                    <path d="M18 6L6 18M6 6l12 12" />
-                                  </svg>
-                                </button>
+                                {/* Quantity + Unit (Right Box) */}
+                                <div className="w-full sm:w-[45%] flex items-center gap-2">
+                                  <div className="flex-1 flex items-center bg-white border border-gray-200 rounded-lg shadow-sm px-4 py-3.5 focus-within:border-[#149911] transition-colors duration-300">
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      required
+                                      value={item.quantity}
+                                      onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })}
+                                      className="w-full text-center text-[14px] text-[#01172f] focus:outline-none bg-transparent"
+                                      aria-label="Quantity"
+                                    />
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 ml-3 whitespace-nowrap">
+                                      {selected?.unit ?? "pcs"}
+                                    </span>
+                                  </div>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => removeItem(index)}
+                                    aria-label="Remove item"
+                                    disabled={items.length === 1}
+                                    className="w-10 h-10 flex items-center justify-center flex-shrink-0 text-gray-400 hover:text-red-500 disabled:opacity-0 disabled:pointer-events-none transition-colors"
+                                  >
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
+                                      <path d="M18 6L6 18M6 6l12 12" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Size / Specs Field */}
+                              <div className="w-full">
+                                <input
+                                  type="text"
+                                  placeholder="Size / Specs (optional) e.g., 20mm, 6m length"
+                                  value={item.sizeDescription || ""}
+                                  onChange={(e) =>
+                                    updateItem(index, { sizeDescription: e.target.value })
+                                  }
+                                  className={`${fieldClass} h-[44px] py-0 text-[13px]`}
+                                />
                               </div>
 
                             </div>

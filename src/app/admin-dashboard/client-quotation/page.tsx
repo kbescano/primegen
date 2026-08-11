@@ -52,6 +52,7 @@ function mapDocToInitial(q: any): QuotationInitial {
           unitCost: i.unitCost, 
           marginAmount: i.marginAmount,   
           description: i.description, 
+          sizeDescription: i.sizeDescription,
           unitPrice: i.unitPrice 
         }))
       : undefined,
@@ -129,6 +130,7 @@ export default async function ClientQuotationPage({
                       qty: item.quantity || 1,
                       unit: isPopulated ? mat.unit || 'pcs' : 'pcs',
                       description: isPopulated ? mat.name || '(product no longer exists)' : String(mat || ''),
+                      sizeDescription: item.sizeDescription || '',
                       unitPrice: 0,
                     }
                   })
@@ -263,7 +265,7 @@ export default async function ClientQuotationPage({
             return (
               <div
                 key={q.id}
-                className="bg-white border border-gray-200 rounded p-5 transition-all hover:border-gray-300"
+                className="bg-white border border-gray-200 rounded p-4 sm:p-5 transition-all hover:border-gray-300"
               >
                 {/* Top Bar: Quotation #, Date & Status Dropdown */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-gray-100">
@@ -315,18 +317,22 @@ export default async function ClientQuotationPage({
                     <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-3">
                       Request Items ({(q.items || []).length})
                     </p>
-                    <div className="flex flex-col gap-2.5">
+                    <div className="flex flex-col gap-3">
                       {(q.items || []).map((item: any, i: number) => (
-                        <div key={i} className="flex items-start justify-between gap-3 text-[11px] text-gray-700">
-                          <p className="leading-snug truncate">
-                            <span className="font-mono text-gray-400 font-bold inline-block min-w-[35px] pr-2">
+                        <div key={i} className="flex items-start justify-between gap-2 text-[11px] text-gray-700">
+                          {/* CHANGED: Extracted quantity and description into proper flex children to prevent truncation */}
+                          <div className="flex items-baseline gap-1.5 sm:gap-2 min-w-0">
+                            <span className="font-mono text-gray-400 font-bold whitespace-nowrap shrink-0">
                               {item.qty} {item.unit || 'pcs'}
                             </span>
-                            {item.description || 'Unnamed item'}
-                          </p>
-                          <p className="font-mono font-bold text-[#01172f] flex-shrink-0">
+                            <span className="leading-snug break-words">
+                              {item.description || 'Unnamed item'}
+                              {item.sizeDescription ? ` - ${item.sizeDescription}` : ''}
+                            </span>
+                          </div>
+                          <span className="font-mono font-bold text-[#01172f] shrink-0 text-right">
                             {peso((item.qty || 0) * (item.unitPrice || 0))}
-                          </p>
+                          </span>
                         </div>
                       ))}
                     </div>

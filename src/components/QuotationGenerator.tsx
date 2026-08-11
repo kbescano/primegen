@@ -10,6 +10,7 @@ type LineItem = {
   qty: number
   unit: string
   description: string
+  sizeDescription?: string
   unitCost: number
   marginAmount: number
   imageDataUrl?: string
@@ -29,7 +30,7 @@ export type QuotationInitial = {
   deliveryFee?: number
   sourceRequestId?: string
   status?: string
-  items?: Array<{ qty: number; unit: string; description: string; unitCost?: number; marginAmount?: number; marginPercent?: number; unitPrice?: number }>
+  items?: Array<{ qty: number; unit: string; description: string; sizeDescription?: string; unitCost?: number; marginAmount?: number; marginPercent?: number; unitPrice?: number }>
 }
 
 const peso = (n: number) =>
@@ -83,11 +84,12 @@ export default function QuotationGenerator({
             qty: i.qty,
             unit: i.unit,
             description: i.description,
+            sizeDescription: i.sizeDescription || '',
             unitCost,
             marginAmount,
           }
         })
-      : [{ qty: 1, unit: 'pcs', description: '', unitCost: 0, marginAmount: 0 }]
+      : [{ qty: 1, unit: 'pcs', description: '', sizeDescription: '', unitCost: 0, marginAmount: 0 }]
   )
   const [hasVat, setHasVat] = useState((initial?.vatRate ?? 12) > 0)
   const [vatRate, setVatRate] = useState(initial?.vatRate && initial.vatRate > 0 ? initial.vatRate : 12)
@@ -560,7 +562,7 @@ export default function QuotationGenerator({
                   </select>
                 )}
 
-                <div className="grid grid-cols-2 md:grid-cols-[70px_90px_1fr_36px] gap-2 items-center mb-3">
+                <div className="grid grid-cols-2 md:grid-cols-[70px_90px_1fr_36px] gap-2 items-center mb-2">
                   <input
                     type="text"
                     className={inputClass}
@@ -593,6 +595,16 @@ export default function QuotationGenerator({
                       &times;
                     </button>
                   )}
+                </div>
+
+                <div className="mb-3">
+                  <input
+                    className={`${inputClass} py-2 text-[13px]`}
+                    value={item.sizeDescription || ''}
+                    onChange={(e) => updateItem(index, { sizeDescription: e.target.value })}
+                    placeholder="Size / Specs (optional) e.g., 20mm, 6m length"
+                    disabled={isLocked}
+                  />
                 </div>
 
                 <div className="bg-amber-50/60 border border-amber-100 rounded-md p-2.5">
@@ -675,7 +687,7 @@ export default function QuotationGenerator({
         {!isLocked && (
           <button
             onClick={() =>
-              setItems((prev) => [...prev, { qty: 1, unit: 'pcs', description: '', unitCost: 0, marginAmount: 0 }])
+              setItems((prev) => [...prev, { qty: 1, unit: 'pcs', description: '', sizeDescription: '', unitCost: 0, marginAmount: 0 }])
             }
             className="text-sm text-[#3D5F3B] border border-dashed border-gray-300 rounded px-4 py-2.5 mb-8 hover:border-[#149911] hover:bg-[#149911]/[0.03] transition-all duration-200"
           >
@@ -899,7 +911,14 @@ export default function QuotationGenerator({
                     <td className="py-1.5 px-2 border-b border-gray-100">{item.unit}</td>
                     <td className="py-1.5 px-2 border-b border-gray-100">
                       <div className="flex items-center gap-3">
-                        <span>{item.description || '--'}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-medium text-[#01172f] leading-snug">{item.description || '--'}</span>
+                          {item.sizeDescription && (
+                            <span className="text-[10px] text-gray-500 mt-0.5">
+                              {`--- ${item.sizeDescription}`}
+                            </span>
+                          )}
+                        </div>
                         {item.imageDataUrl && (
                           <img
                             src={item.imageDataUrl}

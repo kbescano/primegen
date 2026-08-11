@@ -54,15 +54,66 @@ export const Orders: CollectionConfig = {
         }
         return doc
       },
+      // NEW HOOK: Notify staff when Admin approves OPEX
+      async ({ doc, previousDoc, operation, req }) => {
+        if (operation === 'update' && Array.isArray(doc.opex)) {
+          // Filter to find OPEX items that just switched to 'liquidated'
+          const newlyLiquidated = doc.opex.filter((currExp: any) => {
+            if (currExp.status !== 'liquidated') return false;
+            const prevExp = (previousDoc?.opex || []).find((p: any) => String(p.id) === String(currExp.id));
+            return prevExp && prevExp.status !== 'liquidated';
+          });
+
+          if (newlyLiquidated.length > 0 && doc.sourceQuotationId) {
+            try {
+              // Trace backward: Order -> Quotation -> RFQ to find the staff member
+              const quotation: any = await req.payload.findByID({
+                collection: 'client-quotations',
+                id: doc.sourceQuotationId,
+              });
+
+              if (quotation?.sourceRequestId) {
+                const targetId = isNaN(Number(quotation.sourceRequestId)) ? quotation.sourceRequestId : Number(quotation.sourceRequestId);
+                const rfq: any = await req.payload.findByID({
+                  collection: 'quotation-requests',
+                  id: targetId,
+                });
+
+                const staffId = rfq.assignedTo && typeof rfq.assignedTo === 'object' ? rfq.assignedTo.id : rfq.assignedTo;
+
+                if (staffId) {
+                  let recipientEmail = staffId;
+                  try {
+                    const user = await req.payload.findByID({ collection: 'users', id: staffId });
+                    if (user?.email) recipientEmail = user.email;
+                  } catch(e) {}
+
+                  // Fire a notification for each newly liquidated OPEX item
+                  for (const exp of newlyLiquidated) {
+                    await req.payload.create({
+                      collection: 'notifications' as any,
+                      data: {
+                        recipient: recipientEmail,
+                        message: `OPEX Approved: ₱${exp.amount} for ${exp.description}.`,
+                        link: `/admin-dashboard/pipeline/${rfq.id}`,
+                        read: false,
+                      },
+                    });
+                  }
+                }
+              }
+            } catch (err) {
+              console.error('Failed to send OPEX approval notification:', err);
+            }
+          }
+        }
+        return doc;
+      },
     ],
   },
   fields: [
     { name: 'orderNumber', type: 'text', unique: true, admin: { readOnly: true } },
-    {
-      name: 'sourceQuotationId',
-      type: 'text',
-      admin: { readOnly: true, description: 'Links back to the originating Client Quotation. Prevents duplicate conversions.' },
-    },
+    { name: 'sourceQuotationId', type: 'text', admin: { readOnly: true, description: 'Links back to the originating Client Quotation. Prevents duplicate conversions.' } },
     { name: 'orderDate', type: 'date', defaultValue: () => new Date().toISOString() },
     { name: 'customerName', type: 'text' },
     { name: 'company', type: 'text' },
@@ -74,23 +125,14 @@ export const Orders: CollectionConfig = {
       type: 'array',
       fields: [
         { name: 'description', type: 'text' },
+        { name: 'sizeDescription', type: 'text', label: 'Size / Specs (Optional)' },
         { name: 'qty', type: 'number' },
         { name: 'unit', type: 'text' },
         { name: 'unitPrice', type: 'number' },
-        {
-          name: 'unitCost',
-          type: 'number',
-          defaultValue: 0,
-          admin: { description: 'Supplier cost per unit, carried over from the source quotation. Used to compute Profit.' },
-        },
-        {
-          name: 'assignedPOId',
-          type: 'text',
-          admin: { readOnly: true, description: 'Which Supplier PO this specific item was assigned to, if any.' },
-        },
+        { name: 'unitCost', type: 'number', defaultValue: 0, admin: { description: 'Supplier cost per unit, carried over from the source quotation. Used to compute Profit.' } },
+        { name: 'assignedPOId', type: 'text', admin: { readOnly: true, description: 'Which Supplier PO this specific item was assigned to, if any.' } },
       ],
     },
-    // 👇 NEW: OPEX Array
     {
       name: 'opex',
       type: 'array',
@@ -146,7 +188,6 @@ export const Orders: CollectionConfig = {
       label: 'Amount Paid',
       admin: {
         description: 'Record the partial payment amount received from the client.',
-        // This condition hides the field in the Payload Admin UI unless the status is partial
         condition: (data) => data.paymentStatus === 'partial', 
       },
     },

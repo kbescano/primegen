@@ -388,6 +388,7 @@ export default async function QuotationInboxPage({
                             >
                               <span className="font-medium text-[#01172f] truncate pr-2">
                                 {matName || "Unnamed Material"}
+                                {item.sizeDescription ? ` - ${item.sizeDescription}` : ""}
                               </span>
                               <span className="font-mono text-gray-400 font-bold flex-shrink-0">
                                 {item.quantity} {matUnit}

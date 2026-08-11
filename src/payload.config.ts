@@ -22,6 +22,7 @@ import { Orders } from './collections/Orders'
 import { ClientQuotations } from './collections/ClientQuotations'
 import { SupplierPurchaseOrders } from './collections/SupplierPurchaseOrders'
 import { AboutPage } from './globals/AboutPage'
+import { Notifications } from './collections/Notifications'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -59,6 +60,7 @@ export default buildConfig({
     Orders,
     ClientQuotations,
     SupplierPurchaseOrders,
+    Notifications,
   ],
   globals: [AboutPage],
   editor: lexicalEditor(),

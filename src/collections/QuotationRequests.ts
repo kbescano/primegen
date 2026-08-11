@@ -11,8 +11,6 @@ export const QuotationRequests: CollectionConfig = {
   },
   access: {
     create: () => true,
-    // Admins see everything. Staff (role: 'user') only see requests
-    // assigned to them.
     read: ({ req }) => {
       if (!req.user) return false
       if (req.user.role === 'admin') return true
@@ -21,36 +19,63 @@ export const QuotationRequests: CollectionConfig = {
     update: ({ req }) => {
       if (!req.user) return false
       if (req.user.role === 'admin') return true
-      // Staff can update (e.g. change status) only on their own assigned
-      // requests -- they cannot reassign or touch anyone else's.
       return { assignedTo: { equals: req.user.id } }
     },
     delete: ({ req }) => Boolean(req.user && req.user.role === 'admin'),
   },
   hooks: {
     afterChange: [
-      // Fire a notification when a request is newly assigned or
-      // reassigned to a staff member.
+      // New RFQ submitted -> notify every admin
+      async ({ doc, operation, req }) => {
+        if (operation !== 'create') return doc
+        try {
+          const admins = await req.payload.find({
+            collection: 'users',
+            where: { role: { equals: 'admin' } },
+            limit: 100,
+          })
+          await Promise.all(
+            admins.docs.map((admin: any) =>
+              req.payload.create({
+                collection: 'notifications' as any,
+                data: {
+                  recipient: admin.id,
+                  message: `New RFQ from ${doc.customerName || 'a customer'}`,
+                  link: `/admin-dashboard/pipeline/${doc.id}`,
+                  read: false,
+                },
+              })
+            )
+          )
+        } catch (err) {
+          console.error('Failed to notify admins of new RFQ:', err)
+        }
+        return doc
+      },
+      // RFQ assigned to a staff member -> notify that staff member
       async ({ doc, previousDoc, operation, req }) => {
-        if (
-          operation === 'update' &&
-          doc.assignedTo &&
-          String(doc.assignedTo) !== String(previousDoc?.assignedTo || '')
-        ) {
-          try {
-            await req.payload.create({
-              // Notifications may be provided by an optional plugin and are
-              // not included in the generated Payload collection union.
-              collection: 'notifications' as any,
-              data: {
-                recipient: doc.assignedTo,
-                message: `You've been assigned a new RFQ from ${doc.customerName || 'a customer'}`,
-                link: `/admin-dashboard/pipeline/${doc.id}`,
-                read: false,
-              },
-            })
-          } catch {
-            // non-critical
+        if (operation === 'update') {
+          const currentStaffId = doc.assignedTo && typeof doc.assignedTo === 'object' ? doc.assignedTo.id : doc.assignedTo;
+          const prevStaffId = previousDoc?.assignedTo && typeof previousDoc.assignedTo === 'object' ? previousDoc.assignedTo.id : previousDoc?.assignedTo;
+
+          if (currentStaffId && String(currentStaffId) !== String(prevStaffId || '')) {
+            try {
+              const recipientId = isNaN(Number(currentStaffId))
+                ? currentStaffId
+                : Number(currentStaffId)
+
+              await req.payload.create({
+                collection: 'notifications' as any,
+                data: {
+                  recipient: recipientId,
+                  message: `You've been assigned a new RFQ from ${doc.customerName || 'a customer'}`,
+                  link: `/admin-dashboard/pipeline/${doc.id}`,
+                  read: false,
+                },
+              })
+            } catch (err) {
+              console.error('Failed to create assignment notification:', err)
+            }
           }
         }
         return doc
@@ -58,34 +83,17 @@ export const QuotationRequests: CollectionConfig = {
     ],
   },
   fields: [
-    {
-      name: 'customerName',
-      type: 'text',
-      required: true,
-    },
-    {
-      name: 'phone',
-      type: 'text',
-      required: true,
-    },
-    {
-      name: 'email',
-      type: 'email',
-    },
+    { name: 'customerName', type: 'text', required: true },
+    { name: 'phone', type: 'text', required: true },
+    { name: 'email', type: 'email' },
     {
       name: 'assignedTo',
       type: 'relationship',
       relationTo: 'users',
       label: 'Assigned Staff',
-      filterOptions: {
-        role: { equals: 'user' },
-      },
-      admin: {
-        description: 'Which sales staff member owns following up on this request. Only admins can change this.',
-      },
-      access: {
-        update: ({ req }) => Boolean(req.user && req.user.role === 'admin')
-      },
+      filterOptions: { role: { equals: 'user' } },
+      admin: { description: 'Which sales staff member owns following up on this request. Only admins can change this.' },
+      access: { update: ({ req }) => Boolean(req.user && req.user.role === 'admin') },
     },
     {
       name: 'projectType',
@@ -101,30 +109,14 @@ export const QuotationRequests: CollectionConfig = {
       name: 'items',
       type: 'array',
       label: 'Products requested',
-      admin: {
-        description: 'Products and quantities the customer requested',
-      },
+      admin: { description: 'Products and quantities the customer requested' },
       fields: [
-        {
-          name: 'material',
-          type: 'relationship',
-          relationTo: 'products',
-          required: true,
-        },
-        {
-          name: 'quantity',
-          type: 'number',
-          required: true,
-          min: 1,
-          defaultValue: 1,
-        },
+        { name: 'material', type: 'relationship', relationTo: 'products', required: true },
+        { name: 'sizeDescription', type: 'text', label: 'Size / Specs (Optional)' },
+        { name: 'quantity', type: 'number', required: true, min: 1, defaultValue: 1 },
       ],
     },
-    {
-      name: 'message',
-      type: 'textarea',
-      label: 'Project details / message from customer',
-    },
+    { name: 'message', type: 'textarea', label: 'Project details / message from customer' },
     {
       name: 'source',
       type: 'select',
@@ -146,15 +138,9 @@ export const QuotationRequests: CollectionConfig = {
         { label: 'Completed', value: 'completed' },
         { label: 'Rejected', value: 'rejected' },
       ],
-      admin: {
-        description: 'Admin updates this manually to track follow-up progress.',
-      },
+      admin: { description: 'Admin updates this manually to track follow-up progress.' },
     },
-    {
-      name: 'internalNotes',
-      type: 'textarea',
-      label: 'Internal notes (not visible to customer)',
-    },
+    { name: 'internalNotes', type: 'textarea', label: 'Internal notes (not visible to customer)' },
   ],
   timestamps: true,
 }

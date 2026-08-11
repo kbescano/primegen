@@ -108,7 +108,12 @@ export default async function SupplierPOPage({
             sourceOrderId: resolvedOrderId,
             sourceRequestId: resolvedRequestId,
             items: Array.isArray(po.items)
-              ? po.items.map((i: any) => ({ description: i.description, qty: i.qty, unit: i.unit, unitPrice: i.unitPrice }))
+              ? po.items.map((i: any) => ({ 
+                  description: i.sizeDescription ? `${i.description} - ${i.sizeDescription}` : i.description, 
+                  qty: i.qty, 
+                  unit: i.unit, 
+                  unitPrice: i.unitPrice 
+                }))
               : undefined,
           }
         }
@@ -138,7 +143,7 @@ export default async function SupplierPOPage({
             sourceRequestId: resolvedRequestId,
             items: Array.isArray(o.items)
               ? o.items.map((item: any) => ({
-                  description: item.description,
+                  description: item.sizeDescription ? `${item.description} - ${item.sizeDescription}` : item.description,
                   qty: item.qty,
                   unit: item.unit,
                   unitPrice: item.unitCost || 0,
@@ -170,12 +175,15 @@ export default async function SupplierPOPage({
               ? `${q.projectType.charAt(0).toUpperCase()}${q.projectType.slice(1)} project -- for ${q.customerName}`
               : `For ${q.customerName}`,
             items: Array.isArray(q.items)
-              ? q.items.map((item: any) => ({
-                  description: typeof item.material === 'object' ? item.material?.name || '' : String(item.material || ''),
-                  qty: item.quantity || 1,
-                  unit: typeof item.material === 'object' ? item.material?.unit || 'pcs' : 'pcs',
-                  unitPrice: 0,
-                }))
+              ? q.items.map((item: any) => {
+                  const baseDesc = typeof item.material === 'object' ? item.material?.name || '' : String(item.material || '');
+                  return {
+                    description: item.sizeDescription ? `${baseDesc} - ${item.sizeDescription}` : baseDesc,
+                    qty: item.quantity || 1,
+                    unit: typeof item.material === 'object' ? item.material?.unit || 'pcs' : 'pcs',
+                    unitPrice: 0,
+                  }
+                })
               : undefined,
           }
         }
@@ -225,7 +233,7 @@ export default async function SupplierPOPage({
   }
 
   return (
-    <div className="max-w-[1000px] mx-auto p-4 md:p-8 antialiased">
+    <div className="max-w-[1000px] mx-auto mt-10 md:p-8 antialiased">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
         <div>
           <h1 className="text-[26px] md:text-[32px] font-semibold tracking-tight text-gray-900 leading-none mb-3">

@@ -36,41 +36,35 @@ export const ClientQuotations: CollectionConfig = {
       },
     ],
     afterChange: [
-      // Trigger when status changes TO 'pending_approval': this is the
-      // "Send for Internal Approval" transition. Mirrors the sourceRequestId
-      // lookup pattern used below for order_confirmed, just targeting the
-      // quotation-requests collection's status instead of creating an order.
       async ({ doc, previousDoc, operation, req }) => {
-  if (
-    operation === 'update' &&
-    doc.status === 'pending_approval' &&
-    previousDoc?.status !== 'pending_approval' &&
-    doc.sourceRequestId
-  ) {
-    try {
-      const targetId = isNaN(Number(doc.sourceRequestId))
-        ? doc.sourceRequestId
-        : Number(doc.sourceRequestId)
+        if (
+          operation === 'update' &&
+          doc.status === 'pending_approval' &&
+          previousDoc?.status !== 'pending_approval' &&
+          doc.sourceRequestId
+        ) {
+          try {
+            const targetId = isNaN(Number(doc.sourceRequestId))
+              ? doc.sourceRequestId
+              : Number(doc.sourceRequestId)
 
-      await req.payload.update({
-        collection: 'quotation-requests',
-        id: targetId,
-        data: { status: 'processing' },
-      })
-    } catch (err) {
-      console.error('Failed to update quotation-request status to processing:', err)
-    }
-  }
-  return doc
-},
+            await req.payload.update({
+              collection: 'quotation-requests',
+              id: targetId,
+              data: { status: 'processing' },
+            })
+          } catch (err) {
+            console.error('Failed to update quotation-request status to processing:', err)
+          }
+        }
+        return doc
+      },
       async ({ doc, previousDoc, operation, req }) => {
-        // Trigger only when status changes TO 'order_confirmed'
         if (
           operation === 'update' && 
           doc.status === 'order_confirmed' && 
           previousDoc.status !== 'order_confirmed'
         ) {
-          // 1. Check if an order already exists to prevent duplicate creation
           const existing = await req.payload.find({
             collection: 'orders',
             where: { sourceQuotationId: { equals: String(doc.id) } },
@@ -78,7 +72,6 @@ export const ClientQuotations: CollectionConfig = {
           })
 
           if (existing.docs.length === 0) {
-            // 2. Auto-generate the new Order Number using your existing format logic
             const year = new Date().getFullYear()
             const existingOrders = await req.payload.find({
               collection: 'orders',
@@ -95,16 +88,15 @@ export const ClientQuotations: CollectionConfig = {
             
             const orderNumber = `${year}-${String(next).padStart(5, '0')}`
 
-            // 3. Map items carefully to match the Orders schema
             const mappedItems = Array.isArray(doc.items) ? doc.items.map((i: any) => ({
               description: i.description || '',
+              sizeDescription: i.sizeDescription || '',
               qty: i.qty || 1,
               unit: i.unit || 'pcs',
               unitPrice: i.unitPrice || 0,
               unitCost: i.unitCost || 0,
             })) : []
 
-            // 4. Create the order automatically
             await req.payload.create({
               collection: 'orders',
               data: {
@@ -126,26 +118,53 @@ export const ClientQuotations: CollectionConfig = {
           }
         }
         return doc
-      }
+      },
+      // Trigger when status changes TO 'quotation_approved': notify whichever
+      // staff member is assigned to the originating quotation-request, since
+      // that's the real link back to a user ID (salesPerson on the quotation
+      // itself is just a free-text name, not a relationship).
+      async ({ doc, previousDoc, operation, req }) => {
+        if (
+          operation === 'update' &&
+          doc.status === 'quotation_approved' &&
+          previousDoc?.status !== 'quotation_approved' &&
+          doc.sourceRequestId
+        ) {
+          try {
+            const request = await req.payload.findByID({
+              collection: 'quotation-requests',
+              id: doc.sourceRequestId,
+            })
+            if (request?.assignedTo) {
+              const recipientId = typeof request.assignedTo === 'object'
+                ? request.assignedTo.id
+                : request.assignedTo
+              await req.payload.create({
+                collection: 'notifications',
+                data: {
+                  recipient: recipientId,
+                  message: `Quotation ${doc.quotationNumber || ''} was approved`,
+                  link: `/admin-dashboard/pipeline/${doc.sourceRequestId}`,
+                  read: false,
+                },
+              })
+            }
+          } catch (err) {
+            console.error('Failed to notify on quotation approval:', err)
+          }
+        }
+        return doc
+      },
     ],
   },
   fields: [
-    {
-      name: 'quotationNumber',
-      type: 'text',
-      unique: true,
-      admin: { description: 'Auto-generated on create (YYYY-##### matching your existing numbering). Editable to override.' },
-    },
+    { name: 'quotationNumber', type: 'text', unique: true, admin: { description: 'Auto-generated on create (YYYY-##### matching your existing numbering). Editable to override.' } },
     { name: 'quotationDate', type: 'date', required: true, defaultValue: () => new Date().toISOString() },
     { name: 'customerName', type: 'text', label: 'Customer Name' },
     { name: 'company', type: 'text', label: 'Company' },
     { name: 'address', type: 'text' },
     { name: 'contactNumber', type: 'text' },
-    {
-      name: 'salesPerson',
-      type: 'text',
-      admin: { description: 'Manual entry for now -- once roles/accounts exist, this can become a relationship to a Users collection.' },
-    },
+    { name: 'salesPerson', type: 'text', admin: { description: 'Manual entry for now -- once roles/accounts exist, this can become a relationship to a Users collection.' } },
     {
       name: 'items',
       type: 'array',
@@ -154,30 +173,14 @@ export const ClientQuotations: CollectionConfig = {
         { name: 'qty', type: 'number', required: true, defaultValue: 1 },
         { name: 'unit', type: 'text', defaultValue: 'pcs' },
         { name: 'description', type: 'textarea', required: true },
-        {
-          name: 'unitCost',
-          type: 'number',
-          defaultValue: 0,
-          admin: { description: 'Supplier wholesale cost per unit. Internal only -- never printed on the client quotation.' },
-        },
-        {
-          name: 'marginAmount',
-          type: 'number',
-          defaultValue: 0,
-          admin: { description: 'Flat markup amount (₱) added to cost. Internal only -- never printed on the client quotation.' },
-        },
+        { name: 'sizeDescription', type: 'text', label: 'Size / Specs (Optional)' },
+        { name: 'unitCost', type: 'number', defaultValue: 0, admin: { description: 'Supplier wholesale cost per unit. Internal only -- never printed on the client quotation.' } },
+        { name: 'marginAmount', type: 'number', defaultValue: 0, admin: { description: 'Flat markup amount (₱) added to cost. Internal only -- never printed on the client quotation.' } },
         { name: 'unitPrice', type: 'number', required: true, defaultValue: 0 },
       ],
     },
     { name: 'vatRate', type: 'number', defaultValue: 12, label: 'VAT Rate (%)' },
-    {
-      name: 'sourceRequestId',
-      type: 'text',
-      admin: {
-        readOnly: true,
-        description: 'Internal: links back to the originating quotation-request, if generated from one. Prevents duplicate quotations for the same request.',
-      },
-    },
+    { name: 'sourceRequestId', type: 'text', admin: { readOnly: true, description: 'Internal: links back to the originating quotation-request, if generated from one. Prevents duplicate quotations for the same request.' } },
     { name: 'discountAmount', type: 'number', defaultValue: 0, label: 'Discount (₱)' },
     { name: 'deliveryFee', type: 'number', defaultValue: 0, label: 'Delivery Fee (₱)' },
     {
@@ -187,7 +190,7 @@ export const ClientQuotations: CollectionConfig = {
       options: [
         { label: 'Draft', value: 'draft' },
         { label: 'Pending Approval', value: 'pending_approval' },
-         { label: 'Quotation Approved', value: 'quotation_approved' },
+        { label: 'Quotation Approved', value: 'quotation_approved' },
         { label: 'Order Confirmed', value: 'order_confirmed' },
         { label: 'Cancelled', value: 'cancelled' },
       ],
