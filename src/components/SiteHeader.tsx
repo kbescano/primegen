@@ -146,39 +146,39 @@ export default function SiteHeader() {
                 </svg>
               </button>
 
-              {/* Desktop Contact Dropdown */}
+              {/* Desktop Contact Dropdown (Updated to Dark Theme) */}
               <div
-                className={`absolute top-full right-0 mt-4 p-6 bg-white/95 backdrop-blur-lg border border-[#3D5F3B]/5 shadow-2xl rounded-xl w-[260px] origin-top-right transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]
+                className={`absolute top-full right-0 mt-4 p-6 bg-[#01172f] backdrop-blur-lg border border-white/10 shadow-2xl rounded-xl w-[260px] origin-top-right transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]
                   ${desktopContactOpen ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"}
                 `}
               >
                 <div className="flex flex-col gap-5">
                   <div>
-                    <span className="block text-[8px] uppercase tracking-[0.25em] text-[#3D5F3B]/40 mb-3 font-medium">
+                    <span className="block text-[8px] uppercase tracking-[0.25em] text-white/40 mb-3 font-medium">
                       Direct Lines
                     </span>
                     <div className="flex flex-col gap-3">
                       <a
                         href="tel:09171859127"
-                        className="text-sm tracking-widest text-[#3D5F3B] md:hover:text-[#149911] transition-colors"
+                        className="text-sm tracking-widest text-white hover:text-[#149911] transition-colors"
                       >
                         0917-185-9127
                       </a>
                       <a
                         href="tel:09171339515"
-                        className="text-sm tracking-widest text-[#3D5F3B] md:hover:text-[#149911] transition-colors"
+                        className="text-sm tracking-widest text-white hover:text-[#149911] transition-colors"
                       >
                         0917-133-9515
                       </a>
                     </div>
                   </div>
-                  <div className="pt-5 border-t border-[#3D5F3B]/5">
-                    <span className="block text-[8px] uppercase tracking-[0.25em] text-[#3D5F3B]/40 mb-3 font-medium">
+                  <div className="pt-5 border-t border-white/10">
+                    <span className="block text-[8px] uppercase tracking-[0.25em] text-white/40 mb-3 font-medium">
                       Email
                     </span>
                     <a
                       href="mailto:sales@primegentradingcorp.com"
-                      className="text-[11px] tracking-wide text-[#3D5F3B] md:hover:text-[#149911] transition-colors break-all"
+                      className="text-[11px] tracking-wide text-white hover:text-[#149911] transition-colors break-all"
                     >
                       sales@primegentradingcorp.com
                     </a>
@@ -197,7 +197,6 @@ export default function SiteHeader() {
           </div>
 
           {/* Mobile Menu Toggle (Hamburger) */}
-          {/* Strictly forcing width, height, and color via inline styles to bypass Tailwind purging issues */}
           <button
             className="flex lg:hidden flex-col justify-center items-end z-[70] ml-auto shrink-0 outline-none cursor-pointer py-2 pl-4"
             onClick={() => setOpen(!open)}
@@ -251,27 +250,13 @@ export default function SiteHeader() {
             </Link>
           ))}
 
-          <div
-            className={`pt-2 flex flex-col gap-2.5 sm:gap-3 transition-all duration-700
-              ${open ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}
-            `}
-            style={{ transitionDelay: `${open ? NAV_LINKS.length * 100 + 150 : 0}ms` }}
-          >
-            <a href="tel:09171859127" className="text-[12px] sm:text-[13px] tracking-widest text-[#fdfffc]/60">
-              0917-185-9127
-            </a>
-            <a href="mailto:sales@primegentradingcorp.com" className="text-[12px] sm:text-[13px] tracking-wide text-[#fdfffc]/60">
-              sales@primegentradingcorp.com
-            </a>
-          </div>
-
           <Link
             href="/quote"
             className={`mt-2 py-3 sm:py-4 border-t border-[#fdfffc]/10 text-[12px] sm:text-[14px] uppercase tracking-[0.2em] font-medium text-[#149911] flex items-center justify-between group transition-all duration-700
               ${open ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"}
             `}
             style={{
-              transitionDelay: `${open ? NAV_LINKS.length * 100 + 250 : 0}ms`,
+              transitionDelay: `${open ? NAV_LINKS.length * 100 + 150 : 0}ms`,
             }}
             onClick={() => setOpen(false)}
           >
@@ -291,40 +276,40 @@ export default function SiteHeader() {
         </nav>
       </div>
 
-      {/* Mobile Floating Contact (Sleek FAB) */}
+      {/* Mobile Floating Contact (Sleek FAB - Updated to Dark Theme) */}
       <div className="lg:hidden fixed bottom-4 sm:bottom-6 right-4 sm:right-6 z-[60] flex flex-col items-end pointer-events-none">
         <div
-          className={`mb-3 sm:mb-4 p-5 sm:p-6 bg-white/95 backdrop-blur-lg border border-[#3D5F3B]/5 shadow-2xl rounded-xl w-[240px] sm:w-[260px] origin-bottom-right transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]
+          className={`mb-3 sm:mb-4 p-5 sm:p-6 bg-[#01172f] backdrop-blur-xl border border-white/10 shadow-2xl rounded-xl w-[240px] sm:w-[260px] origin-bottom-right transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]
             ${contactOpen ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"}
           `}
         >
           <div className="flex flex-col gap-4 sm:gap-5">
             <div>
-              <span className="block text-[8px] uppercase tracking-[0.25em] text-[#3D5F3B]/40 mb-2.5 sm:mb-3 font-medium">
+              <span className="block text-[8px] uppercase tracking-[0.25em] text-white/40 mb-2.5 sm:mb-3 font-medium">
                 Direct Lines
               </span>
               <div className="flex flex-col gap-2.5 sm:gap-3">
                 <a
                   href="tel:09171859127"
-                  className="text-[13px] sm:text-[14px] tracking-widest text-[#3D5F3B] active:text-[#149911] transition-colors"
+                  className="text-[13px] sm:text-[14px] tracking-widest text-white active:text-[#149911] transition-colors"
                 >
                   0917-185-9127
                 </a>
                 <a
                   href="tel:09171339515"
-                  className="text-[13px] sm:text-[14px] tracking-widest text-[#3D5F3B] active:text-[#149911] transition-colors"
+                  className="text-[13px] sm:text-[14px] tracking-widest text-white active:text-[#149911] transition-colors"
                 >
                   0917-133-9515
                 </a>
               </div>
             </div>
-            <div className="pt-4 sm:pt-5 border-t border-[#3D5F3B]/5">
-              <span className="block text-[8px] uppercase tracking-[0.25em] text-[#3D5F3B]/40 mb-2.5 sm:mb-3 font-medium">
+            <div className="pt-4 sm:pt-5 border-t border-white/10">
+              <span className="block text-[8px] uppercase tracking-[0.25em] text-white/40 mb-2.5 sm:mb-3 font-medium">
                 Email
               </span>
               <a
                 href="mailto:sales@primegentradingcorp.com"
-                className="text-[10px] sm:text-[11px] tracking-wide text-[#3D5F3B] active:text-[#149911] transition-colors break-all"
+                className="text-[10px] sm:text-[11px] tracking-wide text-white active:text-[#149911] transition-colors break-all"
               >
                 sales@primegentradingcorp.com
               </a>
@@ -335,11 +320,11 @@ export default function SiteHeader() {
         <button
           onClick={() => setContactOpen(!contactOpen)}
           className={`pointer-events-auto w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center shadow-lg transition-all duration-500 ease-out active:scale-95
-            ${contactOpen ? "bg-white text-[#3D5F3B] border border-[#3D5F3B]/10" : "bg-[#3D5F3B] text-white active:bg-[#149911]"}
+            ${contactOpen ? "bg-[#149911] text-white border border-[#149911]" : "bg-[#01172f] text-white active:bg-[#149911]"}
           `}
           aria-label="Contact options"
         >
-          <div className="relative w-4.5 h-4.5">
+          <div className="relative w-5 h-5">
             <svg
               viewBox="0 0 24 24"
               fill="none"

@@ -83,7 +83,7 @@ export default function ProductsCatalog({
   }, [products, activeCats, query]);
 
   return (
-    <section className="min-h-screen bg-[#05100d] pt-24 md:pt-32 pb-16 md:pb-24 font-sans selection:bg-[#149911]/30 relative">
+    <section className="min-h-screen bg-[#05100d] pt-24 md:pt-32 pb-16 md:pb-24 font-sans selection:bg-[#149911]/30 relative overflow-x-hidden">
       
       {/* Subtle Background Glow */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[#149911]/10 blur-[120px] rounded-full pointer-events-none" />

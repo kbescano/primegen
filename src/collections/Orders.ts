@@ -54,10 +54,9 @@ export const Orders: CollectionConfig = {
         }
         return doc
       },
-      // NEW HOOK: Notify staff when Admin approves OPEX
+      // Notify staff when admin approves (liquidates) their OPEX
       async ({ doc, previousDoc, operation, req }) => {
         if (operation === 'update' && Array.isArray(doc.opex)) {
-          // Filter to find OPEX items that just switched to 'liquidated'
           const newlyLiquidated = doc.opex.filter((currExp: any) => {
             if (currExp.status !== 'liquidated') return false;
             const prevExp = (previousDoc?.opex || []).find((p: any) => String(p.id) === String(currExp.id));
@@ -66,7 +65,6 @@ export const Orders: CollectionConfig = {
 
           if (newlyLiquidated.length > 0 && doc.sourceQuotationId) {
             try {
-              // Trace backward: Order -> Quotation -> RFQ to find the staff member
               const quotation: any = await req.payload.findByID({
                 collection: 'client-quotations',
                 id: doc.sourceQuotationId,
@@ -82,18 +80,17 @@ export const Orders: CollectionConfig = {
                 const staffId = rfq.assignedTo && typeof rfq.assignedTo === 'object' ? rfq.assignedTo.id : rfq.assignedTo;
 
                 if (staffId) {
-                  let recipientEmail = staffId;
-                  try {
-                    const user = await req.payload.findByID({ collection: 'users', id: staffId });
-                    if (user?.email) recipientEmail = user.email;
-                  } catch(e) {}
+                  // notifications.recipient is a relationship field -- it
+                  // needs the user's ID directly, not their email. Writing
+                  // an email string here silently breaks the notification,
+                  // same bug already fixed once in QuotationRequests.ts.
+                  const recipientId = isNaN(Number(staffId)) ? staffId : Number(staffId);
 
-                  // Fire a notification for each newly liquidated OPEX item
                   for (const exp of newlyLiquidated) {
                     await req.payload.create({
                       collection: 'notifications' as any,
                       data: {
-                        recipient: recipientEmail,
+                        recipient: recipientId,
                         message: `OPEX Approved: ₱${exp.amount} for ${exp.description}.`,
                         link: `/admin-dashboard/pipeline/${rfq.id}`,
                         read: false,
@@ -104,6 +101,48 @@ export const Orders: CollectionConfig = {
               }
             } catch (err) {
               console.error('Failed to send OPEX approval notification:', err);
+            }
+          }
+        }
+        return doc;
+      },
+      // Notify admins when NEW OPEX is submitted needing their approval --
+      // replaces the "pending OPEX" signal the old synthetic admin feed
+      // used to surface, now as a real persisted notification.
+      async ({ doc, previousDoc, operation, req }) => {
+        if (operation === 'update' && Array.isArray(doc.opex)) {
+          const newlyPending = doc.opex.filter((currExp: any) => {
+            if (currExp.status !== 'pending') return false;
+            const prevExp = (previousDoc?.opex || []).find((p: any) => String(p.id) === String(currExp.id));
+            // Either brand new (no prevExp at all) or just reverted back to pending
+            return !prevExp || prevExp.status !== 'pending';
+          });
+
+          if (newlyPending.length > 0) {
+            try {
+              const admins = await req.payload.find({
+                collection: 'users',
+                where: { role: { equals: 'admin' } },
+                limit: 100,
+              });
+
+              for (const exp of newlyPending) {
+                await Promise.all(
+                  admins.docs.map((admin: any) =>
+                    req.payload.create({
+                      collection: 'notifications' as any,
+                      data: {
+                        recipient: admin.id,
+                        message: `New OPEX pending approval: ₱${exp.amount} for ${exp.description} (Order ${doc.orderNumber || ''})`,
+                        link: `/admin-dashboard/orders?id=${doc.id}`,
+                        read: false,
+                      },
+                    })
+                  )
+                );
+              }
+            } catch (err) {
+              console.error('Failed to notify admins of pending OPEX:', err);
             }
           }
         }

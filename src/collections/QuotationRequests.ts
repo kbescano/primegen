@@ -80,6 +80,41 @@ export const QuotationRequests: CollectionConfig = {
         }
         return doc
       },
+      // Status changed (by anyone, typically staff working their assigned
+      // RFQ) -> notify every admin, so they have visibility into staff
+      // progress without needing to check the inbox manually.
+      async ({ doc, previousDoc, operation, req }) => {
+        if (
+          operation === 'update' &&
+          previousDoc &&
+          doc.status !== previousDoc.status
+        ) {
+          try {
+            const admins = await req.payload.find({
+              collection: 'users',
+              where: { role: { equals: 'admin' } },
+              limit: 100,
+            })
+            const changedBy = req.user?.name || req.user?.email || 'Someone'
+            await Promise.all(
+              admins.docs.map((admin: any) =>
+                req.payload.create({
+                  collection: 'notifications' as any,
+                  data: {
+                    recipient: admin.id,
+                    message: `${changedBy} changed RFQ from ${doc.customerName || 'a customer'} from "${previousDoc.status}" to "${doc.status}"`,
+                    link: `/admin-dashboard/pipeline/${doc.id}`,
+                    read: false,
+                  },
+                })
+              )
+            )
+          } catch (err) {
+            console.error('Failed to notify admins of RFQ status change:', err)
+          }
+        }
+        return doc
+      },
     ],
   },
   fields: [

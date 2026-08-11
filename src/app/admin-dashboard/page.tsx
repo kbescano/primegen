@@ -230,14 +230,14 @@ export default async function QuotationInboxPage({
   const filterPills = [{ value: "", label: "All" }, ...STATUS_OPTIONS];
 
   return (
-    <div className="max-w-[1000px] mx-auto py-6">
+    <div className="w-full max-w-[1000px] mx-auto py-6 px-4 sm:px-6 overflow-x-hidden">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-2xl font-black uppercase tracking-tight text-[#01172f] mb-1">
+        <div className="w-full">
+          <h1 className="text-2xl font-black uppercase tracking-tight text-[#01172f] mb-1 truncate">
             Quotation Requests
           </h1>
-          <p className="text-xs text-gray-500 font-medium max-w-[600px]">
+          <p className="text-xs text-gray-500 font-medium w-full max-w-[600px]">
             Requests submitted from the website. Follow up by phone or email,
             then update status -- quotes are always sent by your team directly,
             never automatically. Showing {totalDocs} total.
@@ -314,23 +314,24 @@ export default async function QuotationInboxPage({
             return (
               <div
                 key={q.id}
-                className="bg-white border border-gray-200 rounded p-5 transition-all hover:border-gray-300"
+                className="bg-white border border-gray-200 rounded p-4 sm:p-5 transition-all hover:border-gray-300 overflow-hidden"
               >
                 {/* Top Bar: Customer Info & Status Dropdown */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-gray-100">
-                  <div>
-                    <h3 className="text-sm font-black uppercase text-[#01172f] mb-0.5">
+                  <div className="w-full min-w-0">
+                    <h3 className="text-sm font-black uppercase text-[#01172f] mb-0.5 break-words">
                       {q.customerName || "Anonymous"}
                     </h3>
-                    <p className="text-[11px] text-gray-400 font-medium">
+                    <p className="text-[11px] text-gray-400 font-medium truncate">
                       {q.email || "No email provided"}
                     </p>
-                    <p className="text-[11px] text-gray-400 font-medium">
+                    <p className="text-[11px] text-gray-400 font-medium truncate">
                       {q.phone || "No phone provided"}
                     </p>
                   </div>
-                  <div className="w-full sm:w-auto">
-                    <div className="w-full sm:w-auto flex items-center gap-2">
+                  {/* CHANGED: Uses flex-wrap and items-center so buttons do not expand full-width */}
+                  <div className="w-auto shrink-0">
+                    <div className="flex flex-wrap items-center gap-2">
                       {isAdmin && (
                         <AssignStaffSelect
                           requestId={q.id}
@@ -366,7 +367,7 @@ export default async function QuotationInboxPage({
                 {/* Items & Message Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                   {/* Left Column: Requested Items */}
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">
                       Requested Items (
                       {Array.isArray(q.items) ? q.items.length : 0})
@@ -384,13 +385,13 @@ export default async function QuotationInboxPage({
                           return (
                             <div
                               key={i}
-                              className="flex items-center justify-between text-[11px] text-gray-700"
+                              className="flex items-center justify-between gap-2 text-[11px] text-gray-700 min-w-0"
                             >
-                              <span className="font-medium text-[#01172f] truncate pr-2">
+                              <span className="font-medium text-[#01172f] truncate min-w-0">
                                 {matName || "Unnamed Material"}
                                 {item.sizeDescription ? ` - ${item.sizeDescription}` : ""}
                               </span>
-                              <span className="font-mono text-gray-400 font-bold flex-shrink-0">
+                              <span className="font-mono text-gray-400 font-bold shrink-0">
                                 {item.quantity} {matUnit}
                               </span>
                             </div>
@@ -405,13 +406,13 @@ export default async function QuotationInboxPage({
                   </div>
 
                   {/* Right Column: Customer Message */}
-                  <div>
+                  <div className="min-w-0">
                     <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">
                       Customer Note
                     </p>
                     {q.message ? (
-                      <div className="border-l-2 border-[#149911] bg-gray-50 p-3 rounded-r">
-                        <p className="text-[11px] text-gray-600 italic leading-relaxed">
+                      <div className="border-l-2 border-[#149911] bg-gray-50 p-3 rounded-r overflow-hidden">
+                        <p className="text-[11px] text-gray-600 italic leading-relaxed break-words">
                           &quot;{q.message}&quot;
                         </p>
                       </div>
