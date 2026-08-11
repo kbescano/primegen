@@ -50,7 +50,8 @@ export default async function StaffPerformancePage({
   const reqHeaders = await headers();
   const { user } = await payload.auth({ headers: reqHeaders });
 
-  if (user?.role !== "admin") {
+  // Only allow Admin and Marketing roles to view the page
+  if (user?.role !== "admin" && user?.role !== "marketing") {
     redirect("/admin-dashboard");
   }
 

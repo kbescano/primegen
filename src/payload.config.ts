@@ -23,6 +23,7 @@ import { ClientQuotations } from './collections/ClientQuotations'
 import { SupplierPurchaseOrders } from './collections/SupplierPurchaseOrders'
 import { AboutPage } from './globals/AboutPage'
 import { Notifications } from './collections/Notifications'
+import PayloadLogo from './components/PayloadLogo'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -38,9 +39,30 @@ export default buildConfig({
     'http://localhost:3000',
   ],
   admin: {
-    user: Users.slug,
+    user: 'users', // Matches your Users collection slug
+    components: {
+      graphics: {
+        // In Payload 3, pass the string path to the component
+        Logo: '@/components/PayloadLogo',
+        Icon: '@/components/PayloadLogo', // Used for the collapsed sidebar
+      },
+    },
     meta: {
-      titleSuffix: '- Admin',
+      titleSuffix: '- Primegen Admin',
+      icons: [
+        {
+          rel: 'icon',
+          type: 'image/x-icon',
+          url: '/favicon.ico',
+        },
+      ],
+      openGraph: {
+        images: [
+          {
+            url: '/branding/primegen_trading_logo.png',
+          },
+        ],
+      },
     },
   },
   collections: [

@@ -3,6 +3,7 @@ import { getPayloadClient } from "@/lib/getPayloadClient";
 import StatusSelect from "@/components/StatusSelect";
 import DateGranularityFilter from "@/components/DateGranularityFilter";
 import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import AssignStaffSelect from "@/components/AssignStaffSelect";
 
 const STATUSES = ["pending", "processing", "quote-sent", "completed"] as const;
@@ -120,10 +121,16 @@ export default async function QuotationInboxPage({
 
   const payload = await getPayloadClient();
 
-  // near the top of the component, after payload = await getPayloadClient()
+  const reqHeaders = await headers();
   const { user: currentUser } = await payload.auth({
-    headers: await headers(),
+    headers: reqHeaders,
   });
+
+  // 🔒 STRICT ROLE-BASED ACCESS CONTROL (Admin and User Only)
+  if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "user")) {
+    redirect("/");
+  }
+
   const isAdmin = currentUser?.role === "admin";
 
   const staffRes = isAdmin
@@ -329,7 +336,6 @@ export default async function QuotationInboxPage({
                       {q.phone || "No phone provided"}
                     </p>
                   </div>
-                  {/* CHANGED: Uses flex-wrap and items-center so buttons do not expand full-width */}
                   <div className="w-auto shrink-0">
                     <div className="flex flex-wrap items-center gap-2">
                       {isAdmin && (

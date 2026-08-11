@@ -5,13 +5,14 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import NotificationBell from '@/components/NotificationBell'
 
+// Updated to use a 'roles' array for granular access control
 const NAV_ITEMS = [
-  { href: '/admin-dashboard', label: 'Quotation Inbox', adminOnly: false },
-  { href: '/admin-dashboard/inquiry-tracker', label: 'Inquiry Tracker', adminOnly: true },
-  { href: '/admin-dashboard/client-quotation', label: 'Client Quotation', adminOnly: true },
-  { href: '/admin-dashboard/orders', label: 'Orders', adminOnly: true },
-  { href: '/admin-dashboard/supplier-po', label: 'Supplier PO', adminOnly: true },
-  { href: '/admin-dashboard/reports', label: 'Reports', adminOnly: true },
+  { href: '/admin-dashboard', label: 'Quotation Inbox', roles: ['admin','user'] },
+  { href: '/admin-dashboard/inquiry-tracker', label: 'Inquiry Tracker', roles: ['admin','marketing'] },
+  { href: '/admin-dashboard/client-quotation', label: 'Client Quotation', roles: ['admin'] },
+  { href: '/admin-dashboard/orders', label: 'Orders', roles: ['admin'] },
+  { href: '/admin-dashboard/supplier-po', label: 'Supplier PO', roles: ['admin'] },
+  { href: '/admin-dashboard/reports', label: 'Reports', roles: ['admin'] },
 ]
 
 type AdminUser = { name?: string; email: string; role?: string }
@@ -29,9 +30,11 @@ export default function AdminLayout({
 
   const displayName = user?.name?.trim() || user?.email
   const isAdmin = user?.role === 'admin'
+  const userRole = user?.role || 'user'
 
+  // Filter nav items based on the user's exact role
   const visibleNavItems = NAV_ITEMS.filter((item) => {
-    if (item.adminOnly && !isAdmin) return false
+    if (item.roles && !item.roles.includes(userRole)) return false
     return true
   })
 

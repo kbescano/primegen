@@ -50,15 +50,13 @@ export default function NotificationBell({ role }: { role: 'admin' | 'user' }) {
         setCount(data.count || 0)
         setItems(data.items || [])
       }
-    } catch {
-      // fail silently -- notifications are non-critical
+    } catch (e){
+      console.error('Failed to fetch notifications:', e)
     }
   }
 
   useEffect(() => {
     fetchNotifications()
-    const interval = setInterval(fetchNotifications, 30000)
-    return () => clearInterval(interval)
   }, [role])
 
   useEffect(() => {
