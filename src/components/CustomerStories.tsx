@@ -134,8 +134,9 @@ export default function CustomerStories() {
             </h2>
           </div>
 
-          {/* Segmented Tab Navigation - Matched precisely to image_087636.jpg */}
-          <div className="flex w-full overflow-x-auto no-scrollbar rounded-t-2xl bg-[#0a1a15] border border-[#fdfffc]/10 border-b-0 relative z-10">
+          {/* Segmented Tab Navigation */}
+          {/* CHANGED: Swapped overflow-x-auto for flex-wrap so tabs stack cleanly on mobile */}
+          <div className="flex flex-wrap md:flex-nowrap w-full overflow-hidden rounded-t-2xl bg-[#0a1a15] border border-[#fdfffc]/10 border-b-0 relative z-10">
             {STORIES.map((story, i) => {
               const isActive = activeTab.id === story.id;
               const isLast = i === STORIES.length - 1;
@@ -144,14 +145,13 @@ export default function CustomerStories() {
                 <button
                   key={story.id}
                   onClick={() => handleTabClick(story)}
-                  className={`flex-1 min-w-[120px] py-4 md:py-5 px-4 flex items-center justify-center text-[10px] md:text-[11px] font-bold tracking-widest uppercase transition-all duration-300 outline-none
+                  className={`flex-auto w-[50%] md:w-auto md:flex-1 py-4 md:py-5 px-2 md:px-4 flex items-center justify-center text-[10px] md:text-[11px] font-bold tracking-widest uppercase transition-all duration-300 outline-none border-[#fdfffc]/10 border-r
                     ${isActive 
                       ? "bg-[#fdfffc] text-[#01172f]" 
-                      : "bg-transparent text-[#fdfffc]/60 hover:bg-[#fdfffc]/10 hover:text-[#fdfffc] border-b border-[#fdfffc]/10"
+                      : "bg-transparent text-[#fdfffc]/60 hover:bg-[#fdfffc]/10 hover:text-[#fdfffc] border-b"
                     }
-                    ${!isLast ? "border-r border-[#fdfffc]/10" : ""}
-                    ${isActive && i === 0 ? "rounded-tl-2xl" : ""}
-                    ${isActive && isLast ? "rounded-tr-2xl" : ""}
+                    ${isLast ? "border-r-0" : ""}
+                    ${i % 2 === 1 && !isLast ? "border-r-0 md:border-r" : ""}
                   `}
                 >
                   {story.logo}

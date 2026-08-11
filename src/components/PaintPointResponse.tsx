@@ -43,8 +43,9 @@ export default function PainPointsResponse() {
       // Track Cards Grid
       if (cardsRef.current) {
         const rect = cardsRef.current.getBoundingClientRect();
-        // Start animation earlier so the tiny cards are visible, and finish quickly
-        let p = (wh - rect.top - 100) / (wh * 0.4); 
+        // CHANGED: Animation now begins exactly when the top of the cards crosses the 50% center mark of the screen
+        // It reaches full size after scrolling another 30% of the viewport height.
+        let p = ((wh * 0.5) - rect.top) / (wh * 0.3); 
         setCardsProgress(Math.max(0, Math.min(1, p)));
       }
 
