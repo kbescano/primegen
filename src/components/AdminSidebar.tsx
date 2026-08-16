@@ -9,6 +9,9 @@ import NotificationBell from '@/components/NotificationBell'
 const NAV_ITEMS = [
   { href: '/admin-dashboard', label: 'Quotation Inbox', roles: ['admin','user'] },
   { href: '/admin-dashboard/inquiry-tracker', label: 'Inquiry Tracker', roles: ['admin','marketing'] },
+  { href: '/admin-dashboard/deliveries', label: 'Logistics', roles: ['admin','marketing'] },
+  { href: '/admin-dashboard/clients', label: 'Clients', roles: ['marketing'] },
+  { href: '/admin-dashboard/suppliers', label: 'Suppliers', roles: ['marketing'] },
   { href: '/admin-dashboard/client-quotation', label: 'Client Quotation', roles: ['admin'] },
   { href: '/admin-dashboard/orders', label: 'Orders', roles: ['admin'] },
   { href: '/admin-dashboard/supplier-po', label: 'Supplier PO', roles: ['admin'] },

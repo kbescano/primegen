@@ -48,8 +48,6 @@ export function StepConfirmation({ quotation, isQuotationApprovedOrBeyond, handl
       });
     } catch (e) {
       console.error('Failed to update quotation-request status to quote-sent:', e);
-      // Non-blocking: still proceed to Step 3 even if this status update
-      // fails, so a transient network issue doesn't trap the admin here.
     } finally {
       setSendingQuote(false);
       setConfirmSendOpen(false);
@@ -130,9 +128,6 @@ export function StepConfirmation({ quotation, isQuotationApprovedOrBeyond, handl
           </div>
           {isQuotationApprovedOrBeyond && (
             <div className="border-t border-gray-100 pt-5 mt-2 flex justify-start">
-              {/* Opens the confirmation modal instead of navigating directly --
-                  this is the only path into Step 3, so Step 3 can never be
-                  reached without this confirmation firing first. */}
               <button
                 onClick={() => setConfirmSendOpen(true)}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[11px] font-medium shadow-sm"
@@ -147,7 +142,8 @@ export function StepConfirmation({ quotation, isQuotationApprovedOrBeyond, handl
   );
 }
 
-export function StepSupplierPO({ quotation, localOrder, isQuotationApprovedOrBeyond, isCreatingOrder, handleConfirmOrder, linkedPOs, handleTabChange }: any) {
+// ✨ Note: Added handleUpdateOrderField to props here
+export function StepSupplierPO({ quotation, localOrder, isQuotationApprovedOrBeyond, isCreatingOrder, handleConfirmOrder, linkedPOs, handleTabChange, handleUpdateOrderField }: any) {
   if (!isQuotationApprovedOrBeyond) {
     return (
       <TabSection title="Step 3: Create PO">
@@ -156,7 +152,6 @@ export function StepSupplierPO({ quotation, localOrder, isQuotationApprovedOrBey
     );
   }
 
-  // STRICT CHECK: Item must have an ID AND that ID must exist in the active linkedPOs list
   const isFullyAssigned = Boolean(
     localOrder?.items?.length > 0 && 
     localOrder.items.every((item: any) => 
@@ -230,14 +225,30 @@ export function StepSupplierPO({ quotation, localOrder, isQuotationApprovedOrBey
             </div>
           </div>
           
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 mb-5 border-b border-gray-100">
-            <div>
+          {/* ✨ Target Delivery Date added immediately after Order Confirmation! */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 mb-5 border-b border-gray-100">
+            <div className="flex-1">
               <p className="text-[12px] text-gray-500 font-medium mb-1">Internal Order Status</p>
               <p className="text-[13px] text-gray-900 font-medium">Order is active. You can now manage POs.</p>
             </div>
-            <span className="inline-block w-full sm:w-[160px] text-center px-4 py-2 text-[11px] font-medium bg-[#149911]/10 text-[#149911] rounded-xl">
-              Confirmed
-            </span>
+            
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
+              <div className="w-full sm:w-auto text-left">
+                <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-1 ml-1">Target Delivery Date</label>
+                <input
+                  type="date"
+                  value={localOrder.targetDeliveryDate ? new Date(localOrder.targetDeliveryDate).toISOString().split('T')[0] : ''}
+                  onChange={(e) => handleUpdateOrderField?.('targetDeliveryDate', e.target.value)}
+                  className="w-full sm:w-[150px] appearance-none px-3 py-1.5 text-[12px] font-medium rounded-lg cursor-pointer focus:outline-none ring-1 ring-inset ring-gray-200 focus:ring-[#149911]/40 transition-all bg-white hover:bg-gray-50 text-gray-900 shadow-sm"
+                />
+              </div>
+              <div className="w-full sm:w-auto text-left">
+                <label className="block text-[9px] font-bold uppercase tracking-wider text-gray-400 mb-1 ml-1">Status</label>
+                <span className="inline-block w-full sm:w-[120px] text-center px-4 py-1.5 text-[11px] font-medium bg-[#149911]/10 text-[#149911] rounded-lg shadow-sm">
+                  Confirmed
+                </span>
+              </div>
+            </div>
           </div>
           
           <div className="mb-5">
@@ -251,7 +262,6 @@ export function StepSupplierPO({ quotation, localOrder, isQuotationApprovedOrBey
           
           <div className="border-t border-gray-100 pt-6 mt-6 flex flex-col-reverse lg:flex-row gap-6 justify-between items-start">
             <div className="w-full lg:w-auto flex-1 flex justify-start">
-              {/* Only show the Next button if POs exist AND ALL items are validly assigned */}
               {linkedPOs.length > 0 && isFullyAssigned && (
                 <button
                   onClick={() => handleTabChange("fulfilled")}
@@ -285,10 +295,6 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
     );
   }
 
-  // This is the hard gate: Step 4's real content simply never renders unless
-  // every item has a confirmed supplier PO. There is no path to see this
-  // step's UI by clicking its tab early -- the tab can only ever show this
-  // message until Step 3 is actually complete.
   if (!isFullyAssigned) {
     return (
       <TabSection title="Step 4: Order Fulfilled">
@@ -304,7 +310,6 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
     <TabSection title="Step 4: Order Fulfilled">
       <div className="w-full flex flex-col gap-6">
 
-        {/* Line items -- shows what's being fulfilled and who's supplying it */}
         <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm p-5 md:p-6">
           <h3 className="text-[10px] font-medium text-gray-400 uppercase tracking-wider mb-4">Order Line Items</h3>
           <div className="flex flex-col gap-3">
@@ -401,6 +406,21 @@ export function StepDelivery({ localOrder, linkedPOs, handleUpdateOrderField, ha
   return (
     <TabSection title="Step 5: Track Delivery & Payment">
       <div className="flex flex-col gap-5 w-full">
+        
+        {/* ✨ Target Delivery Date visible to Logistics in Step 5 */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-gray-100">
+          <div>
+            <p className="text-[12px] text-gray-500 font-medium mb-1">Target Delivery Date</p>
+            <p className="text-[13px] text-gray-900 font-medium">The promised delivery deadline for this order.</p>
+          </div>
+          <input
+            type="date"
+            value={localOrder.targetDeliveryDate ? new Date(localOrder.targetDeliveryDate).toISOString().split('T')[0] : ''}
+            onChange={(e) => handleUpdateOrderField?.("targetDeliveryDate", e.target.value)}
+            className="w-full sm:w-[200px] appearance-none px-3.5 py-2 text-[13px] font-medium rounded-xl cursor-pointer focus:outline-none ring-1 ring-inset ring-gray-200 focus:ring-[#149911]/40 transition-all bg-gray-50 hover:bg-gray-100 text-gray-900 shadow-sm"
+          />
+        </div>
+
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-gray-100">
           <div>
             <p className="text-[12px] text-gray-500 font-medium mb-1">Fulfillment Status</p>
@@ -428,17 +448,12 @@ export function StepDelivery({ localOrder, linkedPOs, handleUpdateOrderField, ha
                 if (val !== 'partial') {
                    handleUpdateOrderField("amountPaid", 0);
                 }
-                // Clear mode of payment if reverting to unpaid, since it's
-                // no longer meaningful at that point
                 if (val === 'unpaid') {
                   handleUpdateOrderField("paymentMethod", null);
                 }
               }}
             />
 
-            {/* Mode of Payment -- shown once payment tracking has actually
-                started (partial or paid), matching the collection's
-                admin condition */}
             {(localOrder.paymentStatus === 'partial' || localOrder.paymentStatus === 'paid') && (
               <div className="w-full sm:w-[200px] ml-auto flex flex-col gap-1.5">
                 <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 ml-1">
@@ -524,11 +539,9 @@ export function StepClosed({ localOrder, quotation, request, linkedPOs }: any) {
     );
   }
 
-  // Calculate OPEX for display on Step 6
   const liquidatedOpex = (localOrder.opex || []).reduce((sum: number, exp: any) => sum + (exp.status === 'liquidated' ? Number(exp.amount) || 0 : 0), 0)
   const pendingOpex = (localOrder.opex || []).reduce((sum: number, exp: any) => sum + (exp.status === 'pending' ? Number(exp.amount) || 0 : 0), 0)
 
-  // Calculate Receivables if Partially Paid
   const subtotal = (localOrder.items || []).reduce((sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitPrice) || 0), 0)
   const netRev = subtotal - (Number(localOrder.discountAmount) || 0) + (Number(localOrder.deliveryFee) || 0)
   const vatVal = netRev * ((Number(localOrder.vatRate) || 0) / 100)
@@ -595,7 +608,6 @@ export function StepClosed({ localOrder, quotation, request, linkedPOs }: any) {
               ))}
             </div>
              
-             {/* Payment Details Section if Partially Paid */}
              {localOrder.paymentStatus === 'partial' && (
                <div className="mt-6 p-4 bg-amber-50 rounded-xl border border-amber-100 flex flex-col gap-2">
                  <h3 className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1">Accounts Receivable</h3>

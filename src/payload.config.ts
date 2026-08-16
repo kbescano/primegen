@@ -23,7 +23,7 @@ import { ClientQuotations } from './collections/ClientQuotations'
 import { SupplierPurchaseOrders } from './collections/SupplierPurchaseOrders'
 import { AboutPage } from './globals/AboutPage'
 import { Notifications } from './collections/Notifications'
-import PayloadLogo from './components/PayloadLogo'
+import { DeliveryItineraries } from './collections/DeliveryItineraries'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -83,6 +83,7 @@ export default buildConfig({
     ClientQuotations,
     SupplierPurchaseOrders,
     Notifications,
+    DeliveryItineraries
   ],
   globals: [AboutPage],
   editor: lexicalEditor(),

@@ -49,6 +49,7 @@ export default function QuoteForm({ products }: { products: Product[] }) {
     e.preventDefault();
     setStatus("submitting");
     const form = e.currentTarget;
+    
     const data = {
       customerName: (
         form.elements.namedItem("customerName") as HTMLInputElement
@@ -68,6 +69,7 @@ export default function QuoteForm({ products }: { products: Product[] }) {
           sizeDescription: i.sizeDescription || "",
         })),
     };
+    
     try {
       const res = await fetch("/api/quotation-requests", {
         method: "POST",

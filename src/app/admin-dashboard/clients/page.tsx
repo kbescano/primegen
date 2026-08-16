@@ -63,14 +63,14 @@ export default async function ClientsPage({
       ) : (
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
           <div className="w-full overflow-x-auto">
-            <table className="w-full min-w-[700px] border-collapse text-left">
+            <table className="w-full min-w-[900px] border-collapse text-left">
               <thead>
                 <tr>
-                  <th className={`${thClass} w-[25%]`}>Client Name</th>
-                  <th className={`${thClass} w-[22%]`}>Company</th>
-                  <th className={`${thClass} w-[20%]`}>Contact Number</th>
-                  <th className={`${thClass} w-[23%]`}>Email</th>
-                  <th className={`${thClass} w-[10%] text-center`}>Actions</th>
+                  <th className={`${thClass} w-[20%]`}>Client Name</th>
+                  <th className={`${thClass} w-[18%]`}>Company</th>
+                  <th className={`${thClass} w-[15%]`}>Contact Number</th>
+                  <th className={`${thClass} w-[17%]`}>Email</th>
+                  <th className={`${thClass} w-[20%]`}>Address</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
@@ -92,13 +92,8 @@ export default async function ClientsPage({
                       <td className={`${tdClass} text-gray-600 truncate max-w-[200px]`}>
                         {c.email || '—'}
                       </td>
-                      <td className={`${tdClass} text-center`}>
-                        <Link
-                          href={`/admin-dashboard/clients/${c.id}`}
-                          className="inline-block text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 bg-[#01172f] text-white rounded hover:bg-[#149911] transition-colors"
-                        >
-                          View
-                        </Link>
+                      <td className={`${tdClass} text-gray-600 truncate max-w-[250px]`}>
+                        {c.address || '—'}
                       </td>
                     </tr>
                   )

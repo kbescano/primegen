@@ -130,6 +130,42 @@ export default function QuotationGenerator({
     }
   }, [isEditing, initial?.id])
 
+  // ✨ Auto-fill Sales Person Logic
+  useEffect(() => {
+    // Only attempt to auto-fill if we are creating a NEW quotation and it doesn't already have a sales person
+    if (!isEditing && !initial?.salesPerson) {
+      async function fetchDefaultSalesPerson() {
+        try {
+          // 1. Try to get the assigned staff from the Pipeline Request
+          if (sourceRequestId) {
+            const reqRes = await fetch(`/api/quotation-requests/${sourceRequestId}?depth=1`, { credentials: 'include' })
+            if (reqRes.ok) {
+              const reqData = await reqRes.json()
+              const staff = reqData?.assignedTo
+              if (staff && typeof staff === 'object' && (staff.name || staff.email)) {
+                setSalesPerson(staff.name || staff.email)
+                return // Stop here if we found the assigned staff
+              }
+            }
+          }
+
+          // 2. Fallback: Use the currently logged in user's name
+          const meRes = await fetch('/api/users/me', { credentials: 'include' })
+          if (meRes.ok) {
+            const meData = await meRes.json()
+            const currentUser = meData?.user
+            if (currentUser && (currentUser.name || currentUser.email)) {
+              setSalesPerson(currentUser.name || currentUser.email)
+            }
+          }
+        } catch (e) {
+          console.error("Failed to auto-fill sales person", e)
+        }
+      }
+      fetchDefaultSalesPerson()
+    }
+  }, [isEditing, initial?.salesPerson, sourceRequestId])
+
   // 👇 Locks the form inputs when quotation is formally approved
   const isLocked = docStatus === 'quotation_approved' || docStatus === 'order_confirmed'
 

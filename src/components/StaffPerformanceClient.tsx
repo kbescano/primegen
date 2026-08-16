@@ -63,6 +63,8 @@ type TableRow = {
   pipelineHref?: string;
   quoteId?: string | null;
   orderId?: string | null;
+  orderNumber?: string | null;
+  orderStatus?: string | null;
   poLabel: string;
   poStatus?: string;
   poHref?: string;
@@ -130,13 +132,19 @@ export default function StaffPerformanceClient({
   async function handleAssignStaff(reqId: string, newStaffId: string) {
     setUpdatingReqId(reqId);
     try {
+      const parsedStaffId = newStaffId ? (isNaN(Number(newStaffId)) ? newStaffId : Number(newStaffId)) : null;
+
       const res = await fetch(`/api/quotation-requests/${reqId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assignedTo: newStaffId || null }),
+        body: JSON.stringify({ assignedTo: parsedStaffId }),
       });
+      
       if (res.ok) {
         router.refresh();
+      } else {
+        const err = await res.json();
+        console.error("Payload validation error:", err);
       }
     } catch (e) {
       console.error("Failed to assign staff", e);
@@ -210,6 +218,7 @@ export default function StaffPerformanceClient({
       const safeQuoteId = linkedQuotation ? String(linkedQuotation.id) : null;
       const linkedOrder = safeQuoteId ? orderByQuotationId[safeQuoteId] || null : null;
       const safeOrderId = linkedOrder ? String(linkedOrder.id) : null;
+      
       const reqPOs = safeOrderId ? posByOrderId[safeOrderId] || [] : [];
       const hasOrder = Boolean(linkedOrder);
 
@@ -238,6 +247,8 @@ export default function StaffPerformanceClient({
         contact: req?.email ? `${req.email} | ${req.phone}` : req.phone || "", assignedStaff: assignedStaffName, assignedStaffId, status: req.status,
         paymentStatus, paymentMethod, fulfillmentStatus,
         pipelineHref: `/admin-dashboard/pipeline/${safeReqId}`, quoteId: safeQuoteId, orderId: safeOrderId,
+        orderNumber: linkedOrder?.orderNumber || null,
+        orderStatus: linkedOrder?.status || null,
       };
 
       const rowsForRequest: Omit<TableRow, "isFirstOfRequest" | "rowSpan">[] = [];
@@ -291,10 +302,10 @@ export default function StaffPerformanceClient({
   const tdClass = "px-2.5 py-3 border border-gray-200 align-top text-[10px] break-words";
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto py-6 sm:py-10 lg:px-4 sm:px-0 font-sans text-gray-800 overflow-x-hidden">
+    <div className="w-full max-w-[1400px] mx-auto py-6 sm:py-10 lg:px-4 sm:px-0 font-sans text-gray-800 overflow-x-hidden print:overflow-visible">
       
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+      <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 print:hidden">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-gray-900 mb-1">
             Inquiry Overview
@@ -314,71 +325,34 @@ export default function StaffPerformanceClient({
       </div>
 
       {/* Minimalist Filter Section */}
-      <div className="flex flex-col gap-5 mb-12">
+      <div className="flex flex-col gap-5 mb-12 print:hidden">
         <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-6">
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 w-20 shrink-0">
-            Staff
-          </span>
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 w-20 shrink-0">Staff</span>
           <div className="flex flex-wrap gap-2">
-             <button
-              onClick={() => handleStaffToggle(undefined)}
-              className={`text-[12px] font-medium px-4 py-1.5 rounded-full transition-colors ${
-                !activeStaff ? "bg-[#01172f] text-white shadow-sm" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
-              }`}
-            >
-              All Staff
-            </button>
+             <button onClick={() => handleStaffToggle(undefined)} className={`text-[12px] font-medium px-4 py-1.5 rounded-full transition-colors ${!activeStaff ? "bg-[#01172f] text-white shadow-sm" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}>All Staff</button>
             {staffList.map((s: any) => (
-              <button
-                key={s.id}
-                onClick={() => handleStaffToggle(String(s.id))}
-                className={`text-[12px] font-medium px-4 py-1.5 rounded-full transition-colors ${
-                  activeStaff === String(s.id) ? "bg-[#01172f] text-white shadow-sm" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
-                }`}
-              >
-                {s.name || s.email}
-              </button>
+              <button key={s.id} onClick={() => handleStaffToggle(String(s.id))} className={`text-[12px] font-medium px-4 py-1.5 rounded-full transition-colors ${activeStaff === String(s.id) ? "bg-[#01172f] text-white shadow-sm" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}>{s.name || s.email}</button>
             ))}
           </div>
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-6">
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 w-20 shrink-0">
-            Status
-          </span>
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 w-20 shrink-0">Status</span>
           <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => handleStatusToggle(undefined)}
-              className={`text-[12px] font-medium px-4 py-1.5 rounded-full transition-colors ${
-                !activeStatus ? "bg-[#01172f] text-white shadow-sm" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
-              }`}
-            >
-              All Statuses
-            </button>
+            <button onClick={() => handleStatusToggle(undefined)} className={`text-[12px] font-medium px-4 py-1.5 rounded-full transition-colors ${!activeStatus ? "bg-[#01172f] text-white shadow-sm" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}>All Statuses</button>
             {STATUS_KEYS.map((s) => (
-              <button
-                key={s}
-                onClick={() => handleStatusToggle(s)}
-                className={`text-[12px] font-medium px-4 py-1.5 rounded-full transition-colors ${
-                  activeStatus === s ? "bg-[#01172f] text-white shadow-sm" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
-                }`}
-              >
-                {STATUS_LABELS[s]}
-              </button>
+              <button key={s} onClick={() => handleStatusToggle(s)} className={`text-[12px] font-medium px-4 py-1.5 rounded-full transition-colors ${activeStatus === s ? "bg-[#01172f] text-white shadow-sm" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}>{STATUS_LABELS[s]}</button>
             ))}
           </div>
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 w-20 shrink-0">
-            Date
-          </span>
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 w-20 shrink-0">Date</span>
           <DateGranularityFilter granularity={granularity || ""} periodValue={periodValue || ""} />
         </div>
       </div>
 
-      <div className={`transition-opacity duration-300 ${isPending ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-        
+      <div className={`transition-opacity duration-300 ${isPending ? 'opacity-50 pointer-events-none' : 'opacity-100'} print:hidden`}>
         {/* Summary Cards Layout */}
         <div className="flex flex-col lg:flex-row gap-8 mb-16 items-start">
           <div className="flex-1 w-full">
@@ -479,6 +453,13 @@ export default function StaffPerformanceClient({
                       <div className="flex justify-between items-start">
                         <div>
                           <div className="font-mono font-bold text-[#01172f] text-sm leading-none">{row.reqId.substring(0, 8).toUpperCase()}</div>
+                          
+                          {row.orderNumber && (
+                            <div className="font-mono text-[#149911] text-[11px] font-bold mt-1 tracking-tight">
+                              ORD: {row.orderNumber}
+                            </div>
+                          )}
+
                           <div className="flex items-center gap-2 text-gray-500 text-[10px] mt-1">
                             {row.reqDate}
                             <span className={`inline-block text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getSourceBadgeStyle(row.source || "")}`}>
@@ -486,9 +467,18 @@ export default function StaffPerformanceClient({
                             </span>
                           </div>
                         </div>
-                        <span className="inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded" style={{ backgroundColor: `${STATUS_COLORS[row.status || ""] || "#94a3b8"}1a`, color: STATUS_COLORS[row.status || ""] || "#64748b" }}>
-                          {STATUS_LABELS[row.status || ""] || row.status}
-                        </span>
+                        
+                        <div className="flex flex-col items-end">
+                          <span className="inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded" style={{ backgroundColor: `${STATUS_COLORS[row.status || ""] || "#94a3b8"}1a`, color: STATUS_COLORS[row.status || ""] || "#64748b" }}>
+                            {STATUS_LABELS[row.status || ""] || row.status}
+                          </span>
+                          
+                          {row.orderStatus && (
+                            <span className="inline-block text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 mt-1 bg-gray-100 text-gray-500 rounded">
+                              Order: {row.orderStatus.replace('_', ' ')}
+                            </span>
+                          )}
+                        </div>
                       </div>
                       
                       <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
@@ -532,6 +522,11 @@ export default function StaffPerformanceClient({
                             <span className={`inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getStatusBadgeStyle(row.fulfillmentStatus || "")}`}>
                               {row.fulfillmentStatus}
                             </span>
+                            {row.orderId && (
+                              <Link href={`/admin-dashboard/deliveries?trackOrderId=${row.orderId}`} className="block mt-1.5 text-[9px] font-bold uppercase tracking-widest text-[#149911] hover:text-[#103900] transition-colors text-left focus:outline-none">
+                                Track Route &rarr;
+                              </Link>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -572,23 +567,24 @@ export default function StaffPerformanceClient({
             <table className="w-full table-fixed border-collapse text-left break-words">
               <thead>
                 <tr>
-                  <th className={`${thClass} w-[8%]`}>ID & Date</th>
-                  <th className={`${thClass} w-[12%]`}>Client</th>
-                  <th className={`${thClass} w-[9%]`}>Contact</th>
-                  <th className={`${thClass} w-[8%]`}>Rep</th>
-                  <th className={`${thClass} w-[8%]`}>Status</th>
-                  <th className={`${thClass} w-[7%]`}>Pay Mode</th>
+                  <th className={`${thClass} w-[7%]`}>ID & Date</th>
+                  <th className={`${thClass} w-[8%]`}>Order</th>
+                  <th className={`${thClass} w-[11%]`}>Client</th>
+                  <th className={`${thClass} w-[8%]`}>Contact</th>
+                  <th className={`${thClass} w-[7%]`}>Rep</th>
+                  <th className={`${thClass} w-[8%]`}>Inquiry Status</th>
+                  <th className={`${thClass} w-[6%]`}>Pay Mode</th>
                   <th className={`${thClass} w-[7%]`}>Pay Status</th>
-                  <th className={`${thClass} w-[8%]`}>Shipping</th>
-                  <th className={`${thClass} w-[14%]`}>PO / Supplier</th>
-                  <th className={`${thClass} w-[14%]`}>Item</th>
+                  <th className={`${thClass} w-[7%]`}>Shipping</th>
+                  <th className={`${thClass} w-[13%]`}>PO / Supplier</th>
+                  <th className={`${thClass} w-[13%]`}>Item</th>
                   <th className={`${thClass} w-[5%]`}>Qty</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
                 {tableRows.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="px-5 py-8 text-center text-gray-400 italic text-[11px]">
+                    <td colSpan={12} className="px-5 py-8 text-center text-gray-400 italic text-[11px]">
                       No requests found matching criteria.
                     </td>
                   </tr>
@@ -600,12 +596,32 @@ export default function StaffPerformanceClient({
                         {row.isFirstOfRequest && (
                           <>
                             <td className={tdClass} rowSpan={row.rowSpan}>
-                              <div className="font-mono font-bold text-[#01172f] mb-1">{row.reqId.substring(0, 8).toUpperCase()}</div>
+                              <div className="font-mono font-bold text-[#01172f] mb-1.5" title="Inquiry ID">REQ: {row.reqId.substring(0, 8).toUpperCase()}</div>
+                              
                               <div className="text-gray-500 mb-1.5">{row.reqDate}</div>
                               <span className={`inline-block text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getSourceBadgeStyle(row.source || "")}`}>
                                 {row.source}
                               </span>
                             </td>
+
+                            {/* ✨ NEW Order Column */}
+                            <td className={tdClass} rowSpan={row.rowSpan}>
+                              {row.orderNumber ? (
+                                <>
+                                  <div className="font-mono font-bold text-[#149911] text-[10px] mb-1" title="Order Number">
+                                    {row.orderNumber}
+                                  </div>
+                                  {row.orderStatus && (
+                                    <span className="inline-block text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                                      {row.orderStatus.replace('_', ' ')}
+                                    </span>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-[10px] text-gray-400 italic">—</span>
+                              )}
+                            </td>
+
                             <td className={tdClass} rowSpan={row.rowSpan}>
                               <div className="font-bold text-[#01172f] leading-tight">{row.customerName}</div>
                               {row.company && <div className="text-[9px] text-gray-500 mt-1 leading-tight">{row.company}</div>}
@@ -637,6 +653,7 @@ export default function StaffPerformanceClient({
                                 {STATUS_LABELS[row.status || ""] || row.status}
                               </span>
                             </td>
+                            
                             <td className={`${tdClass} font-medium text-[#01172f] capitalize`} rowSpan={row.rowSpan}>
                               {row.paymentMethod}
                             </td>
@@ -649,6 +666,11 @@ export default function StaffPerformanceClient({
                               <span className={`inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getStatusBadgeStyle(row.fulfillmentStatus || "")}`}>
                                 {row.fulfillmentStatus}
                               </span>
+                              {row.orderId && (
+                                <Link href={`/admin-dashboard/deliveries?trackOrderId=${row.orderId}`} className="block mt-2 text-[9px] font-bold uppercase tracking-widest text-[#149911] hover:text-[#103900] transition-colors text-left focus:outline-none">
+                                  Track Route &rarr;
+                                </Link>
+                              )}
                             </td>
                           </>
                         )}

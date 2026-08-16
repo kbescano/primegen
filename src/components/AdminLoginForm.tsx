@@ -19,6 +19,9 @@ export default function AdminLoginForm({ redirectTo = '/admin-dashboard' }: { re
   const [funModalOpen, setFunModalOpen] = useState(false)
   const [toast, setToast] = useState('')
 
+  // ✨ State to hold the dynamic redirect URL just in case the Easter Egg modal interrupts the flow
+  const [resolvedRedirect, setResolvedRedirect] = useState(redirectTo)
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setStatus('submitting')
@@ -47,8 +50,15 @@ export default function AdminLoginForm({ redirectTo = '/admin-dashboard' }: { re
 
         const loginData = await loginRes.json()
         const userId = loginData?.user?.id
+        const userRole = loginData?.user?.role // ✨ Get the user's role
 
         if (!userId) throw new Error('Authentication failed.')
+
+        // ✨ Dynamically route Marketing role
+        let finalRedirect = redirectTo
+        if (userRole === 'marketing') {
+          finalRedirect = '/admin-dashboard/inquiry-tracker'
+        }
 
         // 2. Patch user document with the new password
         const patchRes = await fetch(`/api/users/${userId}`, {
@@ -65,7 +75,7 @@ export default function AdminLoginForm({ redirectTo = '/admin-dashboard' }: { re
         setStatus('success')
         setToast('Password updated successfully 🔒')
         setTimeout(() => {
-          router.push(redirectTo)
+          router.push(finalRedirect) // ✨ Use dynamic redirect
           router.refresh()
         }, 1500)
         return
@@ -84,13 +94,26 @@ export default function AdminLoginForm({ redirectTo = '/admin-dashboard' }: { re
         throw new Error(data?.errors?.[0]?.message || 'Invalid email or password')
       }
 
+      // ✨ Parse successful login response to check role
+      const loginData = await res.json()
+      const userRole = loginData?.user?.role
+      
+      // ✨ Dynamically route Marketing role
+      let finalRedirect = redirectTo
+      if (userRole === 'marketing') {
+        finalRedirect = '/admin-dashboard/inquiry-tracker'
+      }
+      
+      // Save it to state in case the Easter Egg interrupts the redirect flow
+      setResolvedRedirect(finalRedirect)
+
       if (email.trim().toLowerCase() === FUN_EMAIL) {
         setFunModalOpen(true)
         setStatus('idle')
         return
       }
 
-      router.push(redirectTo)
+      router.push(finalRedirect) // ✨ Use dynamic redirect
       router.refresh()
       
     } catch (err: any) {
@@ -104,7 +127,7 @@ export default function AdminLoginForm({ redirectTo = '/admin-dashboard' }: { re
     if (choice === 'ken') {
       setToast('Perfect choice 💚')
       setTimeout(() => {
-        router.push(redirectTo)
+        router.push(resolvedRedirect) // ✨ Uses the role-based redirect
         router.refresh()
       }, 1100)
     } else {

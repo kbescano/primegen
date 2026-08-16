@@ -241,6 +241,36 @@ export default async function OrdersPage({
                 })
               : ''
 
+            // ✨ TARGET DELIVERY DATE LOGIC
+            let targetDateStr = ''
+            let isLateOrToday = false
+            let deadlineLabel = ''
+
+            if (o.targetDeliveryDate) {
+              const tDate = new Date(o.targetDeliveryDate)
+              targetDateStr = tDate.toLocaleDateString('en-PH', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric'
+              })
+
+              const today = new Date()
+              today.setHours(0, 0, 0, 0)
+              
+              const targetMidnight = new Date(tDate)
+              targetMidnight.setHours(0, 0, 0, 0)
+
+              if (o.fulfillmentStatus !== 'delivered' && o.fulfillmentStatus !== 'cancelled') {
+                if (targetMidnight.getTime() < today.getTime()) {
+                  isLateOrToday = true
+                  deadlineLabel = '(Overdue)'
+                } else if (targetMidnight.getTime() === today.getTime()) {
+                  isLateOrToday = true
+                  deadlineLabel = '(Today)'
+                }
+              }
+            }
+
             return (
               <div
                 key={o.id}
@@ -250,11 +280,29 @@ export default async function OrdersPage({
               >
                 {/* Top Tracker Bar */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-5 border-b border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-xs font-bold text-[#01172f]">
-                      {o.orderNumber}
-                    </span>
-                    <span className="text-[10px] text-gray-400">{date}</span>
+                  <div className="flex flex-col gap-1.5">
+                    <div className="flex items-center gap-3">
+                      <span className="font-mono text-xs font-bold text-[#01172f]">
+                        {o.orderNumber}
+                      </span>
+                      <span className="text-[10px] text-gray-400">{date}</span>
+                    </div>
+
+                    {/* ✨ DISPLAY TARGET DELIVERY DATE */}
+                    {targetDateStr && (
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[8px] font-bold uppercase tracking-wider text-gray-400">
+                          Deadline:
+                        </span>
+                        <span className={`text-[10px] font-bold ${
+                          isLateOrToday 
+                            ? 'text-red-600 bg-red-50 px-1.5 py-0.5 rounded' 
+                            : 'text-[#01172f]'
+                        }`}>
+                          {targetDateStr} {deadlineLabel}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <MinimalStepper status={o.fulfillmentStatus || 'preparing'} />

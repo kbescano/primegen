@@ -69,8 +69,8 @@ export default async function SuppliersPage({
                   <th className={`${thClass} w-[25%]`}>Supplier Name</th>
                   <th className={`${thClass} w-[22%]`}>Company</th>
                   <th className={`${thClass} w-[20%]`}>Contact Number</th>
-                  <th className={`${thClass} w-[23%]`}>Email</th>
-                  <th className={`${thClass} w-[10%] text-center`}>Actions</th>
+                  <th className={`${thClass} w-[10%]`}>Email</th>
+                  <th className={`${thClass} w-[25%] text-center`}>Address</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
@@ -93,12 +93,7 @@ export default async function SuppliersPage({
                         {s.email || '—'}
                       </td>
                       <td className={`${tdClass} text-center`}>
-                        <Link
-                          href={`/admin-dashboard/suppliers/${s.id}`}
-                          className="inline-block text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 bg-[#01172f] text-white rounded hover:bg-[#149911] transition-colors"
-                        >
-                          View
-                        </Link>
+                        {s.address || '—'}
                       </td>
                     </tr>
                   )
