@@ -46,9 +46,14 @@ export function StepConfirmation({ quotation, isQuotationApprovedOrBeyond, handl
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'quote-sent' }),
       });
+      
+      // ✨ FIX: Force a hard reload to clear the Next.js cache and jump directly to Step 3!
+      const url = new URL(window.location.href);
+      url.searchParams.set("step", "supplierPO");
+      window.location.assign(url.toString());
+      
     } catch (e) {
       console.error('Failed to update quotation-request status to quote-sent:', e);
-    } finally {
       setSendingQuote(false);
       setConfirmSendOpen(false);
       handleTabChange("supplierPO");
@@ -142,7 +147,6 @@ export function StepConfirmation({ quotation, isQuotationApprovedOrBeyond, handl
   );
 }
 
-// ✨ Note: Added handleUpdateOrderField to props here
 export function StepSupplierPO({ quotation, localOrder, isQuotationApprovedOrBeyond, isCreatingOrder, handleConfirmOrder, linkedPOs, handleTabChange, handleUpdateOrderField }: any) {
   if (!isQuotationApprovedOrBeyond) {
     return (
@@ -225,7 +229,6 @@ export function StepSupplierPO({ quotation, localOrder, isQuotationApprovedOrBey
             </div>
           </div>
           
-          {/* ✨ Target Delivery Date added immediately after Order Confirmation! */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 mb-5 border-b border-gray-100">
             <div className="flex-1">
               <p className="text-[12px] text-gray-500 font-medium mb-1">Internal Order Status</p>
@@ -407,7 +410,6 @@ export function StepDelivery({ localOrder, linkedPOs, handleUpdateOrderField, ha
     <TabSection title="Step 5: Track Delivery & Payment">
       <div className="flex flex-col gap-5 w-full">
         
-        {/* ✨ Target Delivery Date visible to Logistics in Step 5 */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-gray-100">
           <div>
             <p className="text-[12px] text-gray-500 font-medium mb-1">Target Delivery Date</p>

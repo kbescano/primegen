@@ -84,6 +84,17 @@ export const DeliveryItineraries: CollectionConfig = {
           name: 'contactPhone',
           type: 'text',
         },
+        // ✨ NEW FIELD ADDED HERE:
+        {
+          name: 'scheduledDate',
+          type: 'date',
+          label: 'Scheduled Time',
+          admin: {
+            date: {
+              pickerAppearance: 'dayAndTime',
+            },
+          },
+        },
         {
           name: 'status',
           type: 'select',

@@ -220,6 +220,7 @@ export default function PipelineStepper({
               handleConfirmOrder={handleConfirmOrder}
               linkedPOs={linkedPOs}
               handleTabChange={handleTabChange}
+              handleUpdateOrderField={handleUpdateOrderField}
             />
           )}
           {activeTab === "fulfilled" && (
