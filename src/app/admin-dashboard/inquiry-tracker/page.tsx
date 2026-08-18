@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getPayloadClient } from "@/lib/getPayloadClient";
 import StaffPerformanceClient from "@/components/StaffPerformanceClient";
 
+export const dynamic = "force-dynamic"; 
+
 function currentMonthValue(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;

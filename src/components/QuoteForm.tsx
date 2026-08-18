@@ -62,12 +62,12 @@ export default function QuoteForm({ products }: { products: Product[] }) {
         .value,
       source: "website",
       items: items
-        .filter((i) => i.materialId)
-        .map((i) => ({ 
-          material: i.materialId, 
-          quantity: i.quantity,
-          sizeDescription: i.sizeDescription || "",
-        })),
+      .filter((i) => i.materialId)
+      .map((i) => ({
+        material: isNaN(Number(i.materialId)) ? i.materialId : Number(i.materialId),
+        quantity: i.quantity,
+        sizeDescription: i.sizeDescription || "",
+      })),
     };
     
     try {
