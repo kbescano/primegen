@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -18,7 +18,6 @@ export default function DeliveriesClient({
   enrichedOrders: any[];
   filterStatus: string;
 }) {
-  // ✨ Instant Client-Side Modal State!
   const [trackOrderId, setTrackOrderId] = useState<string | null>(null);
 
   const filterPills = [
@@ -38,7 +37,6 @@ export default function DeliveriesClient({
         </p>
       </div>
 
-      {/* Filters */}
       <div className="flex flex-wrap gap-2 mb-6">
         {filterPills.map((pill) => {
           const isActive = filterStatus === pill.value;
@@ -72,7 +70,6 @@ export default function DeliveriesClient({
             {enrichedOrders.map((o: any) => (
               <div key={o.id} className="bg-white border border-gray-200 rounded-xl shadow-sm p-4 flex flex-col gap-4">
                 
-                {/* Header */}
                 <div className="flex justify-between items-start">
                   <div className="flex flex-col gap-1">
                     <span className="font-mono text-[14px] font-black text-[#01172f]">{o.orderNumber}</span>
@@ -95,25 +92,30 @@ export default function DeliveriesClient({
                   </div>
                 </div>
 
-                {/* Destination */}
                 <div className="bg-gray-50 rounded-lg p-3 border border-gray-100">
                   <div className="text-[12px] font-bold text-[#01172f] mb-0.5">{o.customerName}</div>
                   <div className="text-[11px] text-gray-500 leading-snug line-clamp-2 mb-1">{o.address}</div>
                   <div className="text-[10px] text-gray-400">{o.contactNumber}</div>
                 </div>
 
-                {/* Order Summary & Sources */}
                 <div>
                   <h4 className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Order Items</h4>
                   {o.items && o.items.length > 0 ? (
                     <ul className="flex flex-col gap-1.5">
-                      {o.items.map((item: any, idx: number) => (
-                        <li key={idx} className="text-[11px] text-gray-700 leading-snug break-words">
-                          <span className="font-bold text-[#01172f] mr-1.5">{Number(item.qty) || 0} {item.unit || 'x'}</span>
-                          <span className="uppercase font-medium text-gray-800">{item.description || 'Unnamed item'}</span>
-                          {item.sizeDescription && <span className="text-gray-400 capitalize"> ({item.sizeDescription})</span>}
-                        </li>
-                      ))}
+                      {o.items.map((item: any, idx: number) => {
+                        // ✨ SMART REDUNDANCY CHECK
+                        const descUpper = (item.description || '').toUpperCase();
+                        const sizeUpper = (item.sizeDescription || '').toUpperCase();
+                        const isRedundant = sizeUpper && descUpper.includes(sizeUpper);
+
+                        return (
+                          <li key={idx} className="text-[11px] text-gray-700 leading-snug break-words">
+                            <span className="font-bold text-[#01172f] mr-1.5">{Number(item.qty) || 0} {item.unit || 'x'}</span>
+                            <span className="uppercase font-medium text-gray-800">{item.description || 'Unnamed item'}</span>
+                            {item.sizeDescription && !isRedundant && <span className="text-gray-400 capitalize"> ({item.sizeDescription})</span>}
+                          </li>
+                        )
+                      })}
                     </ul>
                   ) : (
                     <span className="text-[11px] text-gray-400 italic">No items in order</span>
@@ -132,7 +134,6 @@ export default function DeliveriesClient({
                   )}
                 </div>
 
-                {/* Logistics & Action */}
                 <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                   <div>
                     {o.hasItinerary ? (
@@ -148,7 +149,6 @@ export default function DeliveriesClient({
                       <span className="text-[11px] text-gray-400 italic">No route planned</span>
                     )}
                   </div>
-                  {/* ✨ Replaced Link with an instantaneous Button */}
                   <button
                     onClick={() => setTrackOrderId(o.id)}
                     className={`inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors shadow-sm ${
@@ -210,15 +210,22 @@ export default function DeliveriesClient({
                         <div className="flex flex-col gap-2.5">
                           {o.items && o.items.length > 0 ? (
                             <ul className="flex flex-col gap-1.5">
-                              {o.items.map((item: any, idx: number) => (
-                                <li key={idx} className="text-[11px] text-gray-700 leading-snug break-words">
-                                  <span className="font-bold text-[#01172f] mr-1.5">
-                                    {Number(item.qty) || 0} {item.unit || 'x'}
-                                  </span>
-                                  <span className="uppercase font-medium text-gray-800">{item.description || 'Unnamed item'}</span>
-                                  {item.sizeDescription && <span className="text-gray-400 capitalize"> ({item.sizeDescription})</span>}
-                                </li>
-                              ))}
+                              {o.items.map((item: any, idx: number) => {
+                                // ✨ SMART REDUNDANCY CHECK
+                                const descUpper = (item.description || '').toUpperCase();
+                                const sizeUpper = (item.sizeDescription || '').toUpperCase();
+                                const isRedundant = sizeUpper && descUpper.includes(sizeUpper);
+
+                                return (
+                                  <li key={idx} className="text-[11px] text-gray-700 leading-snug break-words">
+                                    <span className="font-bold text-[#01172f] mr-1.5">
+                                      {Number(item.qty) || 0} {item.unit || 'x'}
+                                    </span>
+                                    <span className="uppercase font-medium text-gray-800">{item.description || 'Unnamed item'}</span>
+                                    {item.sizeDescription && !isRedundant && <span className="text-gray-400 capitalize"> ({item.sizeDescription})</span>}
+                                  </li>
+                                )
+                              })}
                             </ul>
                           ) : (
                             <span className="text-[11px] text-gray-400 italic">No items in order</span>
@@ -261,7 +268,6 @@ export default function DeliveriesClient({
                       </td>
 
                       <td className="px-5 py-4 align-top text-right">
-                        {/* ✨ Replaced Link with an instantaneous Button */}
                         <button
                           onClick={() => setTrackOrderId(o.id)}
                           className={`inline-flex items-center justify-center px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors shadow-sm ${
@@ -287,7 +293,6 @@ export default function DeliveriesClient({
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-[#01172f]/40 backdrop-blur-sm print:static print:bg-transparent print:p-0 print:block">
           <div className="bg-transparent w-full max-w-[800px] max-h-[90vh] overflow-y-auto relative custom-scrollbar print:static print:max-w-none print:max-h-none print:overflow-visible">
             
-            {/* ✨ Replaced Close Link with instant state clear */}
             <button
               onClick={() => setTrackOrderId(null)}
               className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-full transition-colors z-[210] print:hidden focus:outline-none shadow-sm"

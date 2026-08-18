@@ -14,6 +14,7 @@ export const QuotationRequests: CollectionConfig = {
     group: "Leads",
     description:
       "Customer quotation requests. Review here and follow up manually -- nothing is sent automatically.",
+    hidden: ({ user }) => user?.role === 'marketing',
   },
   access: {
     create: () => true,

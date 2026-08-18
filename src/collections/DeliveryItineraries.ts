@@ -7,6 +7,7 @@ export const DeliveryItineraries: CollectionConfig = {
     defaultColumns: ['trackingNumber', 'sourceOrderId', 'status', 'driverName', 'updatedAt'],
     group: 'Logistics',
     description: 'Delivery routes and waybills generated from confirmed orders.',
+    hidden: ({ user }) => user?.role === 'marketing',
   },
   access: {
     create: () => true,

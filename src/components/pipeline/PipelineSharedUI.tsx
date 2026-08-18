@@ -38,7 +38,7 @@ export function EmptyStep({ text, ctaLabel, href }: { text: string; ctaLabel?: s
   );
 }
 
-export function InstantSelect({ value, options, onChange, colorMap }: any) {
+export function InstantSelect({ value, options, onChange, colorMap, disabled }: any) {
   const isValidValue = options.some((o: any) => o.value === value);
   const currentVal = isValidValue ? value : options[0].value;
   const colorClass = colorMap[currentVal] || "bg-gray-100 text-gray-600";
@@ -48,7 +48,8 @@ export function InstantSelect({ value, options, onChange, colorMap }: any) {
       <select
         value={currentVal}
         onChange={(e) => onChange(e.target.value)}
-        className={`w-full sm:w-[160px] appearance-none pr-8 pl-4 py-2 text-[11px] font-medium rounded-full cursor-pointer focus:outline-none ring-1 ring-inset ring-transparent focus:ring-gray-200 transition-all ${colorClass}`}
+        disabled={disabled}
+        className={`w-full sm:w-[160px] appearance-none pr-8 pl-4 py-2 text-[11px] font-medium rounded-full cursor-pointer focus:outline-none ring-1 ring-inset ring-transparent focus:ring-gray-200 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${colorClass}`}
       >
         {options.map((o: any) => (
           <option key={o.value} value={o.value}>
@@ -73,8 +74,7 @@ export function FinancialSummary({ localOrder }: { localOrder: any }) {
   const discount = Number(localOrder.discountAmount) || 0;
   const delivery = Number(localOrder.deliveryFee) || 0;
   const netRev = subtotal - discount + delivery;
-  const vatVal = netRev * ((Number(localOrder.vatRate) || 0) / 100);
-  const totalGross = netRev + vatVal;
+  const totalGross = netRev;
 
   // 2. Calculate Receivables
   const amountPaid = Number(localOrder.amountPaid) || 0;
@@ -112,10 +112,6 @@ export function FinancialSummary({ localOrder }: { localOrder: any }) {
           </div>
         )}
 
-        <div className="flex justify-between items-center">
-          <span className="text-[12px] text-gray-500">VAT ({localOrder.vatRate || 0}%)</span>
-          <span className="text-[12px] font-mono text-gray-700">+{peso(vatVal)}</span>
-        </div>
       </div>
 
       <div className="h-[1px] w-full bg-gray-200/60 mb-3" />

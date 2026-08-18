@@ -7,6 +7,7 @@ export const SupplierPurchaseOrders: CollectionConfig = {
     useAsTitle: 'poNumber',
     defaultColumns: ['poNumber', 'supplierName', 'project', 'poDate', 'status'],
     group: 'Operations',
+    hidden: ({ user }) => user?.role === 'marketing',
   },
   access: {
     read: ({ req: { user } }) => Boolean(user),

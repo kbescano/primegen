@@ -6,6 +6,9 @@ import QuotationPrintPreview from "@/components/pipeline/QuotationPrintPreview";
 import { TabSection, SummaryRow, EmptyStep, InstantSelect, FinancialSummary } from "@/components/pipeline/PipelineSharedUI";
 import { quotationTotal, peso, FULFILLMENT_OPTIONS, FULFILLMENT_COLORS, PAYMENT_OPTIONS, PAYMENT_COLORS } from "@/lib/pipelineUtils";
 
+// Helper to prevent database race conditions by spacing out simultaneous API requests
+const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
 export function StepQuotation({ quotation, localOrder, request }: any) {
   return (
     <TabSection title="Step 1: Create Quotation">
@@ -47,7 +50,6 @@ export function StepConfirmation({ quotation, isQuotationApprovedOrBeyond, handl
         body: JSON.stringify({ status: 'quote-sent' }),
       });
       
-      // ✨ FIX: Force a hard reload to clear the Next.js cache and jump directly to Step 3!
       const url = new URL(window.location.href);
       url.searchParams.set("step", "supplierPO");
       window.location.assign(url.toString());
@@ -241,7 +243,7 @@ export function StepSupplierPO({ quotation, localOrder, isQuotationApprovedOrBey
                 <input
                   type="date"
                   value={localOrder.targetDeliveryDate ? new Date(localOrder.targetDeliveryDate).toISOString().split('T')[0] : ''}
-                  onChange={(e) => handleUpdateOrderField?.('targetDeliveryDate', e.target.value)}
+                  onChange={(e) => handleUpdateOrderField?.('targetDeliveryDate', e.target.value || null)}
                   className="w-full sm:w-[150px] appearance-none px-3 py-1.5 text-[12px] font-medium rounded-lg cursor-pointer focus:outline-none ring-1 ring-inset ring-gray-200 focus:ring-[#149911]/40 transition-all bg-white hover:bg-gray-50 text-gray-900 shadow-sm"
                 />
               </div>
@@ -283,6 +285,18 @@ export function StepSupplierPO({ quotation, localOrder, isQuotationApprovedOrBey
 }
 
 export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, handleTabChange, isUpdating }: any) {
+  const [tempAmount, setTempAmount] = useState<string | number>(localOrder?.amountPaid || '');
+
+  useEffect(() => {
+    setTempAmount(localOrder?.amountPaid || '');
+  }, [localOrder?.amountPaid]);
+
+  const PAYMENT_METHOD_OPTIONS = [
+    { label: 'Cash', value: 'cash' },
+    { label: 'Cheque', value: 'cheque' },
+    { label: 'Bank Transfer', value: 'bank_transfer' },
+  ];
+
   const isFullyAssigned = Boolean(
     localOrder?.items?.length > 0 &&
     localOrder.items.every((item: any) =>
@@ -341,6 +355,10 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
           </div>
         </div>
 
+        {/* Supplier PO management -- restored: this is where each PO's
+            status is actually shown and can be changed to "fulfilled".
+            Without this block, there is no UI on Step 4 to unlock the
+            Next Step button, even once payment is settled. */}
         <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm p-5 md:p-6">
           <OrderSupplierSection
             orderId={localOrder.id}
@@ -349,11 +367,77 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
             allowStatusChange={true}
           />
         </div>
-        <OrderOpexSection
-          opex={localOrder.opex || []}
-          onUpdate={(newOpex) => handleUpdateOrderField("opex", newOpex)}
-          allowAdd={true}
-        />
+
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-3">
+          <div>
+            <p className="text-[12px] text-gray-500 font-medium mb-1">Payment Status</p>
+            <p className="text-[13px] text-gray-900 font-medium">Monitor client payment progress.</p>
+          </div>
+          <div className="flex flex-col gap-3 w-full sm:w-auto">
+            <div className="flex items-center gap-2">
+              <InstantSelect
+                value={localOrder.paymentStatus}
+                options={PAYMENT_OPTIONS}
+                colorMap={PAYMENT_COLORS}
+                disabled={isUpdating}
+                onChange={(val: string) => {
+                  const updates: Record<string, any> = { paymentStatus: val };
+                  if (val !== 'partial') updates.amountPaid = 0;
+                  if (val === 'unpaid') updates.paymentMethod = null;
+                  handleUpdateOrderField(updates);
+                }}
+              />
+              {isUpdating && (
+                <div className="w-3.5 h-3.5 border-2 border-gray-300 border-t-[#149911] rounded-full animate-spin flex-shrink-0" />
+              )}
+            </div>
+
+            {(localOrder.paymentStatus === 'partial' || localOrder.paymentStatus === 'paid') && (
+              <div className="w-full sm:w-[200px] ml-auto flex flex-col gap-1.5">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 ml-1">
+                  Mode of Payment
+                </label>
+                <select
+                  value={localOrder.paymentMethod || ''}
+                  onChange={(e) => handleUpdateOrderField("paymentMethod", e.target.value || null)}
+                  disabled={isUpdating}
+                  className="w-full appearance-none px-3.5 py-2.5 text-[13px] font-medium rounded-xl cursor-pointer focus:outline-none ring-1 ring-inset ring-gray-200 focus:ring-[#149911]/40 transition-all bg-gray-50 hover:bg-gray-100 text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <option value="" disabled>Select method</option>
+                  {PAYMENT_METHOD_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {localOrder.paymentStatus === 'partial' && (
+              <div className="w-full sm:w-[200px] ml-auto bg-amber-50 p-2.5 rounded-xl border border-amber-100/50 flex flex-col gap-2">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-amber-600 mb-1 ml-1">
+                  Amount Received
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] font-semibold text-gray-400">₱</span>
+                  <input 
+                    type="number" 
+                    value={tempAmount} 
+                    onChange={(e) => setTempAmount(e.target.value)}
+                    disabled={isUpdating}
+                    className="w-full pl-7 pr-3 py-2 text-[13px] bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/20 transition-all font-mono disabled:opacity-50 disabled:cursor-not-allowed"
+                    placeholder="0.00"
+                  />
+                </div>
+                <button
+                  onClick={() => handleUpdateOrderField("amountPaid", Number(tempAmount))}
+                  disabled={isUpdating || Number(tempAmount) === Number(localOrder.amountPaid)}
+                  className="w-full py-2 bg-amber-500 text-white text-[11px] font-bold uppercase tracking-wider rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:bg-gray-300 disabled:text-gray-500 mt-1"
+                >
+                  {isUpdating ? 'Saving...' : 'Save Amount'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
         {linkedPOs.length > 0 && linkedPOs.every((po: any) => po.status === "fulfilled") && (
           <div className="flex justify-start pt-2">
             {isUpdating ? (
@@ -377,11 +461,11 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
 }
 
 export function StepDelivery({ localOrder, linkedPOs, handleUpdateOrderField, handleTabChange, isUpdating }: any) {
-  const [tempAmount, setTempAmount] = useState<string | number>(localOrder.amountPaid || '');
+  const [tempAmount, setTempAmount] = useState<string | number>(localOrder?.amountPaid || '');
 
   useEffect(() => {
-    setTempAmount(localOrder.amountPaid || '');
-  }, [localOrder.amountPaid]);
+    setTempAmount(localOrder?.amountPaid || '');
+  }, [localOrder?.amountPaid]);
 
   const isFullyAssigned = Boolean(
     localOrder?.items?.length > 0 && 
@@ -400,6 +484,12 @@ export function StepDelivery({ localOrder, linkedPOs, handleUpdateOrderField, ha
     );
   }
 
+  const canProceedToClose = Boolean(
+    localOrder.targetDeliveryDate &&
+    localOrder.fulfillmentStatus === "delivered" &&
+    localOrder.paymentStatus === "paid"
+  );
+
   const PAYMENT_METHOD_OPTIONS = [
     { label: 'Cash', value: 'cash' },
     { label: 'Cheque', value: 'cheque' },
@@ -412,13 +502,15 @@ export function StepDelivery({ localOrder, linkedPOs, handleUpdateOrderField, ha
         
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-gray-100">
           <div>
-            <p className="text-[12px] text-gray-500 font-medium mb-1">Target Delivery Date</p>
+            <p className="text-[12px] text-gray-500 font-medium mb-1">
+              Target Delivery Date <span className="text-red-500">*</span>
+            </p>
             <p className="text-[13px] text-gray-900 font-medium">The promised delivery deadline for this order.</p>
           </div>
           <input
             type="date"
             value={localOrder.targetDeliveryDate ? new Date(localOrder.targetDeliveryDate).toISOString().split('T')[0] : ''}
-            onChange={(e) => handleUpdateOrderField?.("targetDeliveryDate", e.target.value)}
+            onChange={(e) => handleUpdateOrderField?.("targetDeliveryDate", e.target.value || null)}
             className="w-full sm:w-[200px] appearance-none px-3.5 py-2 text-[13px] font-medium rounded-xl cursor-pointer focus:outline-none ring-1 ring-inset ring-gray-200 focus:ring-[#149911]/40 transition-all bg-gray-50 hover:bg-gray-100 text-gray-900 shadow-sm"
           />
         </div>
@@ -435,71 +527,8 @@ export function StepDelivery({ localOrder, linkedPOs, handleUpdateOrderField, ha
             onChange={(val: string) => handleUpdateOrderField("fulfillmentStatus", val)}
           />
         </div>
-        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-3">
-          <div>
-            <p className="text-[12px] text-gray-500 font-medium mb-1">Payment Status</p>
-            <p className="text-[13px] text-gray-900 font-medium">Monitor client payment progress.</p>
-          </div>
-          <div className="flex flex-col gap-3 w-full sm:w-auto">
-            <InstantSelect
-              value={localOrder.paymentStatus}
-              options={PAYMENT_OPTIONS}
-              colorMap={PAYMENT_COLORS}
-              onChange={(val: string) => {
-                handleUpdateOrderField("paymentStatus", val);
-                if (val !== 'partial') {
-                   handleUpdateOrderField("amountPaid", 0);
-                }
-                if (val === 'unpaid') {
-                  handleUpdateOrderField("paymentMethod", null);
-                }
-              }}
-            />
+        
 
-            {(localOrder.paymentStatus === 'partial' || localOrder.paymentStatus === 'paid') && (
-              <div className="w-full sm:w-[200px] ml-auto flex flex-col gap-1.5">
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-500 ml-1">
-                  Mode of Payment
-                </label>
-                <select
-                  value={localOrder.paymentMethod || ''}
-                  onChange={(e) => handleUpdateOrderField("paymentMethod", e.target.value || null)}
-                  className="w-full appearance-none px-3.5 py-2.5 text-[13px] font-medium rounded-xl cursor-pointer focus:outline-none ring-1 ring-inset ring-gray-200 focus:ring-[#149911]/40 transition-all bg-gray-50 hover:bg-gray-100 text-gray-900"
-                >
-                  <option value="" disabled>Select method</option>
-                  {PAYMENT_METHOD_OPTIONS.map((opt) => (
-                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            {localOrder.paymentStatus === 'partial' && (
-              <div className="w-full sm:w-[200px] ml-auto bg-amber-50 p-2.5 rounded-xl border border-amber-100/50 flex flex-col gap-2">
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-amber-600 mb-1 ml-1">
-                  Amount Received
-                </label>
-                <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[12px] font-semibold text-gray-400">₱</span>
-                  <input 
-                    type="number" 
-                    value={tempAmount} 
-                    onChange={(e) => setTempAmount(e.target.value)}
-                    className="w-full pl-7 pr-3 py-2 text-[13px] bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-amber-400 focus:ring-1 focus:ring-amber-400/20 transition-all font-mono"
-                    placeholder="0.00"
-                  />
-                </div>
-                <button
-                  onClick={() => handleUpdateOrderField("amountPaid", Number(tempAmount))}
-                  disabled={isUpdating || Number(tempAmount) === Number(localOrder.amountPaid)}
-                  className="w-full py-2 bg-amber-500 text-white text-[11px] font-bold uppercase tracking-wider rounded-lg hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:bg-gray-300 disabled:text-gray-500 mt-1"
-                >
-                  {isUpdating ? 'Saving...' : 'Save Amount'}
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
         <div className="mt-1 mb-1">
           <OrderOpexSection
             opex={localOrder.opex || []}
@@ -507,24 +536,30 @@ export function StepDelivery({ localOrder, linkedPOs, handleUpdateOrderField, ha
             allowAdd={true}
           />
         </div>
+
         <div className="border-t border-gray-100 pt-6 mt-5 flex flex-col-reverse lg:flex-row gap-6 justify-between items-start">
-          <div className="w-full lg:w-auto flex-1 flex justify-start">
+          
+          <div className="w-full lg:w-auto flex-1 flex flex-col items-start gap-2">
             {isUpdating ? (
               <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-gray-50 text-gray-500 text-[11px] font-medium border border-gray-100">
                 <div className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
                 Saving Status...
               </div>
+            ) : canProceedToClose ? (
+              <button
+                onClick={() => handleTabChange("closed")}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[11px] font-medium shadow-sm"
+              >
+                Next Step: Confirm Completed &rarr;
+              </button>
             ) : (
-              localOrder.fulfillmentStatus === "delivered" && localOrder.paymentStatus === "paid" && (
-                <button
-                  onClick={() => handleTabChange("closed")}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[11px] font-medium shadow-sm"
-                >
-                  Next Step: Confirm Completed &rarr;
-                </button>
-              )
+              <div className="text-[10px] text-amber-600 bg-amber-50 px-3 py-2 rounded-lg border border-amber-100/50 leading-snug">
+                <span className="font-bold uppercase tracking-wider">⚠️ Action Required to Proceed:</span><br/>
+                Target Delivery Date, Delivered status, and Paid payment status are required to unlock Step 6.
+              </div>
             )}
           </div>
+          
           <FinancialSummary localOrder={localOrder} />
         </div>
       </div>

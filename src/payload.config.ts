@@ -8,7 +8,6 @@ import { buildConfig } from 'payload'
 import { Users } from './collections/Users'
 import { Media } from './collections/Media'
 import { Products } from './collections/Products'
-import { Pages } from './collections/Pages'
 import { QuotationRequests } from './collections/QuotationRequests'
 import { AgentActions } from './collections/AgentActions'
 import { AdSnapshots } from './collections/AdSnapshots'
@@ -69,7 +68,6 @@ export default buildConfig({
     Users,
     Media,
     Products,
-    Pages,
     QuotationRequests,
     AgentActions,
     AdSnapshots,

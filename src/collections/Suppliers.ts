@@ -9,6 +9,7 @@ export const Suppliers: CollectionConfig = {
     defaultColumns: ['name', 'company', 'phone', 'status'],
     group: 'Directory',
     description: 'Supplier directory. Add and edit supplier records here.',
+    hidden: ({ user }) => user?.role === 'marketing',
   },
   access: {
     read: ({ req }) => Boolean(req.user),

@@ -11,6 +11,7 @@ export const WeightCalcProducts: CollectionConfig = {
     defaultColumns: ['name', 'shape', 'density', 'order', 'enabled'],
     group: 'Content',
     description: 'Products available in the Weight Calculator tool.',
+    hidden: ({ user }) => user?.role === 'marketing',
   },
   access: {
     read: () => true,

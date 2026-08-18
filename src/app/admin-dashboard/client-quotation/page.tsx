@@ -164,6 +164,7 @@ export default async function ClientQuotationPage({
     where: activeStatus ? { status: { equals: activeStatus } } : undefined,
   })
 
+  // Data Mapping for Orders
   const quotationIds = docs.map((d: any) => String(d.id))
   const ordersRes = quotationIds.length > 0
     ? await payload.find({
@@ -172,9 +173,27 @@ export default async function ClientQuotationPage({
         limit: 200,
       })
     : { docs: [] as any[] }
+  
   const orderIdByQuotationId: Record<string, string> = {}
   for (const o of ordersRes.docs as any[]) {
     if (o.sourceQuotationId) orderIdByQuotationId[o.sourceQuotationId] = o.id
+  }
+
+  // Fetch Requests to find the original Staff ID for notifications
+  const requestIds = docs.map((d: any) => d.sourceRequestId).filter(Boolean)
+  const requestsRes = requestIds.length > 0
+    ? await payload.find({
+        collection: 'quotation-requests',
+        where: { id: { in: requestIds } },
+        limit: 200,
+      })
+    : { docs: [] as any[] }
+
+  const staffIdByRequestId: Record<string, string> = {}
+  for (const r of requestsRes.docs as any[]) {
+    if (r.assignedTo) {
+      staffIdByRequestId[r.id] = typeof r.assignedTo === 'object' ? r.assignedTo.id : r.assignedTo
+    }
   }
 
   function buildHref(s?: string) {
@@ -253,6 +272,8 @@ export default async function ClientQuotationPage({
             
             const existingOrderId = orderIdByQuotationId[String(q.id)]
             const availableOptions = STATUS_OPTIONS
+            
+            const staffUserId = q.sourceRequestId ? staffIdByRequestId[String(q.sourceRequestId)] : null;
 
             const date = q.quotationDate
               ? new Date(q.quotationDate).toLocaleDateString('en-PH', {
@@ -283,6 +304,18 @@ export default async function ClientQuotationPage({
                       status={q.status}
                       options={availableOptions}
                       colorClassMap={STATUS_COLORS}
+                      // ✨ Passes the exact rules to the generic component!
+                      notifyOnUpdate={[
+                        {
+                          triggerStatus: "quotation_approved",
+                          payload: {
+                            recipient: staffUserId,
+                            message: `Approved! Quotation ${q.quotationNumber} has been approved by the Admin.`,
+                            link: `/admin-dashboard/pipeline/${q.sourceRequestId || ''}`,
+                            read: false,
+                          }
+                        }
+                      ]}
                     />
                   </div>
                 </div>
@@ -320,7 +353,6 @@ export default async function ClientQuotationPage({
                     <div className="flex flex-col gap-3">
                       {(q.items || []).map((item: any, i: number) => (
                         <div key={i} className="flex items-start justify-between gap-2 text-[11px] text-gray-700">
-                          {/* CHANGED: Extracted quantity and description into proper flex children to prevent truncation */}
                           <div className="flex items-baseline gap-1.5 sm:gap-2 min-w-0">
                             <span className="font-mono text-gray-400 font-bold whitespace-nowrap shrink-0">
                               {item.qty} {item.unit || 'pcs'}
@@ -411,8 +443,8 @@ export default async function ClientQuotationPage({
             )
           })
         }
-      </div>
-    )}
-  </div>
-)
+        </div>
+      )}
+    </div>
+  )
 }

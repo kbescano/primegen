@@ -13,6 +13,7 @@ export const ClientQuotations: CollectionConfig = {
       "status",
     ],
     group: "Operations",
+    hidden: ({ user }) => user?.role === 'marketing',
   },
   access: {
     read: ({ req: { user } }) => Boolean(user),

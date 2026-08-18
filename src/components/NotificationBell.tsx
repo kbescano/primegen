@@ -6,12 +6,12 @@ import Link from 'next/link'
 type NotificationItem = { id: string; message: string; link?: string; createdAt: string; read?: boolean }
 
 const STORAGE_KEY = 'admin_notifications_last_seen'
-const TWO_HOURS_MS = 2 * 60 * 60 * 1000
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000
 
 function getLastSeen(): string {
-  if (typeof window === 'undefined') return new Date(Date.now() - TWO_HOURS_MS).toISOString()
+  if (typeof window === 'undefined') return new Date(Date.now() - SEVEN_DAYS_MS).toISOString()
   const stored = localStorage.getItem(STORAGE_KEY)
-  return stored || new Date(Date.now() - TWO_HOURS_MS).toISOString()
+  return stored || new Date(Date.now() - SEVEN_DAYS_MS).toISOString()
 }
 
 function timeAgo(iso: string): string {
@@ -19,45 +19,91 @@ function timeAgo(iso: string): string {
   const mins = Math.floor(diffMs / 60000)
   if (mins < 1) return 'Just now'
   if (mins < 60) return `${mins}m ago`
+  
   const hours = Math.floor(mins / 60)
   if (hours < 24) return `${hours}h ago`
+  
   const days = Math.floor(hours / 24)
-  return `${days}d ago`
+  if (days === 1) return 'Yesterday'
+  return `${days} days ago`
 }
 
 export default function NotificationBell({ role }: { role: 'admin' | 'user' }) {
   const [count, setCount] = useState(0)
   const [items, setItems] = useState<NotificationItem[]>([])
   const [open, setOpen] = useState(false)
+  
+  // Lazy Loading States
+  const [page, setPage] = useState(1)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  
   const panelRef = useRef<HTMLDivElement>(null)
 
-  async function fetchNotifications() {
+  async function fetchNotifications(pageNum: number) {
+    if (pageNum > 1) setLoadingMore(true)
     try {
+      // ✨ FIX: Use Payload's standard REST API instead of 404 custom routes
+      let url = `/api/notifications?sort=-createdAt&limit=15&page=${pageNum}`;
+      
       if (role === 'admin') {
-        const since = getLastSeen()
-        const res = await fetch(`/api/admin-notifications?since=${encodeURIComponent(since)}`, {
-          credentials: 'include',
-        })
-        if (!res.ok) return
-        const data = await res.json()
-        setCount(data.count || 0)
-        setItems(data.items || [])
+        const weekAgo = new Date(Date.now() - SEVEN_DAYS_MS).toISOString();
+        url += `&where[createdAt][greater_than]=${weekAgo}`;
+      }
+
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res?.ok) return;
+
+      const data = await res.json();
+      // ✨ FIX: Payload returns data inside 'docs', not 'items'
+      let fetchedItems: NotificationItem[] = data.docs || []; 
+
+      // Visually mark as read if they fetch while panel is open
+      if (role === 'admin' && open) {
+        fetchedItems = fetchedItems.map(i => ({ ...i, read: true }))
+      }
+      
+      if (pageNum === 1) {
+        setItems(fetchedItems)
+        
+        if (role === 'admin') {
+          const lastSeen = getLastSeen()
+          const unreadCount = fetchedItems.filter(i => new Date(i.createdAt).getTime() > new Date(lastSeen).getTime()).length
+          setCount(unreadCount)
+        } else {
+          // Count unread directly from the documents fetched for the user
+          setCount(fetchedItems.filter(i => !i.read).length)
+        }
       } else {
-        // Calls the new, secure Staff endpoint
-        const res = await fetch(`/api/user-notifications`, { credentials: 'include' })
-        if (!res.ok) return
-        const data = await res.json()
-        setCount(data.count || 0)
-        setItems(data.items || [])
+        setItems(prev => {
+          const existingIds = new Set(prev.map(p => p.id))
+          const newUnique = fetchedItems.filter(i => !existingIds.has(i.id))
+          return [...prev, ...newUnique]
+        })
+      }
+
+      if (fetchedItems.length === 0) {
+        setHasMore(false)
       }
     } catch (e){
       console.error('Failed to fetch notifications:', e)
+    } finally {
+      setLoadingMore(false)
     }
   }
 
+  // Fetch once on mount to get initial badge count
   useEffect(() => {
-    fetchNotifications()
+    setPage(1)
+    setHasMore(true)
+    fetchNotifications(1)
   }, [role])
+
+  useEffect(() => {
+    if (page > 1) {
+      fetchNotifications(page)
+    }
+  }, [page])
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -69,16 +115,22 @@ export default function NotificationBell({ role }: { role: 'admin' | 'user' }) {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [open])
 
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget
+    if (scrollHeight - scrollTop <= clientHeight + 10 && !loadingMore && hasMore) {
+      setPage(p => p + 1)
+    }
+  }
+
   async function markAsRead(id: string) {
-    if (role === 'admin') return // Admin synthetic feed updates based on localStorage when bell opens
+    if (role === 'admin') return 
     try {
-      await fetch('/api/user-notifications', {
+      await fetch(`/api/notifications/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ id })
+        body: JSON.stringify({ read: true })
       })
-      // Optimistically update UI
       setItems(prev => prev.map(i => i.id === id ? { ...i, read: true } : i))
       setCount(prev => Math.max(0, prev - 1))
     } catch {}
@@ -87,13 +139,17 @@ export default function NotificationBell({ role }: { role: 'admin' | 'user' }) {
   async function handleToggle() {
     const willOpen = !open
     setOpen(willOpen)
+    
     if (willOpen) {
+      setPage(1)
+      setHasMore(true)
+      await fetchNotifications(1)
+
       if (role === 'admin') {
         localStorage.setItem(STORAGE_KEY, new Date().toISOString())
-        setCount(0) // Instantly clear the red badge
-        setItems(prev => prev.map(i => ({ ...i, read: true }))) // Visually mark all as read in UI
+        setCount(0) 
+        setItems(prev => prev.map(i => ({ ...i, read: true }))) 
       }
-      // Note: User (Staff) does NOT auto-clear. They must explicitly click "View" to dismiss it.
     }
   }
 
@@ -121,12 +177,12 @@ export default function NotificationBell({ role }: { role: 'admin' | 'user' }) {
             <p className="text-[12px] font-black uppercase tracking-wide text-[#01172f]">Notifications</p>
           </div>
 
-          {items.length === 0 ? (
+          {items.length === 0 && !loadingMore ? (
             <p className="px-4 py-8 text-center text-[13px] text-[#01172f]/40 font-medium">
               {role === 'admin' ? 'No recent activity.' : 'No new assignments.'}
             </p>
           ) : (
-            <div className="max-h-80 overflow-y-auto">
+            <div className="max-h-80 overflow-y-auto custom-scrollbar" onScroll={handleScroll}>
               {items.map((item) => (
                 <Link
                   key={item.id}
@@ -147,6 +203,12 @@ export default function NotificationBell({ role }: { role: 'admin' | 'user' }) {
                   )}
                 </Link>
               ))}
+              
+              {loadingMore && (
+                <div className="py-4 text-center text-[10px] text-[#01172f]/40 font-bold uppercase tracking-widest">
+                  Loading older...
+                </div>
+              )}
             </div>
           )}
 

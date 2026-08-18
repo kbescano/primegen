@@ -5,11 +5,11 @@ export const Users: CollectionConfig = {
   auth: true,
   admin: {
     useAsTitle: 'email',
+    hidden: ({ user }) => user?.role === 'marketing',
   },
   access: {
     // 🔒 1. THE MAGIC LINE: Strictly limits the Payload CMS Dashboard to admins only
-    admin: ({ req: { user } }) => user?.role === 'admin',
-
+    admin: ({ req: { user } }) => user?.role === 'admin' || user?.role === 'marketing',
     // 2. Only admins can create or delete accounts
     create: ({ req: { user } }) => user?.role === 'admin',
     delete: ({ req: { user } }) => user?.role === 'admin',

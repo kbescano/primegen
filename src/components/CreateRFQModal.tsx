@@ -250,10 +250,10 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
               <div className="p-10 md:p-16 text-center my-auto flex flex-col items-center justify-center h-full">
                 <div className="w-12 h-[3px] bg-[#149911] mx-auto mb-8" />
                 <h2 className="text-[28px] md:text-[32px] font-black uppercase tracking-tight text-[#01172f] mb-4">
-                  Request Received.
+                  Inquiry created.
                 </h2>
                 <p className="text-[15px] text-[#01172f]/60 font-medium max-w-[400px] mx-auto mb-10">
-                  Thanks — the project details have been recorded. Our team will review and process the quotation shortly.
+                  The project details have been recorded.
                 </p>
                 <button
                   onClick={closeModal}
@@ -323,7 +323,6 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
                         value={formData.email}
                         onChange={handleFormChange}
                         placeholder="you@company.com" 
-                        required 
                         className={fieldClass} 
                       />
                     </div>
@@ -356,7 +355,6 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
                         required 
                         className={`${fieldClass} appearance-none pr-9 bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2301172f%22 stroke-width=%222%22><path d=%22M6 9l6 6 6-6%22/></svg>')] bg-no-repeat bg-[right_16px_center]`}
                       >
-                        <option value="website">Website Form</option>
                         <option value="facebook">Facebook</option>
                         <option value="google">Google</option>
                         <option value="other">Other</option>

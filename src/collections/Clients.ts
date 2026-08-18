@@ -6,6 +6,7 @@ export const Clients: CollectionConfig = {
     useAsTitle: 'name',
     defaultColumns: ['name', 'company', 'phone', 'status'],
     group: 'Content',
+    hidden: ({ user }) => user?.role === 'marketing',
   },
   access: {
     read: () => true,

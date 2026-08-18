@@ -114,30 +114,39 @@ export default function PipelineStepper({
     }
   }
 
-  async function handleUpdateOrderField(field: string, value: any) {
-    if (!localOrder?.id) return;
-    
-    setIsUpdating(true);
-    const updatedOrder = { ...localOrder, [field]: value };
-    setLocalOrder(updatedOrder);
+  // ✨ Make it accept either a string (single field) OR an object (multiple fields)
+async function handleUpdateOrderField(fieldOrUpdates: string | Record<string, any>, value?: any) {
+  const updates = typeof fieldOrUpdates === 'string'
+    ? { [fieldOrUpdates]: value }
+    : fieldOrUpdates;
 
-    try {
-      const res = await fetch(`/api/orders/${localOrder.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ [field]: value }),
-      });
+  const previousOrder = localOrder;
+  setIsUpdating(true);
+  setLocalOrder((prev: any) => ({ ...prev, ...updates }));
 
-      if (res.ok) {
-        router.refresh();
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setTimeout(() => setIsUpdating(false), 800); 
+  try {
+    const res = await fetch(`/api/orders/${localOrder.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(updates),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      setLocalOrder(data.doc);
+      router.refresh();
+    } else {
+      setLocalOrder(previousOrder);
+      console.error('Failed to update order fields:', res.status, await res.text().catch(() => ''));
     }
+  } catch (error) {
+    setLocalOrder(previousOrder);
+    console.error('Failed to update order fields', error);
+  } finally {
+    setIsUpdating(false);
   }
+}
 
   return (
     <div className="w-full flex flex-col h-full relative">

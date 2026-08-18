@@ -130,13 +130,11 @@ export default function QuotationGenerator({
     }
   }, [isEditing, initial?.id])
 
-  // ✨ Auto-fill Sales Person Logic
+  // Auto-fill Sales Person Logic
   useEffect(() => {
-    // Only attempt to auto-fill if we are creating a NEW quotation and it doesn't already have a sales person
     if (!isEditing && !initial?.salesPerson) {
       async function fetchDefaultSalesPerson() {
         try {
-          // 1. Try to get the assigned staff from the Pipeline Request
           if (sourceRequestId) {
             const reqRes = await fetch(`/api/quotation-requests/${sourceRequestId}?depth=1`, { credentials: 'include' })
             if (reqRes.ok) {
@@ -144,12 +142,11 @@ export default function QuotationGenerator({
               const staff = reqData?.assignedTo
               if (staff && typeof staff === 'object' && (staff.name || staff.email)) {
                 setSalesPerson(staff.name || staff.email)
-                return // Stop here if we found the assigned staff
+                return 
               }
             }
           }
 
-          // 2. Fallback: Use the currently logged in user's name
           const meRes = await fetch('/api/users/me', { credentials: 'include' })
           if (meRes.ok) {
             const meData = await meRes.json()
@@ -166,7 +163,6 @@ export default function QuotationGenerator({
     }
   }, [isEditing, initial?.salesPerson, sourceRequestId])
 
-  // 👇 Locks the form inputs when quotation is formally approved
   const isLocked = docStatus === 'quotation_approved' || docStatus === 'order_confirmed'
 
   const subtotal = useMemo(
@@ -312,6 +308,36 @@ export default function QuotationGenerator({
       setQuotationNumber(saved.doc.quotationNumber)
       setDocStatus(targetStatus)
       await upsertClientRecord()
+      
+      // ✨ DYNAMIC ADMIN NOTIFICATION: Fetches all admins and blasts the notification to them
+      if (targetStatus === 'pending_approval') {
+        try {
+          // 1. Ask the database for all users where role === 'admin'
+          const adminRes = await fetch('/api/users?where[role][equals]=admin&limit=50', { credentials: 'include' });
+          if (adminRes.ok) {
+            const adminData = await adminRes.json();
+            const admins = adminData.docs || [];
+
+            // 2. Loop through them and send a notification to each one simultaneously
+            await Promise.all(admins.map((admin: any) => 
+              fetch('/api/notifications', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                  recipient: admin.id,
+                  message: `Approval requested for Quotation ${saved.doc.quotationNumber || 'Pending'}.`,
+                  link: `/admin-dashboard/client-quotation?status=pending_approval`,
+                  read: false
+                })
+              })
+            ));
+          }
+        } catch (e) {
+          console.error("Failed to send notification to admins:", e);
+        }
+      }
+
       setSaving('saved')
 
       // Contextual Redirect logic

@@ -4,12 +4,6 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { Playfair_Display } from "next/font/google";
-
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  weight: ["700", "900"],
-});
 
 const NAV_LINKS = [
   { href: "/products", label: "Products", hasDropdown: false },
@@ -21,7 +15,6 @@ const NAV_LINKS = [
 export default function SiteHeader() {
   const [open, setOpen] = useState(false);
   const [contactOpen, setContactOpen] = useState(false);
-  const [desktopContactOpen, setDesktopContactOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [bgOpacity, setBgOpacity] = useState(0.95);
   const pathname = usePathname();
@@ -35,10 +28,6 @@ export default function SiteHeader() {
       document.body.style.overflow = "unset";
     };
   }, [open]);
-
-  useEffect(() => {
-    setDesktopContactOpen(false);
-  }, [pathname]);
 
   // Scroll listener to dynamically calculate background opacity
   useEffect(() => {
@@ -91,9 +80,9 @@ export default function SiteHeader() {
 
             <div className="flex flex-col justify-center">
               <span
-                className={`${playfair.className} text-[14px] sm:text-[15px] md:text-[19px] font-black tracking-tight text-[#fdfffc] drop-shadow-md leading-none transition-colors duration-300 group-hover:text-[#149911]`}
+                className="text-[14px] sm:text-[15px] md:text-[19px] font-black tracking-tight text-[#fdfffc] drop-shadow-md leading-none transition-colors duration-300 group-hover:text-[#149911]"
               >
-                Primegen
+                PRIMEGEN
               </span>
               <span className="text-[5px] sm:text-[6px] md:text-[7px] font-bold uppercase tracking-[0.22em] text-[#149911] drop-shadow-sm">
                 Trading Corporation
@@ -126,71 +115,24 @@ export default function SiteHeader() {
           </nav>
 
           {/* 3. Right Utilities & CTA */}
-          <div className="hidden lg:flex items-center gap-2 shrink-0">
+          <div className="hidden lg:flex items-center shrink-0">
             
-            {/* Email/Inbox Contact Toggle */}
-            <div className="relative">
-              <button 
-                onClick={() => setDesktopContactOpen(!desktopContactOpen)}
-                className={`w-8 h-8 rounded-lg border flex items-center justify-center transition-colors outline-none
-                  ${desktopContactOpen 
-                    ? "border-[#fdfffc] text-[#fdfffc] bg-[#fdfffc]/10" 
-                    : "border-[#fdfffc]/15 text-[#fdfffc]/70 hover:text-[#fdfffc] hover:bg-[#fdfffc]/10"
-                  }
-                `}
-                aria-label="Open contact details"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="4" width="20" height="16" rx="2" ry="2"></rect>
-                  <path d="M2 10l10 5 10-5"></path>
-                </svg>
-              </button>
-
-              {/* Desktop Contact Dropdown (Updated to Dark Theme) */}
-              <div
-                className={`absolute top-full right-0 mt-4 p-6 bg-[#01172f] backdrop-blur-lg border border-white/10 shadow-2xl rounded-xl w-[260px] origin-top-right transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]
-                  ${desktopContactOpen ? "opacity-100 scale-100 pointer-events-auto" : "opacity-0 scale-95 pointer-events-none"}
-                `}
-              >
-                <div className="flex flex-col gap-5">
-                  <div>
-                    <span className="block text-[8px] uppercase tracking-[0.25em] text-white/40 mb-3 font-medium">
-                      Direct Lines
-                    </span>
-                    <div className="flex flex-col gap-3">
-                      <a
-                        href="tel:09171859127"
-                        className="text-sm tracking-widest text-white hover:text-[#149911] transition-colors"
-                      >
-                        0917-185-9127
-                      </a>
-                      <a
-                        href="tel:09171339515"
-                        className="text-sm tracking-widest text-white hover:text-[#149911] transition-colors"
-                      >
-                        0917-133-9515
-                      </a>
-                    </div>
-                  </div>
-                  <div className="pt-5 border-t border-white/10">
-                    <span className="block text-[8px] uppercase tracking-[0.25em] text-white/40 mb-3 font-medium">
-                      Email
-                    </span>
-                    <a
-                      href="mailto:sales@primegentradingcorp.com"
-                      className="text-[11px] tracking-wide text-white hover:text-[#149911] transition-colors break-all"
-                    >
-                      sales@primegentradingcorp.com
-                    </a>
-                  </div>
-                </div>
+            {/* Sleek Inline Contact Info */}
+            <div className="flex flex-col items-end mr-5 pr-5 border-r border-[#fdfffc]/15">
+              <div className="flex items-center gap-2.5 text-[10px] font-medium tracking-wider text-[#fdfffc]/90 mb-0.5">
+                <a href="tel:09171859127" className="hover:text-[#149911] transition-colors">0917-185-9127</a>
+                <span className="w-1 h-1 rounded-full bg-[#fdfffc]/20" />
+                <a href="tel:09171339515" className="hover:text-[#149911] transition-colors">0917-133-9515</a>
               </div>
+              <a href="mailto:sales@primegentradingcorp.com" className="text-[9px] font-medium tracking-widest text-[#fdfffc]/50 hover:text-[#fdfffc] transition-colors">
+                sales@primegentradingcorp.com
+              </a>
             </div>
 
             {/* Vibrant CTA Button */}
             <Link
               href="/quote"
-              className="ml-1 px-5 py-2 bg-[#149911] text-white text-[10px] font-semibold rounded-lg hover:bg-[#107e0e] transition-colors shadow-[0_4px_14px_rgba(20,153,17,0.25)] outline-none"
+              className="px-5 py-2 bg-[#149911] text-white text-[10px] font-semibold rounded-lg hover:bg-[#107e0e] transition-colors shadow-[0_4px_14px_rgba(20,153,17,0.25)] outline-none"
             >
               Request a quote
             </Link>

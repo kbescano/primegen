@@ -13,6 +13,7 @@ export const Orders: CollectionConfig = {
     group: "Content",
     description:
       "Confirmed orders, converted from Client Quotations. Tracks physical fulfillment and payment separately from the sales/quotation stage.",
+    hidden: ({ user }) => user?.role === 'marketing',
   },
   access: {
     read: ({ req }) => Boolean(req.user),

@@ -5,6 +5,7 @@ export const Categories: CollectionConfig = {
   admin: {
     useAsTitle: 'label',
     defaultColumns: ['label', 'slug', 'order'],
+    hidden: ({ user }) => user?.role === 'marketing',
   },
   access: {
     read: () => true,

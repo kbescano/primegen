@@ -2,6 +2,9 @@ import type { CollectionConfig } from 'payload'
 
 export const Media: CollectionConfig = {
   slug: 'media',
+  admin: {
+    hidden: ({ user }) => user?.role === 'marketing',
+  },
   access: {
     read: () => true,
   },

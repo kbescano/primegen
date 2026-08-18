@@ -10,7 +10,7 @@ type RouteStop = {
   address: string;
   contactName: string;
   contactPhone: string;
-  scheduledDate?: string; // ✨ ADDED SCHEDULE
+  scheduledDate?: string | null;
   status: "pending" | "arrived" | "completed";
 };
 
@@ -47,8 +47,7 @@ const PRIMEGEN_ADDRESS =
   "SOUTHERN CITY HOMES, YG BUILDING, CEBU ST, 4 TANZANG LUMA, IMUS, 4103 CAVITE";
 const PRIMEGEN_PHONE = "0917-185-9127 / 0917-133-9515";
 
-// ✨ Helper to format ISO dates for the <input type="datetime-local" />
-const formatDateTimeLocal = (isoString?: string) => {
+const formatDateTimeLocal = (isoString?: string | null) => {
   if (!isoString) return "";
   const d = new Date(isoString);
   if (isNaN(d.getTime())) return "";
@@ -85,7 +84,7 @@ export default function DeliveryItineraryTracker({
       address: "",
       contactName: "",
       contactPhone: "",
-      scheduledDate: "",
+      scheduledDate: null,
       status: "pending",
     },
     {
@@ -93,7 +92,7 @@ export default function DeliveryItineraryTracker({
       address: "",
       contactName: "",
       contactPhone: "",
-      scheduledDate: "",
+      scheduledDate: null,
       status: "pending",
     },
   ]);
@@ -120,7 +119,6 @@ export default function DeliveryItineraryTracker({
         const unassignedPrimegen: CargoItem[] = [];
         const mappedCargoItems: CargoItem[] = [];
 
-        // 1. Loop through master items ONCE (Guarantees NO duplicates)
         masterItems.forEach((item: any) => {
           const itemDesc =
             item.material?.name || item.description || "Custom Item";
@@ -130,7 +128,6 @@ export default function DeliveryItineraryTracker({
 
           let matchedPO = null;
 
-          // A. Try explicit ID match
           if (item.assignedPOId) {
             const assignedId =
               typeof item.assignedPOId === "object"
@@ -139,7 +136,6 @@ export default function DeliveryItineraryTracker({
             matchedPO = pos.find((p: any) => String(p.id) === assignedId);
           }
 
-          // B. Try description match fallback
           if (!matchedPO) {
             matchedPO = pos.find(
               (p: any) =>
@@ -182,7 +178,6 @@ export default function DeliveryItineraryTracker({
           mappedCargoItems.push(cargoItem);
         });
 
-        // 2. Build PO list and strictly keep ONLY those with matched items
         const poList: SupplierPOData[] = pos
           .map((po: any) => {
             const poIdStr = String(po.id);
@@ -227,7 +222,6 @@ export default function DeliveryItineraryTracker({
           address: extractedClientAddress,
         });
 
-        // 3. Handle Itinerary setup
         if (itinData.docs && itinData.docs.length > 0) {
           setItinerary(itinData.docs[0]);
           setDriverName(itinData.docs[0].driverName || "");
@@ -241,7 +235,7 @@ export default function DeliveryItineraryTracker({
               address: PRIMEGEN_ADDRESS,
               contactName: "Primegen Trading (Warehouse)",
               contactPhone: PRIMEGEN_PHONE,
-              scheduledDate: "",
+              scheduledDate: null,
               status: "pending",
             });
           }
@@ -252,7 +246,7 @@ export default function DeliveryItineraryTracker({
                 address: po.address || "",
                 contactName: `${po.name || po.company || "Supplier"} (${po.poNumber})`,
                 contactPhone: po.phone || "",
-                scheduledDate: "",
+                scheduledDate: null,
                 status: "pending" as const,
               })),
             );
@@ -263,7 +257,7 @@ export default function DeliveryItineraryTracker({
               address: "",
               contactName: "",
               contactPhone: "",
-              scheduledDate: "",
+              scheduledDate: null,
               status: "pending",
             });
           }
@@ -272,7 +266,7 @@ export default function DeliveryItineraryTracker({
             address: extractedClientAddress,
             contactName: extractedClientName,
             contactPhone: extractedClientPhone,
-            scheduledDate: "",
+            scheduledDate: null,
             status: "pending",
           });
 
@@ -292,7 +286,7 @@ export default function DeliveryItineraryTracker({
         address: "",
         contactName: "",
         contactPhone: "",
-        scheduledDate: "",
+        scheduledDate: null,
         status: "pending",
       },
     ]);
@@ -320,7 +314,10 @@ export default function DeliveryItineraryTracker({
         status: itinerary ? itinerary.status : "scheduled",
         driverName,
         vehicleDetails,
-        stops: routeStops,
+        stops: routeStops.map((stop) => ({
+          ...stop,
+          scheduledDate: stop.scheduledDate || null, 
+        })),
       };
 
       const url = itinerary
@@ -378,7 +375,10 @@ export default function DeliveryItineraryTracker({
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
-            stops: updatedStops,
+            stops: updatedStops.map(stop => ({
+              ...stop,
+              scheduledDate: stop.scheduledDate || null
+            })),
             status: newItineraryStatus,
           }),
         }),
@@ -561,24 +561,29 @@ export default function DeliveryItineraryTracker({
               Primegen Inventory to Load:
             </p>
             <ul className="space-y-1 pl-1">
-              {primegenItems.map((item, idx) => (
-                <li
-                  key={idx}
-                  className="text-[11px] text-gray-700 font-medium flex items-start gap-2"
-                >
-                  <span className="font-bold text-blue-800 w-12 shrink-0">
-                    {item.qty} {item.unit}
-                  </span>
-                  <span className="uppercase">
-                    {item.description}{" "}
-                    {item.size && (
-                      <span className="text-gray-500 capitalize">
-                        ({item.size})
-                      </span>
-                    )}
-                  </span>
-                </li>
-              ))}
+              {primegenItems.map((item, idx) => {
+                // ✨ SMART REDUNDANCY CHECK
+                const isRedundant = item.size && (item.description || '').toUpperCase().includes(item.size.toUpperCase());
+                
+                return (
+                  <li
+                    key={idx}
+                    className="text-[11px] text-gray-700 font-medium flex items-start gap-2"
+                  >
+                    <span className="font-bold text-blue-800 w-12 shrink-0">
+                      {item.qty} {item.unit}
+                    </span>
+                    <span className="uppercase">
+                      {item.description}{" "}
+                      {!isRedundant && item.size && (
+                        <span className="text-gray-500 capitalize">
+                          ({item.size})
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
@@ -595,24 +600,29 @@ export default function DeliveryItineraryTracker({
                     {po.poNumber}
                   </span>
                   <ul className="space-y-1 pl-1">
-                    {po.items.map((item, idx) => (
-                      <li
-                        key={idx}
-                        className="text-[11px] text-gray-700 font-medium flex items-start gap-2"
-                      >
-                        <span className="font-bold text-[#149911] w-12 shrink-0">
-                          {item.qty} {item.unit}
-                        </span>
-                        <span className="uppercase">
-                          {item.description}{" "}
-                          {item.size && (
-                            <span className="text-gray-500 capitalize">
-                              ({item.size})
-                            </span>
-                          )}
-                        </span>
-                      </li>
-                    ))}
+                    {po.items.map((item, idx) => {
+                      // ✨ SMART REDUNDANCY CHECK
+                      const isRedundant = item.size && (item.description || '').toUpperCase().includes(item.size.toUpperCase());
+
+                      return (
+                        <li
+                          key={idx}
+                          className="text-[11px] text-gray-700 font-medium flex items-start gap-2"
+                        >
+                          <span className="font-bold text-[#149911] w-12 shrink-0">
+                            {item.qty} {item.unit}
+                          </span>
+                          <span className="uppercase">
+                            {item.description}{" "}
+                            {!isRedundant && item.size && (
+                              <span className="text-gray-500 capitalize">
+                                ({item.size})
+                              </span>
+                            )}
+                          </span>
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               ))}
@@ -629,15 +639,33 @@ export default function DeliveryItineraryTracker({
 
   return (
     <div className="w-full">
-      <style>{`
-        @media print {
-          @page { size: portrait; margin: 10mm; }
-          body * { visibility: hidden !important; }
-          .waybill-print-doc, .waybill-print-doc * { visibility: visible !important; }
-          .waybill-print-doc { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; margin: 0 !important; padding: 0 !important; border: none !important; box-shadow: none !important; }
-          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
-        }
-      `}</style>
+     <style>{`
+  @media print {
+    @page { size: portrait; margin: 6mm; }
+    html, body {
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    body * {
+      visibility: hidden !important;
+    }
+    .waybill-print-doc,
+    .waybill-print-doc * {
+      visibility: visible !important;
+    }
+    .waybill-print-doc {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      width: 100% !important;
+      margin: 0 !important;
+      padding: 0 !important;
+      border: none !important;
+      box-shadow: none !important;
+    }
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
+  }
+`}</style>
 
       {!itinerary || setupMode ? (
         // ==========================================
@@ -834,7 +862,6 @@ export default function DeliveryItineraryTracker({
                         />
                       </div>
                     </div>
-                    {/* ✨ NEW: Scheduled Date & Time Input */}
                     <div className="mt-2">
                       <label className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1 ml-1">
                         Scheduled Time (Optional)
@@ -847,7 +874,7 @@ export default function DeliveryItineraryTracker({
                           updateStop(i, {
                             scheduledDate: val
                               ? new Date(val).toISOString()
-                              : "",
+                              : null,
                           });
                         }}
                         className="w-full sm:w-[250px] px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg text-[12px] focus:outline-none focus:border-[#149911]"
@@ -1018,7 +1045,6 @@ export default function DeliveryItineraryTracker({
                           </p>
                         )}
 
-                        {/* ✨ NEW: Display the Scheduled Date & Time on the Tracker View */}
                         {stop.scheduledDate && (
                           <p className="text-[11px] text-[#149911] mt-1.5 font-bold flex items-center gap-1.5">
                             <svg
@@ -1274,7 +1300,6 @@ export default function DeliveryItineraryTracker({
                           {stop.contactPhone || "_________"}
                         </p>
 
-                        {/* ✨ NEW: Display the Scheduled Date & Time on the Printed Waybill */}
                         {stop.scheduledDate && (
                           <p className="text-[9px] text-[#149911] font-bold mt-1">
                             Sched:{" "}
@@ -1294,18 +1319,23 @@ export default function DeliveryItineraryTracker({
                               Primegen Inventory:
                             </p>
                             <ul className="list-disc pl-3">
-                              {primegenItems.map((item, idx) => (
-                                <li
-                                  key={idx}
-                                  className="text-[9px] text-gray-600 font-medium mb-0.5 leading-tight"
-                                >
-                                  {item.qty} {item.unit} —{" "}
-                                  <span className="uppercase">
-                                    {item.description}
-                                  </span>{" "}
-                                  {item.size && `(${item.size})`}
-                                </li>
-                              ))}
+                              {primegenItems.map((item, idx) => {
+                                // ✨ SMART REDUNDANCY CHECK
+                                const isRedundant = item.size && (item.description || '').toUpperCase().includes(item.size.toUpperCase());
+
+                                return (
+                                  <li
+                                    key={idx}
+                                    className="text-[9px] text-gray-600 font-medium mb-0.5 leading-tight"
+                                  >
+                                    {item.qty} {item.unit} —{" "}
+                                    <span className="uppercase">
+                                      {item.description}
+                                    </span>{" "}
+                                    {!isRedundant && item.size && `(${item.size})`}
+                                  </li>
+                                )
+                              })}
                             </ul>
                           </div>
                         )}
@@ -1322,21 +1352,26 @@ export default function DeliveryItineraryTracker({
                                   {po.poNumber}
                                 </span>
                                 <ul className="list-disc pl-4">
-                                  {po.items.map((item, idx) => (
-                                    <li
-                                      key={idx}
-                                      className="text-[9px] text-gray-700 font-medium leading-tight mb-0.5"
-                                    >
-                                      <span className="font-bold">
-                                        {item.qty} {item.unit}
-                                      </span>{" "}
-                                      —{" "}
-                                      <span className="uppercase">
-                                        {item.description}
-                                      </span>{" "}
-                                      {item.size && `(${item.size})`}
-                                    </li>
-                                  ))}
+                                  {po.items.map((item, idx) => {
+                                    // ✨ SMART REDUNDANCY CHECK
+                                    const isRedundant = item.size && (item.description || '').toUpperCase().includes(item.size.toUpperCase());
+
+                                    return (
+                                      <li
+                                        key={idx}
+                                        className="text-[9px] text-gray-700 font-medium leading-tight mb-0.5"
+                                      >
+                                        <span className="font-bold">
+                                          {item.qty} {item.unit}
+                                        </span>{" "}
+                                        —{" "}
+                                        <span className="uppercase">
+                                          {item.description}
+                                        </span>{" "}
+                                        {!isRedundant && item.size && `(${item.size})`}
+                                      </li>
+                                    )
+                                  })}
                                 </ul>
                               </div>
                             ))}

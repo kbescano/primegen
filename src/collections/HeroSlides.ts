@@ -10,6 +10,7 @@ export const HeroSlides: CollectionConfig = {
     defaultColumns: ['label', 'title', 'order', 'enabled'],
     group: 'Content',
     description: 'Homepage video hero playlist. Lower "order" numbers show first.',
+    hidden: ({ user }) => user?.role === 'marketing',
   },
   access: {
     read: () => true,
