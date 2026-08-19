@@ -1025,7 +1025,18 @@ export default function QuotationGenerator({
             </>
           ) : (
             <button
-              onClick={() => window.print()}
+              onClick={() => {
+                // Temporarily change the document title to force the PDF filename
+                const originalTitle = document.title;
+                document.title = quotationNumber
+                  ? `Quotation_${quotationNumber}`
+                  : "Quotation";
+
+                window.print();
+
+                // Restore the original title so the browser tab name goes back to normal
+                document.title = originalTitle;
+              }}
               className="px-8 py-3 rounded bg-[#3D5F3B] text-white font-bold hover:bg-[#01172f] hover:-translate-y-0.5 hover:shadow-[0_10px_30px_-10px_rgba(1,23,47,0.4)] transition-all duration-300"
             >
               Print / Save as PDF
