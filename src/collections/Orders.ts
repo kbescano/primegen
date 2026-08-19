@@ -13,7 +13,7 @@ export const Orders: CollectionConfig = {
     group: "Content",
     description:
       "Confirmed orders, converted from Client Quotations. Tracks physical fulfillment and payment separately from the sales/quotation stage.",
-    hidden: ({ user }) => user?.role === 'marketing',
+    hidden: ({ user }) => user?.role === "marketing",
   },
   access: {
     read: ({ req }) => Boolean(req.user),
@@ -313,6 +313,23 @@ export const Orders: CollectionConfig = {
       admin: {
         description: "The promised date of delivery set by sales.",
       },
+    },
+   {
+      name: 'paymentReceipt',
+      type: 'textarea',
+      maxLength: 10000000, // ✨ Bypasses the 40,000 limit, allows up to 10 million chars
+      admin: { position: 'sidebar' }
+    },
+    {
+      name: 'paymentReceiptStatus',
+      type: 'select',
+      options: [
+        { label: 'Pending Verification', value: 'pending' },
+        { label: 'Approved', value: 'approved' },
+        { label: 'Rejected', value: 'rejected' },
+      ],
+      defaultValue: 'pending',
+      admin: { position: 'sidebar' }
     },
   ],
 };

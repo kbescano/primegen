@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import AddClientForm from '@/components/AddClientForm'
 import DirectorySearchBar from '@/components/DirectorySearchBar'
+import EditDirectoryModal from '@/components/EditDirectoryModal' // ✨ IMPORT ADDED
 
 const PAGE_SIZE = 15
 
@@ -66,11 +67,13 @@ export default async function ClientsPage({
             <table className="w-full min-w-[900px] border-collapse text-left">
               <thead>
                 <tr>
+                  {/* ✨ UPDATED WIDTHS */}
                   <th className={`${thClass} w-[20%]`}>Client Name</th>
                   <th className={`${thClass} w-[18%]`}>Company</th>
                   <th className={`${thClass} w-[15%]`}>Contact Number</th>
                   <th className={`${thClass} w-[17%]`}>Email</th>
                   <th className={`${thClass} w-[20%]`}>Address</th>
+                  <th className={`${thClass} w-[10%] text-center`}>Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
@@ -94,6 +97,10 @@ export default async function ClientsPage({
                       </td>
                       <td className={`${tdClass} text-gray-600 truncate max-w-[250px]`}>
                         {c.address || '—'}
+                      </td>
+                      {/* ✨ ADDED ACTION COLUMN */}
+                      <td className={`${tdClass} text-center`}>
+                        <EditDirectoryModal collection="clients" record={c} />
                       </td>
                     </tr>
                   )

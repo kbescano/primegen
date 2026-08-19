@@ -286,6 +286,7 @@ export function StepSupplierPO({ quotation, localOrder, isQuotationApprovedOrBey
 
 export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, handleTabChange, isUpdating }: any) {
   const [tempAmount, setTempAmount] = useState<string | number>(localOrder?.amountPaid || '');
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
 
   useEffect(() => {
     setTempAmount(localOrder?.amountPaid || '');
@@ -303,6 +304,9 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
       item.assignedPOId && linkedPOs.some((po: any) => String(po.id) === String(item.assignedPOId))
     )
   );
+  
+  const hasReceipt = Boolean(localOrder?.paymentReceipt);
+  const receiptStatus = localOrder?.paymentReceiptStatus || 'pending';
 
   if (!localOrder) {
     return (
@@ -322,6 +326,87 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
 
   const poById: Record<string, any> = {};
   linkedPOs.forEach((po: any) => { poById[String(po.id)] = po; });
+
+  async function handleReceiptUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type === 'application/pdf' && file.size > 5 * 1024 * 1024) {
+      alert("PDFs must be under 5MB. Please compress your file.");
+      return;
+    }
+
+    setUploadingReceipt(true);
+
+    // ✨ MAGICAL COMPRESSOR: Shrinks 10MB images to ~150kb before saving!
+    const processFile = async (): Promise<string> => {
+      if (file.type.startsWith('image/')) {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const img = new Image();
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              const MAX_WIDTH = 1000;
+              let width = img.width;
+              let height = img.height;
+              if (width > MAX_WIDTH) {
+                height = Math.round((height * MAX_WIDTH) / width);
+                width = MAX_WIDTH;
+              }
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx?.drawImage(img, 0, 0, width, height);
+              resolve(canvas.toDataURL('image/jpeg', 0.8)); // 80% quality JPEG
+            };
+            img.src = event.target?.result as string;
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
+    };
+
+    const base64Str = await processFile();
+    
+    // Save image & reset status to pending automatically
+    await handleUpdateOrderField({
+      paymentReceipt: base64Str,
+      paymentReceiptStatus: 'pending'
+    });
+
+    try {
+      const adminRes = await fetch('/api/users?limit=100', { credentials: 'include' });
+      if (adminRes.ok) {
+        const adminData = await adminRes.json();
+        const admins = (adminData.docs || []).filter((u: any) => 
+          u.role === 'admin' || (Array.isArray(u.roles) && u.roles.includes('admin'))
+        );
+        await Promise.all(admins.map((admin: any) => 
+          fetch('/api/notifications', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              recipient: admin.id,
+              message: `Payment receipt uploaded for Order ${localOrder.orderNumber || localOrder.customerName}. Ready for verification.`,
+              link: `/admin-dashboard/orders`, // Admins will check Orders page
+              read: false
+            })
+          })
+        ));
+      }
+    } catch (e) {
+      console.error("Failed to notify admins:", e);
+    }
+
+    setUploadingReceipt(false);
+  }
 
   return (
     <TabSection title="Step 4: Order Fulfilled">
@@ -355,10 +440,6 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
           </div>
         </div>
 
-        {/* Supplier PO management -- restored: this is where each PO's
-            status is actually shown and can be changed to "fulfilled".
-            Without this block, there is no UI on Step 4 to unlock the
-            Next Step button, even once payment is settled. */}
         <div className="bg-white rounded-2xl border border-gray-200/60 shadow-sm p-5 md:p-6">
           <OrderSupplierSection
             orderId={localOrder.id}
@@ -438,20 +519,105 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
             )}
           </div>
         </div>
+
+        <div className="border-t border-gray-100 pt-5 mt-2">
+          <p className="text-[12px] text-gray-500 font-medium mb-1">
+            Payment Receipt <span className="text-red-500">*</span>
+          </p>
+          <p className="text-[11px] text-gray-400 mb-4">
+            Upload the official receipt or proof of transfer. The Admin will verify and approve it.
+          </p>
+          
+          {hasReceipt ? (
+            <div className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-xl gap-4 ${
+              receiptStatus === 'approved' ? 'border-green-200 bg-green-50/50' : 
+              receiptStatus === 'rejected' ? 'border-red-200 bg-red-50/50' : 
+              'border-amber-200 bg-amber-50/50'
+            }`}>
+              <div className="flex items-center gap-4">
+                <a 
+                  href={localOrder.paymentReceipt} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="w-12 h-12 rounded-lg overflow-hidden bg-white border border-black/10 flex items-center justify-center shadow-sm hover:opacity-80 transition-opacity"
+                >
+                  {localOrder.paymentReceipt.startsWith('data:image') ? (
+                    <img src={localOrder.paymentReceipt} alt="Receipt" className="object-cover w-full h-full" />
+                  ) : (
+                    <span className="text-[8px] font-bold text-gray-400 uppercase">PDF</span>
+                  )}
+                </a>
+                <div>
+                  {receiptStatus === 'approved' && (
+                    <><p className="text-[13px] font-bold text-green-800">Receipt Approved ✓</p>
+                    <p className="text-[11px] text-green-600">The admin has verified your payment upload.</p></>
+                  )}
+                  {receiptStatus === 'pending' && (
+                    <><p className="text-[13px] font-bold text-amber-800">Receipt Uploaded</p>
+                    <p className="text-[11px] text-amber-600">Pending Admin Verification...</p></>
+                  )}
+                  {receiptStatus === 'rejected' && (
+                    <><p className="text-[13px] font-bold text-red-800">Receipt Rejected ❌</p>
+                    <p className="text-[11px] text-red-600">The admin rejected this receipt. Please remove and re-upload.</p></>
+                  )}
+                </div>
+              </div>
+              <button 
+                onClick={() => handleUpdateOrderField({ paymentReceipt: null, paymentReceiptStatus: 'pending' })}
+                disabled={isUpdating}
+                className="text-[10px] font-bold uppercase tracking-wider px-4 py-2 border border-black/10 text-gray-700 bg-white rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <label className="flex flex-col items-center justify-center w-full sm:w-[320px] h-28 border-2 border-dashed border-gray-300 rounded-xl hover:border-[#149911] hover:bg-[#149911]/[0.02] transition-colors cursor-pointer relative group">
+              <input 
+                type="file" 
+                accept="image/*,application/pdf"
+                className="hidden" 
+                onChange={handleReceiptUpload}
+                disabled={uploadingReceipt || isUpdating}
+              />
+              {uploadingReceipt ? (
+                <div className="flex flex-col items-center gap-2.5">
+                  <div className="w-5 h-5 border-2 border-gray-300 border-t-[#149911] rounded-full animate-spin" />
+                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Compressing...</span>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center gap-1.5 text-gray-400 group-hover:text-[#149911] transition-colors">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                  </svg>
+                  <span className="text-[11px] font-bold uppercase tracking-widest mt-1">Upload Receipt</span>
+                </div>
+              )}
+            </label>
+          )}
+        </div>
+
         {linkedPOs.length > 0 && linkedPOs.every((po: any) => po.status === "fulfilled") && (
-          <div className="flex justify-start pt-2">
+          <div className="flex justify-start pt-4 mt-2 border-t border-gray-100">
             {isUpdating ? (
               <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-gray-50 text-gray-500 text-[13px] font-medium border border-gray-100">
                 <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
                 Saving Updates...
               </div>
-            ) : (
+            ) : receiptStatus === 'approved' ? (
+              // ✨ Only unlocks if it is explicitly approved by Admin
               <button
                 onClick={() => handleTabChange("delivery")}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[13px] font-medium shadow-sm"
               >
                 Next Step: Track Delivery & Payment &rarr;
               </button>
+            ) : (
+              <div className="text-[10px] text-amber-600 bg-amber-50 px-3.5 py-2.5 rounded-lg border border-amber-100/50 leading-snug">
+                <span className="font-bold uppercase tracking-wider">⚠️ Action Required to Proceed:</span><br/>
+                The Payment Receipt must be uploaded and <strong className="font-black">Approved by an Admin</strong> to unlock Step 5.
+              </div>
             )}
           </div>
         )}

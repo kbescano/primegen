@@ -480,62 +480,49 @@ export default function DeliveryItineraryTracker({
         )}
 
         <div className="p-0 overflow-x-auto">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-white border-b border-gray-100">
-                <th className="px-4 py-2 text-[9px] font-bold uppercase text-gray-400 w-[15%]">
-                  Qty
-                </th>
-                <th className="px-4 py-2 text-[9px] font-bold uppercase text-gray-400 w-[45%]">
-                  Description
-                </th>
-                <th className="px-4 py-2 text-[9px] font-bold uppercase text-gray-400 w-[40%]">
-                  Specs / Size
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {cargoItems.map((item, idx) => {
-                const isPrimegen =
-                  item.sourceName === "Primegen Trading (Warehouse)";
-
-                return (
-                  <tr key={idx} className="hover:bg-gray-50/50">
-                    <td className="px-4 py-3 text-[12px] font-bold text-[#01172f] align-top">
-                      {item.qty}{" "}
-                      <span className="text-[10px] text-gray-400 font-normal">
-                        {item.unit}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 align-top">
-                      <div className="text-[12px] font-bold uppercase text-[#01172f] leading-tight">
-                        {item.description}
-                      </div>
-
-                      {!isSingleSource && (
-                        <div
-                          className={`mt-1.5 text-[9px] font-bold uppercase tracking-widest inline-block px-1.5 py-0.5 rounded border ${
-                            isPrimegen
-                              ? "bg-blue-50 text-blue-600 border-blue-100"
-                              : "bg-gray-50 text-gray-500 border-gray-200"
-                          }`}
-                        >
-                          {item.sourceName}{" "}
-                          {item.sourcePO && `• ${item.sourcePO}`}
-                          <span className="text-gray-400 font-medium normal-case ml-1">
-                            — {item.sourceAddress}
-                          </span>
-                        </div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-[11px] text-gray-500 align-top">
-                      {item.size || "—"}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <table className="w-full text-left border-collapse table-fixed">
+  <thead>
+    <tr className="bg-white border-b border-gray-100">
+      <th className="px-4 py-2 text-[9px] font-bold uppercase text-gray-400 w-[15%]">Qty</th>
+      <th className="px-4 py-2 text-[9px] font-bold uppercase text-gray-400 w-[45%]">Description</th>
+      <th className="px-4 py-2 text-[9px] font-bold uppercase text-gray-400 w-[40%]">Specs / Size</th>
+    </tr>
+  </thead>
+  <tbody className="divide-y divide-gray-100">
+    {cargoItems.map((item, idx) => {
+      const isPrimegen = item.sourceName === "Primegen Trading (Warehouse)";
+      return (
+        <tr key={idx} className="hover:bg-gray-50/50">
+          <td className="px-4 py-3 text-[12px] font-bold text-[#01172f] align-top">
+            {item.qty} <span className="text-[10px] text-gray-400 font-normal">{item.unit}</span>
+          </td>
+          <td className="px-4 py-3 align-top break-words">
+            <div className="text-[12px] font-bold uppercase text-[#01172f] leading-tight break-words">
+              {item.description}
+            </div>
+            {!isSingleSource && (
+              <div
+                className={`mt-1.5 text-[9px] font-bold uppercase tracking-widest inline-block px-1.5 py-0.5 rounded border break-words ${
+                  isPrimegen
+                    ? "bg-blue-50 text-blue-600 border-blue-100"
+                    : "bg-gray-50 text-gray-500 border-gray-200"
+                }`}
+              >
+                {item.sourceName} {item.sourcePO && `• ${item.sourcePO}`}
+                <span className="text-gray-400 font-medium normal-case ml-1">
+                  — {item.sourceAddress}
+                </span>
+              </div>
+            )}
+          </td>
+          <td className="px-4 py-3 text-[11px] text-gray-500 align-top break-words">
+            {item.size || "—"}
+          </td>
+        </tr>
+      );
+    })}
+  </tbody>
+</table>
         </div>
       </div>
     );
@@ -639,31 +626,17 @@ export default function DeliveryItineraryTracker({
 
   return (
     <div className="w-full">
-     <style>{`
+    <style>{`
   @media print {
-    @page { size: portrait; margin: 6mm; }
-    html, body {
-      margin: 0 !important;
-      padding: 0 !important;
+    @page {
+      size: portrait;
+      margin: 10mm 16mm;
     }
-    body * {
-      visibility: hidden !important;
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+      color-adjust: exact !important;
     }
-    .waybill-print-doc,
-    .waybill-print-doc * {
-      visibility: visible !important;
-    }
-    .waybill-print-doc {
-      position: fixed !important;
-      top: 0 !important;
-      left: 0 !important;
-      width: 100% !important;
-      margin: 0 !important;
-      padding: 0 !important;
-      border: none !important;
-      box-shadow: none !important;
-    }
-    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; color-adjust: exact !important; }
   }
 `}</style>
 
@@ -1102,47 +1075,54 @@ export default function DeliveryItineraryTracker({
       {/* ========================================== */}
       <div className="waybill-print-doc hidden print:block w-full bg-white text-[#01172f]">
         {/* Print Header */}
-        <div className="flex justify-between items-center mb-4 border-b-2 border-[#149911] pb-3">
-          <div className="flex gap-3 items-center">
-            <div className="relative w-16 h-16 flex-shrink-0">
-              <Image
-                src="/branding/primegen_trading_logo.png"
-                alt="Primegen Trading"
-                fill
-                className="object-contain"
-              />
-            </div>
-            <div>
-              <h2 className="text-lg font-black leading-none text-[#103900] tracking-tight mb-0.5">
-                PRIMEGEN
-              </h2>
-              <p className="text-[10px] font-bold tracking-[0.2em] text-[#01172f] mb-1">
-                TRADING CORPORATION
-              </p>
-              <p className="text-[8px] font-bold text-[#103900] max-w-[250px] m-0">
-                SOUTHERN CITY HOMES, YG BUILDING, CEBU ST, 4 TANZANG LUMA, IMUS,
-                4103 CAVITE
-              </p>
-              <p className="text-[8px] font-bold text-[#103900] m-0">
-                0917-185-9127 / 0917-133-9515
-              </p>
-            </div>
-          </div>
+        {/* Print Header -- mirrors QuotationGenerator's print header exactly, so
+    both documents (quotation and waybill) share one consistent brand
+    layout instead of two different header treatments. */}
+<div className="flex flex-row justify-between items-start gap-3 mb-4">
+  <div className="flex gap-1.5 items-center">
+    <div className="relative w-32 h-32 flex-shrink-0 overflow-hidden">
+      <Image
+        src="/branding/primegen_trading_logo.png"
+        alt="Primegen Trading Corporation"
+        fill
+        className="object-contain scale-[1.1]"
+      />
+    </div>
+    <div>
+      <h2 className="text-lg font-black leading-none text-[#103900] tracking-tight">PRIMEGEN</h2>
+      <p className="text-[10px] font-bold tracking-[0.2em] text-[#01172f] mt-0 mb-1.5">
+        TRADING CORPORATION
+      </p>
+      <div className="w-full max-w-[220px] h-[2px] bg-[#149911] mb-1.5" />
+      <p className="text-[8px] font-bold text-[#103900] leading-snug max-w-[220px] m-0">
+        SOUTHERN CITY HOMES, YG BUILDING, CEBU ST, 4 TANZANG LUMA, IMUS, 4103 CAVITE,
+        PHILIPPINES
+      </p>
+      <p className="text-[8px] font-bold text-[#103900] m-0 mt-1">
+        0917-185-9127 / 0917-133-9515
+      </p>
+      <p className="text-[8px] font-bold text-[#103900] m-0 mt-1">SALES@PRIMEGENTRADINGCORP.COM</p>
+    </div>
+  </div>
 
-          <div className="text-right">
-            <div className="inline-block bg-[#3D5F3B] text-white text-[12px] font-bold tracking-widest px-3 py-1 mb-2">
-              DELIVERY WAYBILL
-            </div>
-            <p className="text-[11px] font-bold m-0">
-              <span className="text-gray-500 mr-2">TRK#:</span>{" "}
-              <span className="font-mono">{displayTracking}</span>
-            </p>
-            <p className="text-[11px] font-bold m-0">
-              <span className="text-gray-500 mr-2">DATE:</span>{" "}
-              {new Date().toLocaleDateString("en-PH")}
-            </p>
-          </div>
-        </div>
+  <div className="text-right w-auto">
+    <h3 className="text-lg font-bold text-[#3D5F3B] mb-1">
+      DELIVERY WAYBILL
+    </h3>
+    <table className="text-xs ml-auto mt-0">
+      <tbody>
+        <tr>
+          <td className="border border-gray-300 px-2 py-0.5 font-bold bg-gray-50">DATE</td>
+          <td className="border border-gray-300 px-3 py-0.5">{new Date().toLocaleDateString("en-PH")}</td>
+        </tr>
+        <tr>
+          <td className="border border-gray-300 px-2 py-0.5 font-bold bg-gray-50">TRK#</td>
+          <td className="border border-gray-300 px-3 py-0.5 font-mono">{displayTracking}</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
 
         {/* Driver Details */}
         <div className="flex justify-between items-center mb-4 bg-gray-50 py-2 px-3 border border-gray-200">
@@ -1290,12 +1270,12 @@ export default function DeliveryItineraryTracker({
                       </span>
                     </td>
                     <td className="py-3 align-top pr-4">
-                      <p className="text-[11px] font-bold leading-tight mb-1">
+                       <p className="text-[11px] font-bold leading-tight mb-1 break-words">
                         {stop.address}
                       </p>
                       
                       <div className="flex flex-col gap-0.5 mb-1.5">
-                        <p className="text-[9px] text-gray-600 font-medium">
+                        <p className="text-[9px] text-gray-600 font-medium break-words">
                           Contact: {stop.contactName || "_________"} •{" "}
                           {stop.contactPhone || "_________"}
                         </p>
@@ -1359,7 +1339,7 @@ export default function DeliveryItineraryTracker({
                                     return (
                                       <li
                                         key={idx}
-                                        className="text-[9px] text-gray-700 font-medium leading-tight mb-0.5"
+                                        className="text-[9px] text-gray-700 font-medium leading-tight mb-0.5 break-words"
                                       >
                                         <span className="font-bold">
                                           {item.qty} {item.unit}

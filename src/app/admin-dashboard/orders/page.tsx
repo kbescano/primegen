@@ -3,6 +3,7 @@ import { getPayloadClient } from '@/lib/getPayloadClient'
 import OrderOpexSection from '@/components/OrderOpexSection'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
+import AdminReceiptApproval from '@/components/AdminReceiptApproval'
 
 const FULFILLMENT_STAGES = ['preparing', 'shipped', 'delivered'] as const
 
@@ -406,6 +407,8 @@ export default async function OrdersPage({
                     allowApprove={true}
                   />
                 </div>
+
+                <AdminReceiptApproval order={o}/>
 
                 {/* Financial Summary */}
                 <div className="flex flex-col md:flex-row justify-end items-start md:items-end border-t border-gray-100 pt-6 gap-4 mt-2">

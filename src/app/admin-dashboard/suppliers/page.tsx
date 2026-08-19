@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import AddSupplierForm from '@/components/AddSupplierForm'
 import DirectorySearchBar from '@/components/DirectorySearchBar'
+import EditDirectoryModal from '@/components/EditDirectoryModal' // ✨ IMPORT ADDED
 
 const PAGE_SIZE = 15
 
@@ -63,14 +64,16 @@ export default async function SuppliersPage({
       ) : (
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
           <div className="w-full overflow-x-auto">
-            <table className="w-full min-w-[700px] border-collapse text-left">
+            <table className="w-full min-w-[800px] border-collapse text-left">
               <thead>
                 <tr>
-                  <th className={`${thClass} w-[25%]`}>Supplier Name</th>
-                  <th className={`${thClass} w-[22%]`}>Company</th>
-                  <th className={`${thClass} w-[20%]`}>Contact Number</th>
-                  <th className={`${thClass} w-[10%]`}>Email</th>
-                  <th className={`${thClass} w-[25%] text-center`}>Address</th>
+                  {/* ✨ UPDATED WIDTHS */}
+                  <th className={`${thClass} w-[20%]`}>Supplier Name</th>
+                  <th className={`${thClass} w-[20%]`}>Company</th>
+                  <th className={`${thClass} w-[15%]`}>Contact Number</th>
+                  <th className={`${thClass} w-[15%]`}>Email</th>
+                  <th className={`${thClass} w-[22%] text-center`}>Address</th>
+                  <th className={`${thClass} w-[8%] text-center`}>Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
@@ -94,6 +97,10 @@ export default async function SuppliersPage({
                       </td>
                       <td className={`${tdClass} text-center`}>
                         {s.address || '—'}
+                      </td>
+                      {/* ✨ ADDED ACTION COLUMN */}
+                      <td className={`${tdClass} text-center`}>
+                        <EditDirectoryModal collection="suppliers" record={s} />
                       </td>
                     </tr>
                   )

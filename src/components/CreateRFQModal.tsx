@@ -357,6 +357,7 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
                       >
                         <option value="facebook">Facebook</option>
                         <option value="google">Google</option>
+                        <option value="google">Viber</option>
                         <option value="other">Other</option>
                       </select>
                     </div>
