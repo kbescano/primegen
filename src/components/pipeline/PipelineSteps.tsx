@@ -284,9 +284,86 @@ export function StepSupplierPO({ quotation, localOrder, isQuotationApprovedOrBey
   );
 }
 
+// Single receipt group -- an upload control plus thumbnail grid for one
+// receipt category (client or supplier). No approval status is tracked;
+// the presence of at least one item is what gates progression.
+function ReceiptGroup({
+  title,
+  receipts,
+  onAdd,
+  onRemove,
+  uploading,
+  isUpdating,
+}: {
+  title: string;
+  receipts: any[];
+  onAdd: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onRemove: (index: number) => void;
+  uploading: boolean;
+  isUpdating: boolean;
+}) {
+  return (
+    <div className="flex-1 min-w-0 bg-[#fbfbfd] border border-gray-100 rounded-xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-700">
+          {title} <span className="text-red-500">*</span>
+        </p>
+        <span className="text-[10px] font-medium text-gray-400">
+          {receipts.length} uploaded
+        </span>
+      </div>
+
+      <div className="flex flex-wrap gap-2.5">
+        {receipts.map((r: any, idx: number) => (
+          <div key={idx} className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200 bg-white group shrink-0">
+            <a href={r.fileData} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
+              {r.fileData?.startsWith('data:image') ? (
+                <img src={r.fileData} alt={r.fileName || 'Receipt'} className="object-cover w-full h-full" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <span className="text-[8px] font-bold text-gray-400 uppercase">PDF</span>
+                </div>
+              )}
+            </a>
+            <button
+              type="button"
+              onClick={() => onRemove(idx)}
+              disabled={isUpdating}
+              className="absolute top-0.5 right-0.5 w-4 h-4 flex items-center justify-center bg-black/60 hover:bg-red-500 text-white rounded-full transition-colors disabled:opacity-50"
+              aria-label="Remove receipt"
+            >
+              <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round">
+                <path d="M18 6L6 18M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        ))}
+
+        <label className="flex flex-col items-center justify-center w-16 h-16 border-2 border-dashed border-gray-300 rounded-lg hover:border-[#149911] hover:bg-[#149911]/[0.03] transition-colors cursor-pointer shrink-0">
+          <input
+            type="file"
+            accept="image/*,application/pdf"
+            className="hidden"
+            onChange={onAdd}
+            disabled={uploading || isUpdating}
+          />
+          {uploading ? (
+            <div className="w-4 h-4 border-2 border-gray-300 border-t-[#149911] rounded-full animate-spin" />
+          ) : (
+            <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400 hover:text-[#149911] transition-colors">
+              + Add
+            </span>
+          )}
+        </label>
+      </div>
+    </div>
+  );
+}
+
 export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, handleTabChange, isUpdating }: any) {
   const [tempAmount, setTempAmount] = useState<string | number>(localOrder?.amountPaid || '');
-  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [uploadingClientReceipt, setUploadingClientReceipt] = useState(false);
+  const [uploadingSupplierReceipt, setUploadingSupplierReceipt] = useState(false);
 
   useEffect(() => {
     setTempAmount(localOrder?.amountPaid || '');
@@ -304,9 +381,12 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
       item.assignedPOId && linkedPOs.some((po: any) => String(po.id) === String(item.assignedPOId))
     )
   );
-  
-  const hasReceipt = Boolean(localOrder?.paymentReceipt);
-  const receiptStatus = localOrder?.paymentReceiptStatus || 'pending';
+
+  const clientReceipts = localOrder?.clientPaymentReceipts || [];
+  const supplierReceipts = localOrder?.supplierPaymentReceipts || [];
+  const hasClientReceipt = clientReceipts.length > 0;
+  const hasSupplierReceipt = supplierReceipts.length > 0;
+  const receiptsComplete = hasClientReceipt && hasSupplierReceipt;
 
   if (!localOrder) {
     return (
@@ -327,16 +407,21 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
   const poById: Record<string, any> = {};
   linkedPOs.forEach((po: any) => { poById[String(po.id)] = po; });
 
-  async function handleReceiptUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleReceiptUpload(
+    e: React.ChangeEvent<HTMLInputElement>,
+    type: 'clientPaymentReceipts' | 'supplierPaymentReceipts'
+  ) {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (file.type === 'application/pdf' && file.size > 5 * 1024 * 1024) {
       alert("PDFs must be under 5MB. Please compress your file.");
+      e.target.value = '';
       return;
     }
 
-    setUploadingReceipt(true);
+    const setUploading = type === 'clientPaymentReceipts' ? setUploadingClientReceipt : setUploadingSupplierReceipt;
+    setUploading(true);
 
     // ✨ MAGICAL COMPRESSOR: Shrinks 10MB images to ~150kb before saving!
     const processFile = async (): Promise<string> => {
@@ -373,29 +458,38 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
     };
 
     const base64Str = await processFile();
-    
-    // Save image & reset status to pending automatically
+
+    const newReceipt = {
+      fileData: base64Str,
+      fileName: file.name,
+      fileType: file.type.startsWith('image/') ? 'image' : 'pdf',
+      uploadedAt: new Date().toISOString(),
+    };
+
+    const existing = (type === 'clientPaymentReceipts' ? localOrder.clientPaymentReceipts : localOrder.supplierPaymentReceipts) || [];
+
+    // Append rather than overwrite -- this is what makes multiple receipts possible.
     await handleUpdateOrderField({
-      paymentReceipt: base64Str,
-      paymentReceiptStatus: 'pending'
+      [type]: [...existing, newReceipt],
     });
 
     try {
       const adminRes = await fetch('/api/users?limit=100', { credentials: 'include' });
       if (adminRes.ok) {
         const adminData = await adminRes.json();
-        const admins = (adminData.docs || []).filter((u: any) => 
+        const admins = (adminData.docs || []).filter((u: any) =>
           u.role === 'admin' || (Array.isArray(u.roles) && u.roles.includes('admin'))
         );
-        await Promise.all(admins.map((admin: any) => 
+        const label = type === 'clientPaymentReceipts' ? "Client's payment receipt" : "Supplier's payment receipt";
+        await Promise.all(admins.map((admin: any) =>
           fetch('/api/notifications', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
             body: JSON.stringify({
               recipient: admin.id,
-              message: `Payment receipt uploaded for Order ${localOrder.orderNumber || localOrder.customerName}. Ready for verification.`,
-              link: `/admin-dashboard/orders`, // Admins will check Orders page
+              message: `${label} uploaded for Order ${localOrder.orderNumber || localOrder.customerName}.`,
+              link: `/admin-dashboard/orders`,
               read: false
             })
           })
@@ -405,7 +499,14 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
       console.error("Failed to notify admins:", e);
     }
 
-    setUploadingReceipt(false);
+    setUploading(false);
+    e.target.value = '';
+  }
+
+  function handleRemoveReceipt(type: 'clientPaymentReceipts' | 'supplierPaymentReceipts', index: number) {
+    const existing = (type === 'clientPaymentReceipts' ? localOrder.clientPaymentReceipts : localOrder.supplierPaymentReceipts) || [];
+    const updated = existing.filter((_: any, i: number) => i !== index);
+    handleUpdateOrderField({ [type]: updated });
   }
 
   return (
@@ -521,81 +622,29 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
         </div>
 
         <div className="border-t border-gray-100 pt-5 mt-2">
-          <p className="text-[12px] text-gray-500 font-medium mb-1">
-            Payment Receipt <span className="text-red-500">*</span>
-          </p>
+          <p className="text-[12px] text-gray-500 font-medium mb-1">Payment Receipts</p>
           <p className="text-[11px] text-gray-400 mb-4">
-            Upload the official receipt or proof of transfer. The Admin will verify and approve it.
+            Upload proof of payment. Both the client's payment to Primegen and Primegen's payment to the supplier(s) are required before moving to Step 5. You can add multiple files to each.
           </p>
-          
-          {hasReceipt ? (
-            <div className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 border rounded-xl gap-4 ${
-              receiptStatus === 'approved' ? 'border-green-200 bg-green-50/50' : 
-              receiptStatus === 'rejected' ? 'border-red-200 bg-red-50/50' : 
-              'border-amber-200 bg-amber-50/50'
-            }`}>
-              <div className="flex items-center gap-4">
-                <a 
-                  href={localOrder.paymentReceipt} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="w-12 h-12 rounded-lg overflow-hidden bg-white border border-black/10 flex items-center justify-center shadow-sm hover:opacity-80 transition-opacity"
-                >
-                  {localOrder.paymentReceipt.startsWith('data:image') ? (
-                    <img src={localOrder.paymentReceipt} alt="Receipt" className="object-cover w-full h-full" />
-                  ) : (
-                    <span className="text-[8px] font-bold text-gray-400 uppercase">PDF</span>
-                  )}
-                </a>
-                <div>
-                  {receiptStatus === 'approved' && (
-                    <><p className="text-[13px] font-bold text-green-800">Receipt Approved ✓</p>
-                    <p className="text-[11px] text-green-600">The admin has verified your payment upload.</p></>
-                  )}
-                  {receiptStatus === 'pending' && (
-                    <><p className="text-[13px] font-bold text-amber-800">Receipt Uploaded</p>
-                    <p className="text-[11px] text-amber-600">Pending Admin Verification...</p></>
-                  )}
-                  {receiptStatus === 'rejected' && (
-                    <><p className="text-[13px] font-bold text-red-800">Receipt Rejected ❌</p>
-                    <p className="text-[11px] text-red-600">The admin rejected this receipt. Please remove and re-upload.</p></>
-                  )}
-                </div>
-              </div>
-              <button 
-                onClick={() => handleUpdateOrderField({ paymentReceipt: null, paymentReceiptStatus: 'pending' })}
-                disabled={isUpdating}
-                className="text-[10px] font-bold uppercase tracking-wider px-4 py-2 border border-black/10 text-gray-700 bg-white rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-              >
-                Remove
-              </button>
-            </div>
-          ) : (
-            <label className="flex flex-col items-center justify-center w-full sm:w-[320px] h-28 border-2 border-dashed border-gray-300 rounded-xl hover:border-[#149911] hover:bg-[#149911]/[0.02] transition-colors cursor-pointer relative group">
-              <input 
-                type="file" 
-                accept="image/*,application/pdf"
-                className="hidden" 
-                onChange={handleReceiptUpload}
-                disabled={uploadingReceipt || isUpdating}
-              />
-              {uploadingReceipt ? (
-                <div className="flex flex-col items-center gap-2.5">
-                  <div className="w-5 h-5 border-2 border-gray-300 border-t-[#149911] rounded-full animate-spin" />
-                  <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Compressing...</span>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-1.5 text-gray-400 group-hover:text-[#149911] transition-colors">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="17 8 12 3 7 8"></polyline>
-                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                  </svg>
-                  <span className="text-[11px] font-bold uppercase tracking-widest mt-1">Upload Receipt</span>
-                </div>
-              )}
-            </label>
-          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <ReceiptGroup
+              title="Client's Payment Receipt"
+              receipts={clientReceipts}
+              onAdd={(e) => handleReceiptUpload(e, 'clientPaymentReceipts')}
+              onRemove={(idx) => handleRemoveReceipt('clientPaymentReceipts', idx)}
+              uploading={uploadingClientReceipt}
+              isUpdating={isUpdating}
+            />
+            <ReceiptGroup
+              title="Supplier's Payment Receipt"
+              receipts={supplierReceipts}
+              onAdd={(e) => handleReceiptUpload(e, 'supplierPaymentReceipts')}
+              onRemove={(idx) => handleRemoveReceipt('supplierPaymentReceipts', idx)}
+              uploading={uploadingSupplierReceipt}
+              isUpdating={isUpdating}
+            />
+          </div>
         </div>
 
         {linkedPOs.length > 0 && linkedPOs.every((po: any) => po.status === "fulfilled") && (
@@ -605,8 +654,7 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
                 <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
                 Saving Updates...
               </div>
-            ) : receiptStatus === 'approved' ? (
-              // ✨ Only unlocks if it is explicitly approved by Admin
+            ) : receiptsComplete ? (
               <button
                 onClick={() => handleTabChange("delivery")}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[13px] font-medium shadow-sm"
@@ -616,7 +664,11 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
             ) : (
               <div className="text-[10px] text-amber-600 bg-amber-50 px-3.5 py-2.5 rounded-lg border border-amber-100/50 leading-snug">
                 <span className="font-bold uppercase tracking-wider">⚠️ Action Required to Proceed:</span><br/>
-                The Payment Receipt must be uploaded and <strong className="font-black">Approved by an Admin</strong> to unlock Step 5.
+                {!hasClientReceipt && !hasSupplierReceipt
+                  ? "Upload at least one Client Payment Receipt and one Supplier Payment Receipt to unlock Step 5."
+                  : !hasClientReceipt
+                  ? "Upload at least one Client Payment Receipt to unlock Step 5."
+                  : "Upload at least one Supplier Payment Receipt to unlock Step 5."}
               </div>
             )}
           </div>

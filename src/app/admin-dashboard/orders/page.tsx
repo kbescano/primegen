@@ -3,7 +3,6 @@ import { getPayloadClient } from '@/lib/getPayloadClient'
 import OrderOpexSection from '@/components/OrderOpexSection'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
-import AdminReceiptApproval from '@/components/AdminReceiptApproval'
 
 const FULFILLMENT_STAGES = ['preparing', 'shipped', 'delivered'] as const
 
@@ -58,6 +57,45 @@ function PaymentMethodIcon({ method }: { method: string }) {
       <path d="M5 21V9l7-5 7 5v12" />
       <path d="M9 21v-6h6v6" />
     </svg>
+  )
+}
+
+// Read-only receipt display -- no approve/reject workflow. Uploading is
+// sufficient; this block just reflects what's been added so far so admins
+// can review them at a glance.
+function ReceiptsPreview({ label, receipts }: { label: string; receipts: any[] }) {
+  if (!receipts || receipts.length === 0) {
+    return (
+      <div>
+        <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">{label}</p>
+        <p className="text-[11px] text-gray-300 italic">None uploaded</p>
+      </div>
+    )
+  }
+  return (
+    <div>
+      <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">
+        {label} ({receipts.length})
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {receipts.map((r: any, idx: number) => (
+          <a
+            key={idx}
+            href={r.fileData}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-14 h-14 rounded-lg overflow-hidden border border-gray-200 bg-white flex items-center justify-center hover:opacity-80 transition-opacity shadow-sm shrink-0"
+            title={r.fileName || `Receipt ${idx + 1}`}
+          >
+            {r.fileData?.startsWith('data:image') ? (
+              <img src={r.fileData} alt={r.fileName || 'Receipt'} className="object-cover w-full h-full" />
+            ) : (
+              <span className="text-[8px] font-bold text-gray-400 uppercase">PDF</span>
+            )}
+          </a>
+        ))}
+      </div>
+    </div>
   )
 }
 
@@ -408,7 +446,11 @@ export default async function OrdersPage({
                   />
                 </div>
 
-                <AdminReceiptApproval order={o}/>
+                {/* Payment Receipts -- read only, reflects uploads made in Pipeline Step 4. No approval needed. */}
+                <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-6 p-4 bg-gray-50/50 rounded-xl border border-gray-100">
+                  <ReceiptsPreview label="Client's Payment Receipts" receipts={o.clientPaymentReceipts} />
+                  <ReceiptsPreview label="Supplier's Payment Receipts" receipts={o.supplierPaymentReceipts} />
+                </div>
 
                 {/* Financial Summary */}
                 <div className="flex flex-col md:flex-row justify-end items-start md:items-end border-t border-gray-100 pt-6 gap-4 mt-2">

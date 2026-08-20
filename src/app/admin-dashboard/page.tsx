@@ -128,7 +128,10 @@ export default async function QuotationInboxPage({
   });
 
   // 🔒 STRICT ROLE-BASED ACCESS CONTROL (Admin and User Only)
-  if (!currentUser || (currentUser.role !== "admin" && currentUser.role !== "user")) {
+  if (
+    !currentUser ||
+    (currentUser.role !== "admin" && currentUser.role !== "user")
+  ) {
     redirect("/");
   }
 
@@ -137,7 +140,12 @@ export default async function QuotationInboxPage({
   const staffRes = isAdmin
     ? await payload.find({
         collection: "users",
-        where: { role: { equals: "user" } },
+        where: {
+          or: [
+            { role: { equals: "user" } },
+            { email: { equals: "nica@primegen.admin" } },
+          ],
+        },
         limit: 100,
       })
     : { docs: [] as any[] };
@@ -146,7 +154,6 @@ export default async function QuotationInboxPage({
     name: u.name,
     email: u.email,
   }));
-
   const conditions: any[] = [];
   if (activeStatus) conditions.push({ status: { equals: activeStatus } });
   if (start && end) {
@@ -395,7 +402,9 @@ export default async function QuotationInboxPage({
                             >
                               <span className="font-medium text-[#01172f] truncate min-w-0">
                                 {matName || "Unnamed Material"}
-                                {item.sizeDescription ? ` - ${item.sizeDescription}` : ""}
+                                {item.sizeDescription
+                                  ? ` - ${item.sizeDescription}`
+                                  : ""}
                               </span>
                               <span className="font-mono text-gray-400 font-bold shrink-0">
                                 {item.quantity} {matUnit}
@@ -411,10 +420,12 @@ export default async function QuotationInboxPage({
                     )}
                   </div>
                   <AddUpdateNote
-  requestId={q.id}
-  existingNotes={q.statusUpdates || []}
-  currentUserName={currentUser?.name || currentUser?.email || 'Staff'}
-/>
+                    requestId={q.id}
+                    existingNotes={q.statusUpdates || []}
+                    currentUserName={
+                      currentUser?.name || currentUser?.email || "Staff"
+                    }
+                  />
                   {/* Right Column: Customer Message */}
                   <div className="min-w-0">
                     <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">

@@ -1,4 +1,28 @@
-import type { CollectionConfig } from "payload";
+import type { CollectionConfig, Field } from "payload";
+
+// Shared subfield shape for a single uploaded receipt. Used by both
+// clientPaymentReceipts and supplierPaymentReceipts below so the two
+// arrays stay in sync if the shape ever needs to change.
+const receiptItemFields: Field[] = [
+  {
+    name: "fileData",
+    type: "textarea",
+    required: true,
+    maxLength: 10000000, // Bypasses the 40,000 default limit for base64 image/PDF data.
+    admin: { description: "Base64-encoded image or PDF data." },
+  },
+  { name: "fileName", type: "text" },
+  {
+    name: "fileType",
+    type: "text",
+    admin: { description: "'image' or 'pdf', used to decide how to render the thumbnail." },
+  },
+  {
+    name: "uploadedAt",
+    type: "date",
+    defaultValue: () => new Date().toISOString(),
+  },
+];
 
 export const Orders: CollectionConfig = {
   slug: "orders",
@@ -314,22 +338,27 @@ export const Orders: CollectionConfig = {
         description: "The promised date of delivery set by sales.",
       },
     },
-   {
-      name: 'paymentReceipt',
-      type: 'textarea',
-      maxLength: 10000000, // ✨ Bypasses the 40,000 limit, allows up to 10 million chars
-      admin: { position: 'sidebar' }
+    {
+      name: "clientPaymentReceipts",
+      type: "array",
+      label: "Client's Payment Receipts",
+      admin: {
+        position: "sidebar",
+        description:
+          "Proof of payment received FROM the client. At least one is required before Step 5 unlocks. No approval needed -- uploading is sufficient.",
+      },
+      fields: receiptItemFields,
     },
     {
-      name: 'paymentReceiptStatus',
-      type: 'select',
-      options: [
-        { label: 'Pending Verification', value: 'pending' },
-        { label: 'Approved', value: 'approved' },
-        { label: 'Rejected', value: 'rejected' },
-      ],
-      defaultValue: 'pending',
-      admin: { position: 'sidebar' }
+      name: "supplierPaymentReceipts",
+      type: "array",
+      label: "Supplier's Payment Receipts",
+      admin: {
+        position: "sidebar",
+        description:
+          "Proof of payment sent TO the supplier(s) for this order's POs. At least one is required before Step 5 unlocks. No approval needed -- uploading is sufficient.",
+      },
+      fields: receiptItemFields,
     },
   ],
 };

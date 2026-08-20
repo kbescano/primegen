@@ -15,6 +15,16 @@ function getGranularityRange(
   periodValue?: string,
 ): { start?: Date; end?: Date } {
   if (!granularity || !periodValue) return {};
+  if (granularity === "day") {
+    // periodValue is a "YYYY-MM-DD" string from the <input type="date">
+    // in DateGranularityFilter. Filter to that exact calendar day: local
+    // midnight through the following local midnight, same pattern as week.
+    const start = new Date(`${periodValue}T00:00:00`);
+    if (isNaN(start.getTime())) return {};
+    const end = new Date(start);
+    end.setDate(start.getDate() + 1);
+    return { start, end };
+  }
   if (granularity === "month") {
     const [y, m] = periodValue.split("-").map(Number);
     if (!y || !m) return {};
@@ -70,12 +80,18 @@ export default async function StaffPerformancePage({
 
   // Fetch static lookups
   const staffRes = await payload.find({
-    collection: "users",
-    where: { role: { equals: "user" } },
-    limit: 100,
-    sort: "name",
-  });
-  const staffList = staffRes.docs as any[];
+  collection: "users",
+  where: {
+    or: [
+      { role: { equals: "user" } },
+      { email: { equals: "nica@primegen.admin" } },
+    ],
+  },
+  limit: 100,
+  sort: "name",
+});
+
+const staffList = staffRes.docs as any[];
 
   const productsRes = await payload.find({
     collection: "products",

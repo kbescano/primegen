@@ -84,11 +84,13 @@ export default function DateGranularityFilter({
   const defaultYear = yearOptions[0]?.value || ''
 
   // Missing/empty granularity defaults to "this month" -- not "all time".
+  // Unchanged: adding "day" below does not touch this default.
   const effectiveGranularity = granularity || 'month'
   const isAllTime = effectiveGranularity === 'all'
   const isMonth = effectiveGranularity === 'month'
   const isWeek = effectiveGranularity === 'week'
   const isYear = effectiveGranularity === 'year'
+  const isDay = effectiveGranularity === 'day'
 
   const selectClass = (active: boolean) =>
     `text-[12px] font-bold uppercase tracking-wide px-3 py-2 border bg-white cursor-pointer transition-colors ${
@@ -111,6 +113,22 @@ export default function DateGranularityFilter({
           All Time
         </button>
       </div>
+
+      <div>
+        <label className="block text-[9px] font-bold uppercase tracking-[0.15em] text-[#01172f]/35 mb-1">
+          Day
+        </label>
+        <input
+          type="date"
+          // Same pattern as Week below -- sits empty on the placeholder
+          // until a specific day is explicitly picked, rather than
+          // silently defaulting to "today" in the background.
+          value={isDay ? (periodValue || '') : ''}
+          onChange={(e) => e.target.value && navigate('day', e.target.value)}
+          className={selectClass(isDay)}
+        />
+      </div>
+
       <div>
         <label className="block text-[9px] font-bold uppercase tracking-[0.15em] text-[#01172f]/35 mb-1">
           Month

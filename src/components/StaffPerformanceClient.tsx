@@ -57,6 +57,7 @@ type TableRow = {
   rowSpan: number;
   reqDate?: string;
   source?: string;
+  facebookLink?: string | null;
   customerName?: string;
   company?: string;
   contact?: string;
@@ -143,7 +144,7 @@ export default function StaffPerformanceClient({
 
   async function handleAssignStaff(reqId: string, newStaffId: string) {
     setUpdatingReqId(reqId);
-    
+
     const staffObj = staffList.find((s) => String(s.id) === String(newStaffId));
     setLocalRequests((prev) =>
       prev.map((r) =>
@@ -164,14 +165,14 @@ export default function StaffPerformanceClient({
       });
 
       if (res.ok) {
-        router.refresh(); 
+        router.refresh();
       } else {
         setLocalRequests(requests);
         const err = await res.json().catch(() => ({}));
         console.error("Payload validation error:", res.status, err);
       }
     } catch (e) {
-      setLocalRequests(requests); 
+      setLocalRequests(requests);
       console.error("Failed to assign staff", e);
     } finally {
       setUpdatingReqId(null);
@@ -246,6 +247,7 @@ export default function StaffPerformanceClient({
       const reqDate = new Date(req.createdAt).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
       const safeReqId = String(req.id || "");
       const safeSource = String(req.source || "website").replace("-", " ");
+      const safeFacebookLink = req.facebookLink ? String(req.facebookLink).trim() : null;
 
       const linkedQuotation = quotationByRequestId[safeReqId] || null;
       const safeQuoteId = linkedQuotation ? String(linkedQuotation.id) : null;
@@ -279,6 +281,7 @@ export default function StaffPerformanceClient({
         reqId: safeReqId,
         reqDate,
         source: safeSource,
+        facebookLink: safeFacebookLink,
         customerName: req.customerName || "Unnamed Client",
         company: req.company || "",
         contact: req?.email ? `${req.email} | ${req.phone}` : req.phone || "",
@@ -614,6 +617,19 @@ export default function StaffPerformanceClient({
                         {row.company && <div className="text-[11px] text-gray-500 leading-tight mb-1">{row.company}</div>}
                         <div className="text-[11px] text-gray-500 mb-2">{row.contact || "\u2014"}</div>
 
+                        {row.facebookLink && (
+                          <div className="text-[11px] mb-2">
+                            <a
+                              href={row.facebookLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:text-blue-800 underline break-all"
+                            >
+                              View Facebook Link &rarr;
+                            </a>
+                          </div>
+                        )}
+
                         <div className="text-[11px] pt-3 mt-3 border-t border-gray-200 grid grid-cols-2 gap-3">
                           <div>
                             <span className="text-gray-400 block text-[9px] uppercase tracking-wider font-semibold mb-1">Rep</span>
@@ -704,22 +720,23 @@ export default function StaffPerformanceClient({
                   <th className={`${thClass} w-[6%]`}>ID & Date</th>
                   <th className={`${thClass} w-[6%]`}>Order</th>
                   <th className={`${thClass} w-[9%]`}>Client</th>
-                  <th className={`${thClass} w-[7%]`}>Contact</th>
-                  <th className={`${thClass} w-[6%]`}>Rep</th>
+                  <th className={`${thClass} w-[6%]`}>Contact</th>
+                  <th className={`${thClass} w-[6%]`}>FB Link</th>
+                  <th className={`${thClass} w-[10%]`}>Rep</th>
                   <th className={`${thClass} w-[7%]`}>Inquiry Status</th>
                   <th className={`${thClass} w-[5%]`}>Pay Mode</th>
                   <th className={`${thClass} w-[6%]`}>Pay Status</th>
                   <th className={`${thClass} w-[6%]`}>Shipping</th>
-                  <th className={`${thClass} w-[11%]`}>PO / Supplier</th>
-                  <th className={`${thClass} w-[11%]`}>Item</th>
+                  <th className={`${thClass} w-[10%]`}>PO / Supplier</th>
+                  <th className={`${thClass} w-[10%]`}>Item</th>
                   <th className={`${thClass} w-[4%]`}>Qty</th>
-                  <th className={`${thClass} w-[16%]`}>Latest Update</th>
+                  <th className={`${thClass} w-[15%]`}>Latest Update</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
                 {tableRows.length === 0 ? (
                   <tr>
-                    <td colSpan={13} className="px-5 py-8 text-center text-gray-400 italic text-[11px]">
+                    <td colSpan={14} className="px-5 py-8 text-center text-gray-400 italic text-[11px]">
                       No requests found matching criteria.
                     </td>
                   </tr>
@@ -761,6 +778,21 @@ export default function StaffPerformanceClient({
                             </td>
 
                             <td className={`${tdClass} text-gray-500`} rowSpan={row.rowSpan}>{row.contact || "\u2014"}</td>
+
+                            <td className={tdClass} rowSpan={row.rowSpan}>
+                              {row.facebookLink ? (
+                                <a
+                                  href={row.facebookLink}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-blue-600 hover:text-blue-800 underline break-all"
+                                >
+                                  View
+                                </a>
+                              ) : (
+                                <span className="text-gray-300 italic">—</span>
+                              )}
+                            </td>
 
                             <td className={tdClass} rowSpan={row.rowSpan}>
                               {canAssignStaff ? (

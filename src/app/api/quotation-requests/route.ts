@@ -20,6 +20,7 @@ export async function POST(req: Request) {
         projectType: body.projectType,
         message: body.message,
         source: body.source || 'website',
+        facebookLink: body.facebookLink || '',
         status: 'pending', // Default status for new inquiries
         items: body.items || [], // Will be an empty array if "To be confirmed" was checked
       },
