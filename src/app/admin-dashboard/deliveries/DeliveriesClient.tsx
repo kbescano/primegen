@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import DeliveryItineraryTracker from '@/components/DeliveryItineraryTracker';
 
@@ -18,7 +19,35 @@ export default function DeliveriesClient({
   enrichedOrders: any[];
   filterStatus: string;
 }) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
+
   const [trackOrderId, setTrackOrderId] = useState<string | null>(null);
+
+  // Honor a ?trackOrderId= URL param (from a notification link, or the
+  // "Track Route" link on the Inquiry Overview page) by auto-opening the
+  // tracking modal for that order. Previously this param was never read --
+  // those links navigated here but nothing actually opened.
+  useEffect(() => {
+    const paramId = searchParams.get('trackOrderId');
+    if (paramId) setTrackOrderId(paramId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function openTracker(orderId: string) {
+    setTrackOrderId(orderId);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('trackOrderId', orderId);
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }
+
+  function closeTracker() {
+    setTrackOrderId(null);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('trackOrderId');
+    router.replace(params.toString() ? `${pathname}?${params.toString()}` : pathname, { scroll: false });
+  }
 
   const filterPills = [
     { value: 'active', label: 'Active Deliveries' },
@@ -153,7 +182,7 @@ export default function DeliveriesClient({
                       )}
                     </div>
                     <button
-                      onClick={() => setTrackOrderId(o.id)}
+                      onClick={() => openTracker(o.id)}
                       className={`inline-flex items-center justify-center px-4 py-2.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors shadow-sm ${
                         o.hasItinerary 
                           ? 'bg-white border border-gray-200 text-[#01172f] hover:bg-gray-50'
@@ -265,7 +294,7 @@ export default function DeliveriesClient({
 
                         <td className="px-5 py-4 align-top text-right">
                           <button
-                            onClick={() => setTrackOrderId(o.id)}
+                            onClick={() => openTracker(o.id)}
                             className={`inline-flex items-center justify-center px-4 py-2 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors shadow-sm ${
                               o.hasItinerary 
                                 ? 'bg-white border border-gray-200 text-[#01172f] hover:bg-gray-50'
@@ -294,7 +323,7 @@ export default function DeliveriesClient({
           <div className="bg-transparent w-full max-w-[800px] max-h-[90vh] overflow-y-auto relative custom-scrollbar print:static print:max-w-none print:max-h-none print:overflow-visible">
             
             <button
-              onClick={() => setTrackOrderId(null)}
+              onClick={closeTracker}
               className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-full transition-colors z-[210] print:hidden focus:outline-none shadow-sm"
               aria-label="Close Tracking Modal"
             >

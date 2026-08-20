@@ -14,7 +14,6 @@ export const QuotationRequests: CollectionConfig = {
     group: "Leads",
     description:
       "Customer quotation requests. Review here and follow up manually -- nothing is sent automatically.",
-    hidden: ({ user }) => user?.role === "marketing",
   },
   access: {
     create: () => true,
@@ -35,24 +34,20 @@ export const QuotationRequests: CollectionConfig = {
       async ({ doc, operation, req }) => {
         if (operation !== "create") return doc;
         try {
-          const admins = await req.payload.find({
-            collection: "users",
-            where: { role: { equals: "admin" } },
-            limit: 100,
+          // Broadcast: create ONE notification, not one per admin. Any
+          // admin can already read every notification regardless of
+          // `recipient` (see Notifications.ts access rules), so looping
+          // over admins.docs here used to create a duplicate document per
+          // admin account -- which showed up as literal duplicate rows in
+          // the bell for anyone who could see more than one admin's copy.
+          await req.payload.create({
+            collection: "notifications" as any,
+            data: {
+              message: `New RFQ from ${doc.customerName || "a customer"}`,
+              link: `/admin-dashboard/pipeline/${doc.id}`,
+              read: false,
+            },
           });
-          await Promise.all(
-            admins.docs.map((admin: any) =>
-              req.payload.create({
-                collection: "notifications" as any,
-                data: {
-                  recipient: admin.id,
-                  message: `New RFQ from ${doc.customerName || "a customer"}`,
-                  link: `/admin-dashboard/pipeline/${doc.id}`,
-                  read: false,
-                },
-              }),
-            ),
-          );
         } catch (err) {
           console.error("Failed to notify admins of new RFQ:", err);
         }
@@ -102,25 +97,17 @@ export const QuotationRequests: CollectionConfig = {
           doc.status !== previousDoc.status
         ) {
           try {
-            const admins = await req.payload.find({
-              collection: "users",
-              where: { role: { equals: "admin" } },
-              limit: 100,
-            });
+            // Broadcast: same fix as the "new RFQ" hook above -- one
+            // notification, not one per admin.
             const changedBy = req.user?.name || req.user?.email || "Someone";
-            await Promise.all(
-              admins.docs.map((admin: any) =>
-                req.payload.create({
-                  collection: "notifications" as any,
-                  data: {
-                    recipient: admin.id,
-                    message: `${changedBy} changed RFQ from ${doc.customerName || "a customer"} from "${previousDoc.status}" to "${doc.status}"`,
-                    link: `/admin-dashboard/pipeline/${doc.id}`,
-                    read: false,
-                  },
-                }),
-              ),
-            );
+            await req.payload.create({
+              collection: "notifications" as any,
+              data: {
+                message: `${changedBy} changed RFQ from ${doc.customerName || "a customer"} from "${previousDoc.status}" to "${doc.status}"`,
+                link: `/admin-dashboard/pipeline/${doc.id}`,
+                read: false,
+              },
+            });
           } catch (err) {
             console.error("Failed to notify admins of RFQ status change:", err);
           }

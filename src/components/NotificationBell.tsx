@@ -28,7 +28,12 @@ function timeAgo(iso: string): string {
   return `${days} days ago`
 }
 
-export default function NotificationBell({ role }: { role: 'admin' | 'user' }) {
+export default function NotificationBell({ role }: { role: 'admin' | 'marketing' | 'user' }) {
+  // Marketing sees the same broadcast feed admin does (Notifications
+  // collection access already grants both roles full read visibility) --
+  // treat the two identically everywhere in this component.
+  const isAdminLike = role === 'admin' || role === 'marketing'
+
   const [count, setCount] = useState(0)
   const [items, setItems] = useState<NotificationItem[]>([])
   const [open, setOpen] = useState(false)
@@ -46,7 +51,7 @@ export default function NotificationBell({ role }: { role: 'admin' | 'user' }) {
       // ✨ FIX: Use Payload's standard REST API instead of 404 custom routes
       let url = `/api/notifications?sort=-createdAt&limit=15&page=${pageNum}`;
       
-      if (role === 'admin') {
+      if (isAdminLike) {
         const weekAgo = new Date(Date.now() - SEVEN_DAYS_MS).toISOString();
         url += `&where[createdAt][greater_than]=${weekAgo}`;
       }
@@ -59,14 +64,14 @@ export default function NotificationBell({ role }: { role: 'admin' | 'user' }) {
       let fetchedItems: NotificationItem[] = data.docs || []; 
 
       // Visually mark as read if they fetch while panel is open
-      if (role === 'admin' && open) {
+      if (isAdminLike && open) {
         fetchedItems = fetchedItems.map(i => ({ ...i, read: true }))
       }
       
       if (pageNum === 1) {
         setItems(fetchedItems)
         
-        if (role === 'admin') {
+        if (isAdminLike) {
           const lastSeen = getLastSeen()
           const unreadCount = fetchedItems.filter(i => new Date(i.createdAt).getTime() > new Date(lastSeen).getTime()).length
           setCount(unreadCount)
@@ -123,7 +128,7 @@ export default function NotificationBell({ role }: { role: 'admin' | 'user' }) {
   }
 
   async function markAsRead(id: string) {
-    if (role === 'admin') return 
+    if (isAdminLike) return
     try {
       await fetch(`/api/notifications/${id}`, {
         method: 'PATCH',
@@ -145,7 +150,7 @@ export default function NotificationBell({ role }: { role: 'admin' | 'user' }) {
       setHasMore(true)
       await fetchNotifications(1)
 
-      if (role === 'admin') {
+      if (isAdminLike) {
         localStorage.setItem(STORAGE_KEY, new Date().toISOString())
         setCount(0) 
         setItems(prev => prev.map(i => ({ ...i, read: true }))) 
@@ -179,7 +184,7 @@ export default function NotificationBell({ role }: { role: 'admin' | 'user' }) {
 
           {items.length === 0 && !loadingMore ? (
             <p className="px-4 py-8 text-center text-[13px] text-[#01172f]/40 font-medium">
-              {role === 'admin' ? 'No recent activity.' : 'No new assignments.'}
+              {isAdminLike ? 'No recent activity.' : 'No new assignments.'}
             </p>
           ) : (
             <div className="max-h-80 overflow-y-auto custom-scrollbar" onScroll={handleScroll}>
@@ -191,15 +196,15 @@ export default function NotificationBell({ role }: { role: 'admin' | 'user' }) {
                     setOpen(false)
                     if (!item.read) markAsRead(item.id)
                   }}
-                  className={`flex items-center gap-3 px-4 py-3 border-b border-[#01172f]/5 hover:bg-[#f4f6f2] transition-colors ${!item.read ? 'bg-blue-50/20' : 'opacity-70'}`}
+                  className={`flex items-start gap-3 px-4 py-3 border-b border-[#01172f]/5 hover:bg-[#f4f6f2] transition-colors ${!item.read ? 'bg-blue-50/20' : 'opacity-70'}`}
                 >
-                  <span className={`w-2 h-2 rounded-full flex-shrink-0 ${!item.read ? 'bg-[#149911]' : 'bg-gray-300'}`} />
+                  <span className={`w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${!item.read ? 'bg-[#149911]' : 'bg-gray-300'}`} />
                   <div className="min-w-0 flex-1">
-                    <p className={`text-[13px] text-[#01172f] truncate ${!item.read ? 'font-bold' : 'font-medium'}`}>{item.message}</p>
-                    <p className="text-[11px] text-[#01172f]/40 font-medium">{timeAgo(item.createdAt)}</p>
+                    <p className={`text-[13px] text-[#01172f] leading-snug break-words ${!item.read ? 'font-bold' : 'font-medium'}`}>{item.message}</p>
+                    <p className="text-[11px] text-[#01172f]/40 font-medium mt-0.5">{timeAgo(item.createdAt)}</p>
                   </div>
                   {!item.read && (
-                    <span className="text-[10px] font-bold text-[#149911] ml-2">View</span>
+                    <span className="text-[10px] font-bold text-[#149911] ml-2 mt-0.5 flex-shrink-0">View</span>
                   )}
                 </Link>
               ))}
@@ -213,11 +218,11 @@ export default function NotificationBell({ role }: { role: 'admin' | 'user' }) {
           )}
 
           <Link
-            href={role === 'admin' ? '/admin-dashboard?status=pending' : '/admin-dashboard'}
+            href={isAdminLike ? '/admin-dashboard?status=pending' : '/admin-dashboard'}
             onClick={() => setOpen(false)}
             className="block px-4 py-3 text-center text-[11px] font-bold uppercase tracking-wide text-[#3D5F3B] hover:text-[#149911] transition-colors border-t border-[#01172f]/10"
           >
-            {role === 'admin' ? 'View All Activity' : 'View My RFQs'}
+            {isAdminLike ? 'View All Activity' : 'View My RFQs'}
           </Link>
         </div>
       )}

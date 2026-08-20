@@ -60,6 +60,27 @@ export const Orders: CollectionConfig = {
       },
     ],
     afterChange: [
+      // Order created == "order confirmed" (this is the moment
+      // handleConfirmOrder() in the pipeline generates the orders doc).
+      // Notify admin + marketing with a direct link into the delivery
+      // route tracker, same URL shape as the "Track Route" link on the
+      // Inquiry Overview page: /admin-dashboard/deliveries?trackOrderId=.
+      async ({ doc, operation, req }) => {
+        if (operation !== "create") return doc;
+        try {
+          await req.payload.create({
+            collection: "notifications" as any,
+            data: {
+              message: `Order ${doc.orderNumber || ""} confirmed for ${doc.customerName || "a customer"} -- plan the delivery route.`,
+              link: `/admin-dashboard/deliveries?trackOrderId=${doc.id}`,
+              read: false,
+            },
+          });
+        } catch (err) {
+          console.error("Failed to notify of order confirmation:", err);
+        }
+        return doc;
+      },
       async ({ doc, previousDoc, operation, req }) => {
         if (
           operation === "update" &&
@@ -162,26 +183,21 @@ export const Orders: CollectionConfig = {
 
           if (newlyPending.length > 0) {
             try {
-              const admins = await req.payload.find({
-                collection: "users",
-                where: { role: { equals: "admin" } },
-                limit: 100,
-              });
-
+              // Broadcast: one notification per newly-pending expense, not
+              // one per admin per expense. Any admin can already read
+              // every notification regardless of `recipient`, so the old
+              // per-admin loop was creating duplicate documents for every
+              // admin account -- visible as literal duplicate rows in the
+              // bell for anyone who could see more than one admin's copy.
               for (const exp of newlyPending) {
-                await Promise.all(
-                  admins.docs.map((admin: any) =>
-                    req.payload.create({
-                      collection: "notifications" as any,
-                      data: {
-                        recipient: admin.id,
-                        message: `New OPEX pending approval: ₱${exp.amount} for ${exp.description} (Order ${doc.orderNumber || ""})`,
-                        link: `/admin-dashboard/orders?id=${doc.id}`,
-                        read: false,
-                      },
-                    }),
-                  ),
-                );
+                await req.payload.create({
+                  collection: "notifications" as any,
+                  data: {
+                    message: `New OPEX pending approval: ₱${exp.amount} for ${exp.description} (Order ${doc.orderNumber || ""})`,
+                    link: `/admin-dashboard/orders?id=${doc.id}`,
+                    read: false,
+                  },
+                });
               }
             } catch (err) {
               console.error("Failed to notify admins of pending OPEX:", err);
