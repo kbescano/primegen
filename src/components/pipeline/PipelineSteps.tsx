@@ -284,6 +284,49 @@ export function StepSupplierPO({ quotation, localOrder, isQuotationApprovedOrBey
   );
 }
 
+function escapeHtml(str: string): string {
+  return str.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' } as Record<string, string>)[c]);
+}
+
+// Browsers block (or silently fail) top-level navigations straight to a
+// data: URI -- that's what causes a blank "Untitled" tab when a receipt
+// thumbnail is opened with <a href={dataUri} target="_blank">. Opening a
+// blank tab first and writing an <img>/<iframe> that *references* the data
+// URI as a resource sidesteps the restriction, since that's a resource
+// load rather than a full-page navigation.
+function openReceiptInNewTab(fileData: string, fileType?: string, fileName?: string) {
+  const win = window.open('', '_blank');
+  if (!win) {
+    alert('Please allow pop-ups for this site to view the receipt.');
+    return;
+  }
+  const isImage = fileType === 'image' || fileData.startsWith('data:image');
+  const safeTitle = escapeHtml(fileName || 'Receipt');
+  win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+<title>${safeTitle}</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #1a1a1a; }
+  body { display: flex; align-items: center; justify-content: center; }
+  img { max-width: 100%; max-height: 100vh; object-fit: contain; }
+  iframe { width: 100vw; height: 100vh; border: none; background: #fff; }
+</style>
+</head>
+<body>
+  ${isImage
+    ? `<img src="${fileData}" alt="${safeTitle}" />`
+    : `<iframe src="${fileData}"></iframe>`
+  }
+</body>
+</html>`);
+  win.document.close();
+  // Sever the opener link now that we're done writing to it, as a
+  // reverse-tabnabbing precaution -- harmless here since we control the
+  // window and its content, but no reason to leave it connected.
+  try { win.opener = null; } catch {}
+}
+
 // Single receipt group -- an upload control plus thumbnail grid for one
 // receipt category (client or supplier). No approval status is tracked;
 // the presence of at least one item is what gates progression.
@@ -316,7 +359,12 @@ function ReceiptGroup({
       <div className="flex flex-wrap gap-2.5">
         {receipts.map((r: any, idx: number) => (
           <div key={idx} className="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-200 bg-white group shrink-0">
-            <a href={r.fileData} target="_blank" rel="noopener noreferrer" className="block w-full h-full">
+            <button
+              type="button"
+              onClick={() => openReceiptInNewTab(r.fileData, r.fileType, r.fileName)}
+              className="block w-full h-full cursor-pointer"
+              aria-label={`View ${r.fileName || 'receipt'}`}
+            >
               {r.fileData?.startsWith('data:image') ? (
                 <img src={r.fileData} alt={r.fileName || 'Receipt'} className="object-cover w-full h-full" />
               ) : (
@@ -324,7 +372,7 @@ function ReceiptGroup({
                   <span className="text-[8px] font-bold text-gray-400 uppercase">PDF</span>
                 </div>
               )}
-            </a>
+            </button>
             <button
               type="button"
               onClick={() => onRemove(idx)}
