@@ -5,6 +5,7 @@ import DateGranularityFilter from "@/components/DateGranularityFilter";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import AssignStaffSelect from "@/components/AssignStaffSelect";
+import AddUpdateNote from "@/components/AddUpdateNotes";
 
 const STATUSES = ["pending", "processing", "quote-sent", "completed"] as const;
 const STATUS_OPTIONS = [
@@ -369,7 +370,6 @@ export default async function QuotationInboxPage({
                     View Order Workflow &rarr;
                   </Link>
                 </div>
-
                 {/* Items & Message Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
                   {/* Left Column: Requested Items */}
@@ -410,7 +410,11 @@ export default async function QuotationInboxPage({
                       </p>
                     )}
                   </div>
-
+                  <AddUpdateNote
+  requestId={q.id}
+  existingNotes={q.statusUpdates || []}
+  currentUserName={currentUser?.name || currentUser?.email || 'Staff'}
+/>
                   {/* Right Column: Customer Message */}
                   <div className="min-w-0">
                     <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">

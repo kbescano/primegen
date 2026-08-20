@@ -71,6 +71,7 @@ type TableRow = {
   orderId?: string | null;
   orderNumber?: string | null;
   orderStatus?: string | null;
+  allUpdateNotes?: any[];
   poLabel: string;
   poStatus?: string;
   poHref?: string;
@@ -110,18 +111,11 @@ export default function StaffPerformanceClient({
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
 
-  // ✨ Added Local State for Optimistic Updates
   const [localRequests, setLocalRequests] = useState(requests);
-
-  const [activeStaff, setActiveStaff] = useState<string | undefined>(
-    initialStaff,
-  );
-  const [activeStatus, setActiveStatus] = useState<string | undefined>(
-    initialStatus,
-  );
+  const [activeStaff, setActiveStaff] = useState<string | undefined>(initialStaff);
+  const [activeStatus, setActiveStatus] = useState<string | undefined>(initialStatus);
   const [updatingReqId, setUpdatingReqId] = useState<string | null>(null);
 
-  // Sync local state when server data changes
   useEffect(() => {
     setLocalRequests(requests);
   }, [requests]);
@@ -150,7 +144,6 @@ export default function StaffPerformanceClient({
   async function handleAssignStaff(reqId: string, newStaffId: string) {
     setUpdatingReqId(reqId);
     
-    // ✨ OPTIMISTIC UPDATE: Update the UI instantly before the server responds
     const staffObj = staffList.find((s) => String(s.id) === String(newStaffId));
     setLocalRequests((prev) =>
       prev.map((r) =>
@@ -161,11 +154,7 @@ export default function StaffPerformanceClient({
     );
 
     try {
-      const parsedStaffId = newStaffId
-        ? isNaN(Number(newStaffId))
-          ? newStaffId
-          : Number(newStaffId)
-        : null;
+      const parsedStaffId = newStaffId ? (isNaN(Number(newStaffId)) ? newStaffId : Number(newStaffId)) : null;
 
       const res = await fetch(`/api/quotation-requests/${reqId}`, {
         method: "PATCH",
@@ -175,15 +164,14 @@ export default function StaffPerformanceClient({
       });
 
       if (res.ok) {
-        router.refresh(); // Sync the real server data quietly in the background
+        router.refresh(); 
       } else {
-        // ✨ REVERT: If the server fails, revert back to the original data
         setLocalRequests(requests);
         const err = await res.json().catch(() => ({}));
         console.error("Payload validation error:", res.status, err);
       }
     } catch (e) {
-      setLocalRequests(requests); // Revert on network error
+      setLocalRequests(requests); 
       console.error("Failed to assign staff", e);
     } finally {
       setUpdatingReqId(null);
@@ -199,28 +187,25 @@ export default function StaffPerformanceClient({
     overallCompletionRate,
     tableRows,
   } = useMemo(() => {
-    // ✨ FILTER localRequests INSTEAD OF server requests
-    const filtered = localRequests.filter((r) => {
-      let pass = true;
-      if (activeStaff) {
-        const assignedId = r.assignedTo
-          ? String(
-              typeof r.assignedTo === "object" ? r.assignedTo.id : r.assignedTo,
-            )
-          : null;
-        if (assignedId !== activeStaff) pass = false;
-      }
-      if (activeStatus && r.status !== activeStatus) {
-        pass = false;
-      }
-      return pass;
-    });
+    const filtered = localRequests
+      .filter((r) => {
+        let pass = true;
+        if (activeStaff) {
+          const assignedId = r.assignedTo ? String(typeof r.assignedTo === "object" ? r.assignedTo.id : r.assignedTo) : null;
+          if (assignedId !== activeStaff) pass = false;
+        }
+        if (activeStatus && r.status !== activeStatus) {
+          pass = false;
+        }
+        return pass;
+      })
+      .sort((a, b) => {
+        const aTime = new Date(a.updatedAt || a.createdAt).getTime();
+        const bTime = new Date(b.updatedAt || b.createdAt).getTime();
+        return bTime - aTime;
+      });
 
-    // 2. COMPUTE STAFF ROWS
-    const byStaff: Record<
-      string,
-      { name: string; counts: Record<string, number>; total: number }
-    > = {};
+    const byStaff: Record<string, { name: string; counts: Record<string, number>; total: number }> = {};
     for (const s of staffList) {
       byStaff[String(s.id)] = {
         name: s.name || s.email,
@@ -231,71 +216,40 @@ export default function StaffPerformanceClient({
 
     let unassigned = 0;
     for (const r of filtered) {
-      const assignedId = r.assignedTo
-        ? String(
-            typeof r.assignedTo === "object" ? r.assignedTo.id : r.assignedTo,
-          )
-        : null;
+      const assignedId = r.assignedTo ? String(typeof r.assignedTo === "object" ? r.assignedTo.id : r.assignedTo) : null;
       if (!assignedId || !byStaff[assignedId]) {
         unassigned++;
         continue;
       }
       byStaff[assignedId].total++;
-      if (STATUS_KEYS.includes(r.status))
-        byStaff[assignedId].counts[r.status]++;
+      if (STATUS_KEYS.includes(r.status)) byStaff[assignedId].counts[r.status]++;
     }
 
     const computedStaffRows = Object.entries(byStaff).map(([id, data]) => ({
       id,
       ...data,
-      completionRate:
-        data.total > 0
-          ? Math.round((data.counts["completed"] / data.total) * 100)
-          : 0,
+      completionRate: data.total > 0 ? Math.round((data.counts["completed"] / data.total) * 100) : 0,
     }));
 
-    // 3. COMPUTE OVERALL ROWS
-    const computedOverallCounts: Record<string, number> = Object.fromEntries(
-      STATUS_KEYS.map((k) => [k, 0]),
-    );
+    const computedOverallCounts: Record<string, number> = Object.fromEntries(STATUS_KEYS.map((k) => [k, 0]));
     const computedOverallTotal = filtered.length;
     for (const r of filtered) {
       if (STATUS_KEYS.includes(r.status)) computedOverallCounts[r.status]++;
     }
-    const computedOverallCompletionRate =
-      computedOverallTotal > 0
-        ? Math.round(
-            (computedOverallCounts["completed"] / computedOverallTotal) * 100,
-          )
-        : 0;
+    const computedOverallCompletionRate = computedOverallTotal > 0 ? Math.round((computedOverallCounts["completed"] / computedOverallTotal) * 100) : 0;
 
-    // 4. FLATTEN SPREADSHEET TABLE ROWS
     const computedTableRows: TableRow[] = [];
     for (const req of filtered) {
-      const assignedStaffName = req.assignedTo
-        ? typeof req.assignedTo === "object"
-          ? req.assignedTo.name || req.assignedTo.email
-          : req.assignedTo
-        : "Unassigned";
-      const assignedStaffId = req.assignedTo
-        ? typeof req.assignedTo === "object"
-          ? String(req.assignedTo.id)
-          : String(req.assignedTo)
-        : "";
+      const assignedStaffName = req.assignedTo ? (typeof req.assignedTo === "object" ? req.assignedTo.name || req.assignedTo.email : req.assignedTo) : "Unassigned";
+      const assignedStaffId = req.assignedTo ? (typeof req.assignedTo === "object" ? String(req.assignedTo.id) : String(req.assignedTo)) : "";
 
-      const reqDate = new Date(req.createdAt).toLocaleDateString("en-PH", {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
+      const reqDate = new Date(req.createdAt).toLocaleDateString("en-PH", { year: "numeric", month: "short", day: "numeric" });
       const safeReqId = String(req.id || "");
       const safeSource = String(req.source || "website").replace("-", " ");
 
       const linkedQuotation = quotationByRequestId[safeReqId] || null;
       const safeQuoteId = linkedQuotation ? String(linkedQuotation.id) : null;
-      const linkedOrder = safeQuoteId
-        ? orderByQuotationId[safeQuoteId] || null
-        : null;
+      const linkedOrder = safeQuoteId ? orderByQuotationId[safeQuoteId] || null : null;
       const safeOrderId = linkedOrder ? String(linkedOrder.id) : null;
 
       const reqPOs = safeOrderId ? posByOrderId[safeOrderId] || [] : [];
@@ -318,8 +272,7 @@ export default function StaffPerformanceClient({
       }
 
       const paymentStatus = linkedOrder?.paymentStatus || "—";
-      const paymentMethod =
-        linkedOrder?.paymentMethod || linkedOrder?.modeOfPayment || "—";
+      const paymentMethod = linkedOrder?.paymentMethod || linkedOrder?.modeOfPayment || "—";
       const fulfillmentStatus = linkedOrder?.fulfillmentStatus || "—";
 
       const baseMeta = {
@@ -340,19 +293,16 @@ export default function StaffPerformanceClient({
         orderId: safeOrderId,
         orderNumber: linkedOrder?.orderNumber || null,
         orderStatus: linkedOrder?.status || null,
+        // ✨ Uses the spread operator to safely reverse the array without mutating the original
+        allUpdateNotes: req.statusUpdates ? [...req.statusUpdates].reverse() : [],
       };
 
-      const rowsForRequest: Omit<TableRow, "isFirstOfRequest" | "rowSpan">[] =
-        [];
+      const rowsForRequest: Omit<TableRow, "isFirstOfRequest" | "rowSpan">[] = [];
 
       if (!hasOrder) {
         if (req.items && req.items.length > 0) {
           for (const item of req.items) {
-            const materialName = item.material
-              ? typeof item.material === "object"
-                ? item.material.name
-                : "Unknown Material"
-              : "Custom Item";
+            const materialName = item.material ? (typeof item.material === "object" ? item.material.name : "Unknown Material") : "Custom Item";
             rowsForRequest.push({
               reqId: safeReqId,
               poLabel: "\u2014",
@@ -372,22 +322,9 @@ export default function StaffPerformanceClient({
         for (const po of reqPOs) {
           const poIdStr = String(po.id);
           const poNumber = po.poNumber || `PO #${poIdStr.substring(0, 6)}`;
-          const supplierName =
-            po.supplierName ||
-            (po.supplier && typeof po.supplier === "object"
-              ? po.supplier.name
-              : null) ||
-            "Unnamed Supplier";
-          const supplierCompany =
-            po.supplierCompany ||
-            (po.supplier && typeof po.supplier === "object"
-              ? po.supplier.company
-              : null);
-          const supplierPhone =
-            po.supplierPhone ||
-            (po.supplier && typeof po.supplier === "object"
-              ? po.supplier.phone
-              : null);
+          const supplierName = po.supplierName || (po.supplier && typeof po.supplier === "object" ? po.supplier.name : null) || "Unnamed Supplier";
+          const supplierCompany = po.supplierCompany || (po.supplier && typeof po.supplier === "object" ? po.supplier.company : null);
+          const supplierPhone = po.supplierPhone || (po.supplier && typeof po.supplier === "object" ? po.supplier.phone : null);
           const poHref = `/admin-dashboard/supplier-po?listSupplier=${encodeURIComponent(supplierName)}`;
           const poItems = itemsByPO[poIdStr] || [];
 
@@ -455,7 +392,7 @@ export default function StaffPerformanceClient({
       tableRows: computedTableRows,
     };
   }, [
-    localRequests, // ✨ Uses local state now!
+    localRequests,
     activeStaff,
     activeStatus,
     staffList,
@@ -464,25 +401,20 @@ export default function StaffPerformanceClient({
     posByOrderId,
   ]);
 
-  const canAssignStaff =
-    currentUserRole === "admin" || currentUserRole === "marketing";
+  const canAssignStaff = currentUserRole === "admin" || currentUserRole === "marketing";
 
-  const thClass =
-    "bg-[#01172f] text-white text-[9px] font-bold uppercase tracking-widest px-2.5 py-2.5 text-left border-r border-[#1a2d42] last:border-0";
-  const tdClass =
-    "px-2.5 py-3 border border-gray-200 align-top text-[10px] break-words";
+  const thClass = "bg-[#01172f] text-white text-[9px] font-bold uppercase tracking-widest px-2.5 py-2.5 text-left border-r border-[#1a2d42] last:border-0";
+  const tdClass = "px-2.5 py-3 border border-gray-200 align-top text-[10px] break-words";
 
   return (
     <div className="w-full max-w-[1400px] mx-auto py-6 sm:py-10 lg:px-4 sm:px-0 font-sans text-gray-800 overflow-x-hidden print:overflow-visible">
-      {/* Header Section */}
       <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 print:hidden">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-gray-900 mb-1">
             Inquiry Overview
           </h1>
           <p className="text-[13px] text-gray-500">
-            Track workload, filter statuses, and review active requests as a
-            spreadsheet.
+            Track workload, filter statuses, and review active requests as a spreadsheet.
             {unassignedCount > 0 && (
               <span className="text-amber-600 font-medium ml-2">
                 ({unassignedCount} unassigned)
@@ -495,12 +427,9 @@ export default function StaffPerformanceClient({
         </div>
       </div>
 
-      {/* Minimalist Filter Section */}
       <div className="flex flex-col gap-5 mb-12 print:hidden">
         <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-6">
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 w-20 shrink-0">
-            Staff
-          </span>
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 w-20 shrink-0">Staff</span>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => handleStaffToggle(undefined)}
@@ -521,9 +450,7 @@ export default function StaffPerformanceClient({
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-6">
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 w-20 shrink-0">
-            Status
-          </span>
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 w-20 shrink-0">Status</span>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => handleStatusToggle(undefined)}
@@ -544,39 +471,22 @@ export default function StaffPerformanceClient({
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 w-20 shrink-0">
-            Date
-          </span>
-          <DateGranularityFilter
-            granularity={granularity || ""}
-            periodValue={periodValue || ""}
-          />
+          <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 w-20 shrink-0">Date</span>
+          <DateGranularityFilter granularity={granularity || ""} periodValue={periodValue || ""} />
         </div>
       </div>
 
-      <div
-        className={`transition-opacity duration-300 ${isPending ? "opacity-50 pointer-events-none" : "opacity-100"} print:hidden`}
-      >
-        {/* Summary Cards Layout */}
+      <div className={`transition-opacity duration-300 ${isPending ? "opacity-50 pointer-events-none" : "opacity-100"} print:hidden`}>
         <div className="flex flex-col lg:flex-row gap-8 mb-16 items-start">
           <div className="flex-1 w-full">
-            <h2 className="text-[12px] font-semibold tracking-widest text-gray-400 uppercase mb-5">
-              Staff Overview
-            </h2>
+            <h2 className="text-[12px] font-semibold tracking-widest text-gray-400 uppercase mb-5">Staff Overview</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
               {staffRows.map((s) => (
-                <div
-                  key={s.id}
-                  className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
-                >
+                <div key={s.id} className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-start mb-6">
                     <div>
-                      <h3 className="text-lg font-semibold text-[#01172f] tracking-tight leading-tight">
-                        {s.name}
-                      </h3>
-                      <p className="text-[11px] text-gray-400 mt-1 font-medium">
-                        {s.total} Total Requests
-                      </p>
+                      <h3 className="text-lg font-semibold text-[#01172f] tracking-tight leading-tight">{s.name}</h3>
+                      <p className="text-[11px] text-gray-400 mt-1 font-medium">{s.total} Total Requests</p>
                     </div>
                     <span className="inline-flex items-center px-2 py-1 rounded bg-[#149911]/10 text-[#149911] text-[10px] font-bold tracking-wide">
                       {s.completionRate}% Done
@@ -589,10 +499,7 @@ export default function StaffPerformanceClient({
                         <div
                           key={k}
                           className="transition-all"
-                          style={{
-                            width: `${(s.counts[k] / s.total) * 100}%`,
-                            backgroundColor: STATUS_COLORS[k],
-                          }}
+                          style={{ width: `${(s.counts[k] / s.total) * 100}%`, backgroundColor: STATUS_COLORS[k] }}
                           title={`${STATUS_LABELS[k]}: ${s.counts[k]}`}
                         />
                       ) : null,
@@ -603,15 +510,9 @@ export default function StaffPerformanceClient({
                     {STATUS_KEYS.map((k) => (
                       <div key={k} className="flex flex-col">
                         <span className="text-lg font-light text-gray-800 leading-none mb-1">
-                          {s.counts[k] > 0 ? (
-                            s.counts[k]
-                          ) : (
-                            <span className="text-gray-300">0</span>
-                          )}
+                          {s.counts[k] > 0 ? s.counts[k] : <span className="text-gray-300">0</span>}
                         </span>
-                        <span className="text-[9px] uppercase tracking-wider text-gray-400 font-semibold leading-tight">
-                          {STATUS_LABELS[k]}
-                        </span>
+                        <span className="text-[9px] uppercase tracking-wider text-gray-400 font-semibold leading-tight">{STATUS_LABELS[k]}</span>
                       </div>
                     ))}
                   </div>
@@ -621,18 +522,12 @@ export default function StaffPerformanceClient({
           </div>
 
           <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0">
-            <h2 className="text-[12px] font-semibold tracking-widest text-gray-400 uppercase mb-5">
-              Overall Overview
-            </h2>
+            <h2 className="text-[12px] font-semibold tracking-widest text-gray-400 uppercase mb-5">Overall Overview</h2>
             <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
               <div className="flex justify-between items-start mb-6">
                 <div>
-                  <h3 className="text-lg font-semibold text-[#01172f] tracking-tight leading-tight">
-                    All Requests
-                  </h3>
-                  <p className="text-[11px] text-gray-400 mt-1 font-medium">
-                    {overallTotal} Total Requests
-                  </p>
+                  <h3 className="text-lg font-semibold text-[#01172f] tracking-tight leading-tight">All Requests</h3>
+                  <p className="text-[11px] text-gray-400 mt-1 font-medium">{overallTotal} Total Requests</p>
                 </div>
                 <span className="inline-flex items-center px-2 py-1 rounded bg-[#149911]/10 text-[#149911] text-[10px] font-bold tracking-wide">
                   {overallCompletionRate}% Done
@@ -645,10 +540,7 @@ export default function StaffPerformanceClient({
                     <div
                       key={k}
                       className="transition-all"
-                      style={{
-                        width: `${(overallCounts[k] / overallTotal) * 100}%`,
-                        backgroundColor: STATUS_COLORS[k],
-                      }}
+                      style={{ width: `${(overallCounts[k] / overallTotal) * 100}%`, backgroundColor: STATUS_COLORS[k] }}
                       title={`${STATUS_LABELS[k]}: ${overallCounts[k]}`}
                     />
                   ) : null,
@@ -659,15 +551,9 @@ export default function StaffPerformanceClient({
                 {STATUS_KEYS.map((k) => (
                   <div key={k} className="flex flex-col">
                     <span className="text-lg font-light text-gray-800 leading-none mb-1">
-                      {overallCounts[k] > 0 ? (
-                        overallCounts[k]
-                      ) : (
-                        <span className="text-gray-300">0</span>
-                      )}
+                      {overallCounts[k] > 0 ? overallCounts[k] : <span className="text-gray-300">0</span>}
                     </span>
-                    <span className="text-[9px] uppercase tracking-wider text-gray-400 font-semibold leading-tight">
-                      {STATUS_LABELS[k]}
-                    </span>
+                    <span className="text-[9px] uppercase tracking-wider text-gray-400 font-semibold leading-tight">{STATUS_LABELS[k]}</span>
                   </div>
                 ))}
               </div>
@@ -677,27 +563,17 @@ export default function StaffPerformanceClient({
 
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
           <div className="px-4 py-3 sm:py-2 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-            <h2 className="text-[11px] font-semibold uppercase tracking-widest text-gray-600">
-              Detailed Inquiry
-            </h2>
-            <span className="text-[11px] font-medium text-gray-500">
-              {filteredRequests.length} Record
-              {filteredRequests.length !== 1 ? "s" : ""}
-            </span>
+            <h2 className="text-[11px] font-semibold uppercase tracking-widest text-gray-600">Detailed Inquiry</h2>
+            <span className="text-[11px] font-medium text-gray-500">{filteredRequests.length} Record{filteredRequests.length !== 1 ? "s" : ""}</span>
           </div>
 
           {/* --- MOBILE CARD VIEW --- */}
           <div className="block xl:hidden w-full flex-col">
             {tableRows.length === 0 ? (
-              <div className="px-5 py-8 text-center text-gray-400 italic text-[11px]">
-                No requests found matching criteria.
-              </div>
+              <div className="px-5 py-8 text-center text-gray-400 italic text-[11px]">No requests found matching criteria.</div>
             ) : (
               tableRows.map((row, i) => (
-                <div
-                  key={`${row.reqId}-${i}`}
-                  className={`flex flex-col px-4 pb-4 ${row.isFirstOfRequest ? (i === 0 ? "pt-4" : "border-t-4 border-gray-100 pt-5 mt-2") : "pt-3 mt-3 border-t border-dashed border-gray-100"}`}
-                >
+                <div key={`${row.reqId}-${i}`} className={`flex flex-col px-4 pb-4 ${row.isFirstOfRequest ? (i === 0 ? "pt-4" : "border-t-4 border-gray-100 pt-5 mt-2") : "pt-3 mt-3 border-t border-dashed border-gray-100"}`}>
                   {row.isFirstOfRequest && (
                     <div className="flex flex-col gap-3 mb-4">
                       <div className="flex justify-between items-start">
@@ -705,18 +581,14 @@ export default function StaffPerformanceClient({
                           <div className="font-mono font-bold text-[#01172f] text-sm leading-none">
                             {row.reqId.substring(0, 8).toUpperCase()}
                           </div>
-
                           {row.orderNumber && (
                             <div className="font-mono text-[#149911] text-[11px] font-bold mt-1 tracking-tight">
                               ORD: {row.orderNumber}
                             </div>
                           )}
-
                           <div className="flex items-center gap-2 text-gray-500 text-[10px] mt-1">
                             {row.reqDate}
-                            <span
-                              className={`inline-block text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getSourceBadgeStyle(row.source || "")}`}
-                            >
+                            <span className={`inline-block text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getSourceBadgeStyle(row.source || "")}`}>
                               {row.source}
                             </span>
                           </div>
@@ -725,15 +597,10 @@ export default function StaffPerformanceClient({
                         <div className="flex flex-col items-end">
                           <span
                             className="inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded"
-                            style={{
-                              backgroundColor: `${STATUS_COLORS[row.status || ""] || "#94a3b8"}1a`,
-                              color:
-                                STATUS_COLORS[row.status || ""] || "#64748b",
-                            }}
+                            style={{ backgroundColor: `${STATUS_COLORS[row.status || ""] || "#94a3b8"}1a`, color: STATUS_COLORS[row.status || ""] || "#64748b" }}
                           >
                             {STATUS_LABELS[row.status || ""] || row.status}
                           </span>
-
                           {row.orderStatus && (
                             <span className="inline-block text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 mt-1 bg-gray-100 text-gray-500 rounded">
                               Order: {row.orderStatus.replace("_", " ")}
@@ -743,82 +610,44 @@ export default function StaffPerformanceClient({
                       </div>
 
                       <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                        <div className="font-bold text-[#01172f] text-[13px] leading-tight mb-1">
-                          {row.customerName}
-                        </div>
-                        {row.company && (
-                          <div className="text-[11px] text-gray-500 leading-tight mb-1">
-                            {row.company}
-                          </div>
-                        )}
-                        <div className="text-[11px] text-gray-500 mb-2">
-                          {row.contact || "\u2014"}
-                        </div>
+                        <div className="font-bold text-[#01172f] text-[13px] leading-tight mb-1">{row.customerName}</div>
+                        {row.company && <div className="text-[11px] text-gray-500 leading-tight mb-1">{row.company}</div>}
+                        <div className="text-[11px] text-gray-500 mb-2">{row.contact || "\u2014"}</div>
 
                         <div className="text-[11px] pt-3 mt-3 border-t border-gray-200 grid grid-cols-2 gap-3">
                           <div>
-                            <span className="text-gray-400 block text-[9px] uppercase tracking-wider font-semibold mb-1">
-                              Rep
-                            </span>
+                            <span className="text-gray-400 block text-[9px] uppercase tracking-wider font-semibold mb-1">Rep</span>
                             {canAssignStaff ? (
                               <select
                                 value={row.assignedStaffId || ""}
-                                onChange={(e) =>
-                                  handleAssignStaff(row.reqId, e.target.value)
-                                }
+                                onChange={(e) => handleAssignStaff(row.reqId, e.target.value)}
                                 disabled={updatingReqId === row.reqId}
                                 className={`w-[90%] bg-transparent border-b ${row.assignedStaffId ? "border-transparent text-[#01172f]" : "border-amber-300 text-amber-600"} hover:border-gray-300 focus:border-[#149911] focus:outline-none text-[11px] font-medium py-0.5 transition-colors cursor-pointer disabled:opacity-50 appearance-none`}
                               >
-                                <option value="" disabled>
-                                  Unassigned
-                                </option>
+                                <option value="" disabled>Unassigned</option>
                                 {staffList.map((s: any) => (
-                                  <option
-                                    key={s.id}
-                                    value={s.id}
-                                    className="text-[#01172f]"
-                                  >
-                                    {s.name || s.email}
-                                  </option>
+                                  <option key={s.id} value={s.id} className="text-[#01172f]">{s.name || s.email}</option>
                                 ))}
                               </select>
                             ) : (
-                              <span
-                                className={
-                                  row.assignedStaff === "Unassigned"
-                                    ? "text-amber-600 font-semibold italic"
-                                    : "text-[#01172f] font-medium"
-                                }
-                              >
+                              <span className={row.assignedStaff === "Unassigned" ? "text-amber-600 font-semibold italic" : "text-[#01172f] font-medium"}>
                                 {row.assignedStaff}
                               </span>
                             )}
                           </div>
                           <div>
-                            <span className="text-gray-400 block text-[9px] uppercase tracking-wider font-semibold">
-                              Pay Mode
-                            </span>
-                            <span className="font-medium text-[#01172f] capitalize">
-                              {row.paymentMethod}
-                            </span>
+                            <span className="text-gray-400 block text-[9px] uppercase tracking-wider font-semibold">Pay Mode</span>
+                            <span className="font-medium text-[#01172f] capitalize">{row.paymentMethod}</span>
                           </div>
                           <div>
-                            <span className="text-gray-400 block text-[9px] uppercase tracking-wider font-semibold mb-1">
-                              Pay Status
-                            </span>
-                            <span
-                              className={`inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getStatusBadgeStyle(row.paymentStatus || "")}`}
-                            >
+                            <span className="text-gray-400 block text-[9px] uppercase tracking-wider font-semibold mb-1">Pay Status</span>
+                            <span className={`inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getStatusBadgeStyle(row.paymentStatus || "")}`}>
                               {row.paymentStatus}
                             </span>
                           </div>
                           <div>
-                            <span className="text-gray-400 block text-[9px] uppercase tracking-wider font-semibold mb-1">
-                              Shipping
-                            </span>
-                            <span
-                              className={`inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getStatusBadgeStyle(row.fulfillmentStatus || "")}`}
-                            >
+                            <span className="text-gray-400 block text-[9px] uppercase tracking-wider font-semibold mb-1">Shipping</span>
+                            <span className={`inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getStatusBadgeStyle(row.fulfillmentStatus || "")}`}>
                               {row.fulfillmentStatus}
                             </span>
                             {row.orderId && (
@@ -835,33 +664,21 @@ export default function StaffPerformanceClient({
                     </div>
                   )}
 
-                  {/* Item Sub-row */}
                   <div className="flex flex-col gap-2 pl-3 border-l-[3px] border-[#149911]/30">
                     <div className="flex justify-between items-start gap-3">
-                      <div className="text-[12px] font-medium text-gray-800 leading-snug">
-                        {row.itemDesc}
-                      </div>
-                      <div className="font-mono text-[#01172f] font-bold text-[11px] bg-gray-100 px-1.5 py-0.5 rounded shrink-0">
-                        {row.itemQty}
-                      </div>
+                      <div className="text-[12px] font-medium text-gray-800 leading-snug">{row.itemDesc}</div>
+                      <div className="font-mono text-[#01172f] font-bold text-[11px] bg-gray-100 px-1.5 py-0.5 rounded shrink-0">{row.itemQty}</div>
                     </div>
 
                     <div className="text-[10px]">
                       <span className="text-gray-400 mr-1">PO:</span>
                       {row.poHref ? (
-                        <Link
-                          href={row.poHref}
-                          className="font-mono font-bold text-[#01172f] hover:text-[#149911] transition-colors"
-                        >
-                          {row.poLabel}
-                        </Link>
+                        <Link href={row.poHref} className="font-mono font-bold text-[#01172f] hover:text-[#149911] transition-colors">{row.poLabel}</Link>
                       ) : (
                         <span className="text-gray-500">{row.poLabel}</span>
                       )}
                       {row.poStatus && (
-                        <span
-                          className={`ml-1.5 text-[9px] font-bold uppercase tracking-wider ${row.poStatus === "fulfilled" ? "text-[#149911]" : "text-amber-600"}`}
-                        >
+                        <span className={`ml-1.5 text-[9px] font-bold uppercase tracking-wider ${row.poStatus === "fulfilled" ? "text-[#149911]" : "text-amber-600"}`}>
                           ({row.poStatus})
                         </span>
                       )}
@@ -869,9 +686,7 @@ export default function StaffPerformanceClient({
 
                     {(row.supplierCompany || row.supplierPhone) && (
                       <div className="text-[9px] text-gray-500 flex gap-2">
-                        {row.supplierCompany && (
-                          <span>{row.supplierCompany}</span>
-                        )}
+                        {row.supplierCompany && <span>{row.supplierCompany}</span>}
                         {row.supplierPhone && <span>{row.supplierPhone}</span>}
                       </div>
                     )}
@@ -886,27 +701,25 @@ export default function StaffPerformanceClient({
             <table className="w-full table-fixed border-collapse text-left break-words">
               <thead>
                 <tr>
-                  <th className={`${thClass} w-[7%]`}>ID & Date</th>
-                  <th className={`${thClass} w-[8%]`}>Order</th>
-                  <th className={`${thClass} w-[11%]`}>Client</th>
-                  <th className={`${thClass} w-[8%]`}>Contact</th>
-                  <th className={`${thClass} w-[7%]`}>Rep</th>
-                  <th className={`${thClass} w-[8%]`}>Inquiry Status</th>
-                  <th className={`${thClass} w-[6%]`}>Pay Mode</th>
-                  <th className={`${thClass} w-[7%]`}>Pay Status</th>
-                  <th className={`${thClass} w-[7%]`}>Shipping</th>
-                  <th className={`${thClass} w-[13%]`}>PO / Supplier</th>
-                  <th className={`${thClass} w-[13%]`}>Item</th>
-                  <th className={`${thClass} w-[5%]`}>Qty</th>
+                  <th className={`${thClass} w-[6%]`}>ID & Date</th>
+                  <th className={`${thClass} w-[6%]`}>Order</th>
+                  <th className={`${thClass} w-[9%]`}>Client</th>
+                  <th className={`${thClass} w-[7%]`}>Contact</th>
+                  <th className={`${thClass} w-[6%]`}>Rep</th>
+                  <th className={`${thClass} w-[7%]`}>Inquiry Status</th>
+                  <th className={`${thClass} w-[5%]`}>Pay Mode</th>
+                  <th className={`${thClass} w-[6%]`}>Pay Status</th>
+                  <th className={`${thClass} w-[6%]`}>Shipping</th>
+                  <th className={`${thClass} w-[11%]`}>PO / Supplier</th>
+                  <th className={`${thClass} w-[11%]`}>Item</th>
+                  <th className={`${thClass} w-[4%]`}>Qty</th>
+                  <th className={`${thClass} w-[16%]`}>Latest Update</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 bg-white">
                 {tableRows.length === 0 ? (
                   <tr>
-                    <td
-                      colSpan={12}
-                      className="px-5 py-8 text-center text-gray-400 italic text-[11px]"
-                    >
+                    <td colSpan={13} className="px-5 py-8 text-center text-gray-400 italic text-[11px]">
                       No requests found matching criteria.
                     </td>
                   </tr>
@@ -914,40 +727,23 @@ export default function StaffPerformanceClient({
                   tableRows.map((row, i) => {
                     const zebra = i % 2 === 1 ? "bg-gray-50/60" : "bg-white";
                     return (
-                      <tr
-                        key={`${row.reqId}-${i}`}
-                        className={`${zebra} hover:bg-[#149911]/[0.04] transition-colors`}
-                      >
+                      <tr key={`${row.reqId}-${i}`} className={`${zebra} hover:bg-[#149911]/[0.04] transition-colors`}>
                         {row.isFirstOfRequest && (
                           <>
                             <td className={tdClass} rowSpan={row.rowSpan}>
-                              <div
-                                className="font-mono font-bold text-[#01172f] mb-1.5"
-                                title="Inquiry ID"
-                              >
+                              <div className="font-mono font-bold text-[#01172f] mb-1.5" title="Inquiry ID">
                                 REQ: {row.reqId.substring(0, 8).toUpperCase()}
                               </div>
-
-                              <div className="text-gray-500 mb-1.5">
-                                {row.reqDate}
-                              </div>
-                              <span
-                                className={`inline-block text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getSourceBadgeStyle(row.source || "")}`}
-                              >
+                              <div className="text-gray-500 mb-1.5">{row.reqDate}</div>
+                              <span className={`inline-block text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getSourceBadgeStyle(row.source || "")}`}>
                                 {row.source}
                               </span>
                             </td>
 
-                            {/* ✨ NEW Order Column */}
                             <td className={tdClass} rowSpan={row.rowSpan}>
                               {row.orderNumber ? (
                                 <>
-                                  <div
-                                    className="font-mono font-bold text-[#149911] text-[10px] mb-1"
-                                    title="Order Number"
-                                  >
-                                    {row.orderNumber}
-                                  </div>
+                                  <div className="font-mono font-bold text-[#149911] text-[10px] mb-1" title="Order Number">{row.orderNumber}</div>
                                   {row.orderStatus && (
                                     <span className="inline-block text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
                                       {row.orderStatus.replace("_", " ")}
@@ -955,60 +751,32 @@ export default function StaffPerformanceClient({
                                   )}
                                 </>
                               ) : (
-                                <span className="text-[10px] text-gray-400 italic">
-                                  —
-                                </span>
+                                <span className="text-[10px] text-gray-400 italic">—</span>
                               )}
                             </td>
 
                             <td className={tdClass} rowSpan={row.rowSpan}>
-                              <div className="font-bold text-[#01172f] leading-tight">
-                                {row.customerName}
-                              </div>
-                              {row.company && (
-                                <div className="text-[9px] text-gray-500 mt-1 leading-tight">
-                                  {row.company}
-                                </div>
-                              )}
+                              <div className="font-bold text-[#01172f] leading-tight">{row.customerName}</div>
+                              {row.company && <div className="text-[9px] text-gray-500 mt-1 leading-tight">{row.company}</div>}
                             </td>
-                            <td
-                              className={`${tdClass} text-gray-500`}
-                              rowSpan={row.rowSpan}
-                            >
-                              {row.contact || "\u2014"}
-                            </td>
+
+                            <td className={`${tdClass} text-gray-500`} rowSpan={row.rowSpan}>{row.contact || "\u2014"}</td>
 
                             <td className={tdClass} rowSpan={row.rowSpan}>
                               {canAssignStaff ? (
                                 <select
                                   value={row.assignedStaffId || ""}
-                                  onChange={(e) =>
-                                    handleAssignStaff(row.reqId, e.target.value)
-                                  }
+                                  onChange={(e) => handleAssignStaff(row.reqId, e.target.value)}
                                   disabled={updatingReqId === row.reqId}
                                   className={`w-[95%] bg-transparent border-b ${row.assignedStaffId ? "border-transparent text-[#01172f]" : "border-amber-300 text-amber-600"} hover:border-gray-300 focus:border-[#149911] focus:outline-none text-[10px] font-medium py-1 transition-colors cursor-pointer disabled:opacity-50 appearance-none`}
                                 >
-                                  <option value="" disabled>
-                                    Unassigned
-                                  </option>
+                                  <option value="" disabled>Unassigned</option>
                                   {staffList.map((s: any) => (
-                                    <option
-                                      key={s.id}
-                                      value={s.id}
-                                      className="text-[#01172f]"
-                                    >
-                                      {s.name || s.email}
-                                    </option>
+                                    <option key={s.id} value={s.id} className="text-[#01172f]">{s.name || s.email}</option>
                                   ))}
                                 </select>
                               ) : (
-                                <span
-                                  className={
-                                    row.assignedStaff === "Unassigned"
-                                      ? "text-amber-600 font-semibold italic"
-                                      : "text-[#01172f] font-medium"
-                                  }
-                                >
+                                <span className={row.assignedStaff === "Unassigned" ? "text-amber-600 font-semibold italic" : "text-[#01172f] font-medium"}>
                                   {row.assignedStaff}
                                 </span>
                               )}
@@ -1017,34 +785,22 @@ export default function StaffPerformanceClient({
                             <td className={tdClass} rowSpan={row.rowSpan}>
                               <span
                                 className="inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
-                                style={{
-                                  backgroundColor: `${STATUS_COLORS[row.status || ""] || "#94a3b8"}1a`,
-                                  color:
-                                    STATUS_COLORS[row.status || ""] ||
-                                    "#64748b",
-                                }}
+                                style={{ backgroundColor: `${STATUS_COLORS[row.status || ""] || "#94a3b8"}1a`, color: STATUS_COLORS[row.status || ""] || "#64748b" }}
                               >
                                 {STATUS_LABELS[row.status || ""] || row.status}
                               </span>
                             </td>
 
-                            <td
-                              className={`${tdClass} font-medium text-[#01172f] capitalize`}
-                              rowSpan={row.rowSpan}
-                            >
-                              {row.paymentMethod}
-                            </td>
+                            <td className={`${tdClass} font-medium text-[#01172f] capitalize`} rowSpan={row.rowSpan}>{row.paymentMethod}</td>
+
                             <td className={tdClass} rowSpan={row.rowSpan}>
-                              <span
-                                className={`inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getStatusBadgeStyle(row.paymentStatus || "")}`}
-                              >
+                              <span className={`inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getStatusBadgeStyle(row.paymentStatus || "")}`}>
                                 {row.paymentStatus}
                               </span>
                             </td>
+
                             <td className={tdClass} rowSpan={row.rowSpan}>
-                              <span
-                                className={`inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getStatusBadgeStyle(row.fulfillmentStatus || "")}`}
-                              >
+                              <span className={`inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getStatusBadgeStyle(row.fulfillmentStatus || "")}`}>
                                 {row.fulfillmentStatus}
                               </span>
                               {row.orderId && (
@@ -1058,41 +814,48 @@ export default function StaffPerformanceClient({
                             </td>
                           </>
                         )}
+
                         <td className={tdClass}>
                           {row.poHref ? (
-                            <Link
-                              href={row.poHref}
-                              className="font-mono font-bold text-[#01172f] hover:text-[#149911] transition-colors block leading-tight"
-                            >
+                            <Link href={row.poHref} className="font-mono font-bold text-[#01172f] hover:text-[#149911] transition-colors block leading-tight">
                               {row.poLabel}
                             </Link>
                           ) : (
-                            <span className="text-gray-400 block leading-tight">
-                              {row.poLabel}
-                            </span>
+                            <span className="text-gray-400 block leading-tight">{row.poLabel}</span>
                           )}
                           {row.poStatus && (
-                            <span
-                              className={`inline-block mt-1 text-[8px] font-bold uppercase tracking-wider ${row.poStatus === "fulfilled" ? "text-[#149911]" : "text-amber-600"}`}
-                            >
+                            <span className={`inline-block mt-1 text-[8px] font-bold uppercase tracking-wider ${row.poStatus === "fulfilled" ? "text-[#149911]" : "text-amber-600"}`}>
                               {row.poStatus}
                             </span>
                           )}
                           {(row.supplierCompany || row.supplierPhone) && (
                             <div className="mt-2 text-[9px] text-gray-500 font-normal leading-tight space-y-0.5">
-                              {row.supplierCompany && (
-                                <div>{row.supplierCompany}</div>
-                              )}
-                              {row.supplierPhone && (
-                                <div>{row.supplierPhone}</div>
-                              )}
+                              {row.supplierCompany && <div>{row.supplierCompany}</div>}
+                              {row.supplierPhone && <div>{row.supplierPhone}</div>}
                             </div>
                           )}
                         </td>
+
                         <td className={tdClass}>{row.itemDesc}</td>
-                        <td className={`${tdClass} font-mono text-gray-500`}>
-                          {row.itemQty}
-                        </td>
+                        <td className={`${tdClass} font-mono text-gray-500`}>{row.itemQty}</td>
+
+                        {/* ✨ FIX: The Latest Update column is now safely inside the isFirstOfRequest block! */}
+                        {row.isFirstOfRequest && (
+                          <td className={tdClass} rowSpan={row.rowSpan}>
+                            {row.allUpdateNotes && row.allUpdateNotes.length > 0 ? (
+                              <ul className="list-none m-0 p-0 flex flex-col gap-1">
+                                {row.allUpdateNotes.map((n: any, idx: number) => (
+                                  <li key={idx} className="flex items-start gap-1.5 text-[11px] text-gray-700 leading-snug">
+                                    <span className="text-[#149911] flex-shrink-0">&bull;</span>
+                                    <span>{n.note}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <span className="text-gray-300 italic">No updates</span>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     );
                   })

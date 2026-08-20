@@ -14,7 +14,7 @@ export const QuotationRequests: CollectionConfig = {
     group: "Leads",
     description:
       "Customer quotation requests. Review here and follow up manually -- nothing is sent automatically.",
-    hidden: ({ user }) => user?.role === 'marketing',
+    hidden: ({ user }) => user?.role === "marketing",
   },
   access: {
     create: () => true,
@@ -131,7 +131,7 @@ export const QuotationRequests: CollectionConfig = {
   },
   fields: [
     { name: "customerName", type: "text", required: true },
-    { name: "phone", type: "text", required: true },
+    { name: "phone", type: "text" },
     { name: "email", type: "email" },
     {
       name: "assignedTo",
@@ -201,8 +201,19 @@ export const QuotationRequests: CollectionConfig = {
         { label: "Website", value: "website" },
         { label: "Facebook", value: "facebook" },
         { label: "Google", value: "google" },
+        { label: "Viber", value: "viber" },
         { label: "Other", value: "other" },
       ],
+    },
+    {
+      name: "facebookLink",
+      type: "textarea",
+      label: "Facebook Profile / Post Link",
+      admin: {
+        description:
+          "Optional: link to the customer's Facebook profile or the post/message thread this inquiry came from.",
+        condition: (data) => data?.source === "facebook",
+      },
     },
     {
       name: "status",
@@ -223,6 +234,34 @@ export const QuotationRequests: CollectionConfig = {
       name: "internalNotes",
       type: "textarea",
       label: "Internal notes (not visible to customer)",
+    },
+    {
+      name: "statusUpdates",
+      type: "array",
+      label: "Update Notes",
+      admin: {
+        description:
+          "Running log of manual status updates staff have posted for this request.",
+      },
+      fields: [
+        { name: "note", type: "textarea", required: true },
+        {
+          name: "postedBy",
+          type: "relationship",
+          relationTo: "users",
+          admin: { readOnly: true },
+        },
+        { name: "postedByName", type: "text", admin: { readOnly: true } }, // denormalized for display without a populate
+      ],
+      access: {
+        // Staff can add updates only to their own assigned requests; admins/marketing can add to any
+        update: ({ req }) => {
+          if (!req.user) return false;
+          if (req.user.role === "admin" || req.user.role === "marketing")
+            return true;
+          return true; // field-level access can't easily scope to "own assigned" -- enforced at the collection's update access instead
+        },
+      },
     },
   ],
   timestamps: true,
