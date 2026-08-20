@@ -362,11 +362,11 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
                         required
                         className={`${fieldClass} appearance-none pr-9 bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2301172f%22 stroke-width=%222%22><path d=%22M6 9l6 6 6-6%22/></svg>')] bg-no-repeat bg-[right_16px_center]`}
                       >
-                        <option value="website">Website</option>
                         <option value="facebook">Facebook</option>
                         <option value="google">Google</option>
                         <option value="viber">Viber</option>
-                        <option value="other">Other</option>
+                        <option value="marketPlace">Market Place</option>
+                        <option value="email">Email</option>
                       </select>
                     </div>
 
