@@ -362,6 +362,19 @@ export default async function QuotationInboxPage({
                   </div>
                 </div>
 
+                {q.facebookLink && (
+                  <div className="mb-4">
+                    <a
+                      href={q.facebookLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-blue-600 hover:text-blue-800 underline underline-offset-2 transition-colors"
+                    >
+                      View Facebook Link &rarr;
+                    </a>
+                  </div>
+                )}
+
                 {/* Pipeline Stage Bar */}
                 <div className="flex flex-wrap items-center justify-between gap-3 bg-gray-50 border border-gray-100 rounded px-3.5 py-2.5 mb-4 text-[11px]">
                   <span className="font-bold text-[#01172f]/70">
