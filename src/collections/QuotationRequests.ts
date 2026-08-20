@@ -19,7 +19,7 @@ export const QuotationRequests: CollectionConfig = {
     create: () => true,
     read: ({ req }) => {
       if (!req.user) return false;
-      if (req.user.role === "admin") return true;
+      if (req.user.role === "admin" || req.user.role === "marketing") return true;
       return { assignedTo: { equals: req.user.id } };
     },
     update: ({ req }) => {
