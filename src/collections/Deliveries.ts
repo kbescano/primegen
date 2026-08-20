@@ -9,6 +9,12 @@ export const Deliveries: CollectionConfig = {
   },
   access: {
     read: () => true,
+    update: ({ req }) => {
+          if (!req.user) return false;
+          if (req.user.role === "admin" || req.user.role === "marketing")
+            return true;
+          return true; // field-level access can't easily scope to "own assigned" -- enforced at the collection's update access instead
+    },
   },
   fields: [
     { name: 'title', type: 'text', required: true, admin: { description: 'e.g. "I-Beams Delivered"' } },

@@ -189,7 +189,9 @@ export const QuotationRequests: CollectionConfig = {
         { label: "Facebook", value: "facebook" },
         { label: "Google", value: "google" },
         { label: "Viber", value: "viber" },
-        { label: "Other", value: "other" },
+        { label: "Dummy", value: "dummy" },
+        { label: "Email", value: "email" },
+        { label: "Market Place", value: "marketPlace" },
       ],
     },
     {
