@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import AssignStaffSelect from "@/components/AssignStaffSelect";
 import AddUpdateNote from "@/components/AddUpdateNotes";
 
-const STATUSES = ["pending", "processing", "quote-sent", "completed"] as const;
+const STATUSES = ["pending", "processing", "quote-sent", "completed", "rejected"] as const;
 const STATUS_OPTIONS = [
   { value: "pending", label: "Pending" },
   { value: "processing", label: "Processing" },

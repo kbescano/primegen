@@ -54,6 +54,7 @@ export default function StatusSelect({ id, status }: { id: string; status: strin
       <option value="processing">Processing</option>
       <option value="quote-sent">Quote Sent</option>
       <option value="completed">Completed</option>
+      <option value="rejected">Cancelled</option>
     </select>
   )
 }
