@@ -80,10 +80,10 @@ export default function SiteHeader() {
 
             <div className="flex flex-col justify-center">
               <span
-                className="text-[14px] sm:text-[15px] md:text-[19px] font-black tracking-tight text-[#fdfffc] drop-shadow-md leading-none transition-colors duration-300 group-hover:text-[#149911]"
-              >
-                PRIMEGEN
-              </span>
+  className="font-serif text-[14px] sm:text-[15px] md:text-[19px] font-light tracking-tight text-[#fdfffc] drop-shadow-md leading-none transition-colors duration-300 group-hover:text-[#149911]"
+>
+  PRIMEGEN
+</span>
               <span className="text-[5px] sm:text-[6px] md:text-[7px] font-bold uppercase tracking-[0.22em] text-[#149911] drop-shadow-sm">
                 Trading Corporation
               </span>
