@@ -1,3 +1,4 @@
+// collections/Deliveries.ts
 import type { CollectionConfig } from 'payload'
 
 export const Deliveries: CollectionConfig = {
@@ -10,13 +11,22 @@ export const Deliveries: CollectionConfig = {
   access: {
     read: () => true,
     update: ({ req }) => {
-          if (!req.user) return false;
-          if (req.user.role === "admin" || req.user.role === "marketing")
-            return true;
-          return true; // field-level access can't easily scope to "own assigned" -- enforced at the collection's update access instead
+      if (!req.user) return false;
+      if (req.user.role === "admin" || req.user.role === "marketing") return true;
+      return true;
     },
   },
   fields: [
+    // ✨ new: import helper, sits above the fields it fills in
+    {
+      name: 'importFromFacebook',
+      type: 'ui',
+      admin: {
+        components: {
+          Field: '@/components/admin/ImportFromFacebook',
+        },
+      },
+    },
     { name: 'title', type: 'text', required: true, admin: { description: 'e.g. "I-Beams Delivered"' } },
     { name: 'location', type: 'text', admin: { description: 'e.g. "Quezon City"' } },
     { name: 'deliveryDate', type: 'date', required: true, defaultValue: () => new Date().toISOString() },
