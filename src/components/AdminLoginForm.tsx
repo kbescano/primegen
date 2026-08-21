@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-const FUN_EMAIL = 'monira@primegen.test' // temporary easter egg -- safe to delete this whole block later
+const FUN_EMAIL = 'monira@primegen.sales' // temporary easter egg -- safe to delete this whole block later
 
 export default function AdminLoginForm({ redirectTo = '/admin-dashboard' }: { redirectTo?: string }) {
   const router = useRouter()

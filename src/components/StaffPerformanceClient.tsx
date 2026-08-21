@@ -22,39 +22,47 @@ const STATUS_LABELS: Record<string, string> = {
   rejected: "Rejected",
 };
 
+const STATUS_SHORT_LABELS: Record<string, string> = {
+  pending: "Pend",
+  processing: "Proc",
+  "quote-sent": "Quote",
+  completed: "Done",
+  rejected: "Rej",
+};
+
 const STATUS_COLORS: Record<string, string> = {
-  pending: "#dc2626",
-  processing: "#d97706",
-  "quote-sent": "#2563eb",
-  completed: "#149911",
-  rejected: "#64748b",
+  pending: "#e4574c",
+  processing: "#d18b3d",
+  "quote-sent": "#3b6fd1",
+  completed: "#2f9e5c",
+  rejected: "#8b93a1",
 };
 
 function getRowBgColor(status?: string) {
   const color = STATUS_COLORS[status || ""];
   if (!color) return undefined;
-  return `${color}14`;
+  return `${color}10`;
 }
 
 function getStatusBadgeStyle(val: string) {
-  if (!val || val === "—") return "bg-gray-100 text-gray-500";
+  if (!val || val === "—") return "bg-gray-50 text-gray-400";
   const lower = val.toLowerCase();
   if (lower === "paid" || lower === "delivered" || lower === "fulfilled") {
-    return "bg-[#149911]/10 text-[#149911]";
+    return "bg-emerald-50 text-emerald-700";
   }
   if (lower === "pending" || lower === "processing" || lower === "unpaid") {
-    return "bg-amber-50 text-amber-600";
+    return "bg-amber-50 text-amber-700";
   }
-  return "bg-gray-100 text-gray-600";
+  return "bg-gray-50 text-gray-500";
 }
 
 function getSourceBadgeStyle(val: string) {
-  if (!val) return "bg-gray-100 text-gray-500";
+  if (!val) return "bg-gray-50 text-gray-400";
   const lower = val.toLowerCase();
-  if (lower.includes("facebook")) return "bg-blue-50 text-blue-600";
-  if (lower.includes("google")) return "bg-red-50 text-red-600";
-  if (lower.includes("website")) return "bg-gray-100 text-gray-600";
-  return "bg-gray-100 text-gray-600";
+  if (lower.includes("facebook")) return "bg-blue-50 text-blue-700";
+  if (lower.includes("google")) return "bg-rose-50 text-rose-700";
+  if (lower.includes("website")) return "bg-gray-50 text-gray-500";
+  return "bg-gray-50 text-gray-500";
 }
 
 type TableRow = {
@@ -87,6 +95,124 @@ type TableRow = {
   itemDesc: string;
   itemQty: string;
 };
+
+type OverviewEntry = {
+  id: string;
+  name: string;
+  total: number;
+  counts: Record<string, number>;
+  completionRate: number;
+};
+
+// Minimalist-but-colorful overview table. Structure stays plain
+// (thin borders, no shadows, tight rows) but every status column carries
+// its status color, and non-zero counts get a small colored dot so the
+// table reads at a glance without needing bars or badges everywhere.
+function OverviewTable({
+  rows,
+  nameHeader,
+  nameBadgeStyle,
+  highlightId,
+}: {
+  rows: OverviewEntry[];
+  nameHeader: string;
+  nameBadgeStyle?: (id: string) => string;
+  highlightId?: string;
+}) {
+  const ovThClass =
+    "text-[8px] font-semibold uppercase tracking-wider px-2.5 py-2 text-left border-b border-gray-100";
+  const ovTdClass =
+    "px-2.5 py-2 text-[10.5px] align-middle border-b border-gray-50";
+
+  return (
+    <table className="w-full table-fixed border-collapse text-left">
+      <thead>
+        <tr>
+          <th className={`${ovThClass} w-[26%] text-gray-400`}>{nameHeader}</th>
+          {STATUS_KEYS.map((k) => (
+            <th
+              key={k}
+              className={`${ovThClass} w-[11%] text-center`}
+              style={{ color: STATUS_COLORS[k] }}
+              title={STATUS_LABELS[k]}
+            >
+              {STATUS_SHORT_LABELS[k]}
+            </th>
+          ))}
+          <th className={`${ovThClass} w-[10%] text-center text-gray-400`}>
+            Total
+          </th>
+          <th className={`${ovThClass} w-[10%] text-center text-emerald-600`}>
+            Done %
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.length === 0 ? (
+          <tr>
+            <td
+              colSpan={8}
+              className="px-3 py-5 text-center text-gray-300 italic text-[11px]"
+            >
+              No data.
+            </td>
+          </tr>
+        ) : (
+          rows.map((r) => (
+            <tr
+              key={r.id}
+              className={r.id === highlightId ? "bg-gray-50/60" : ""}
+            >
+              <td className={`${ovTdClass} truncate`}>
+                {nameBadgeStyle ? (
+                  <span
+                    className={`inline-block max-w-full truncate px-1.5 py-0.5 rounded-full text-[9px] font-medium capitalize ${nameBadgeStyle(r.id)}`}
+                  >
+                    {r.name}
+                  </span>
+                ) : (
+                  <span
+                    className={`truncate block ${r.id === highlightId ? "font-semibold text-gray-900" : "font-medium text-gray-700"}`}
+                  >
+                    {r.name}
+                  </span>
+                )}
+              </td>
+              {STATUS_KEYS.map((k) => (
+                <td key={k} className={`${ovTdClass} text-center`}>
+                  {r.counts[k] > 0 ? (
+                    <span
+                      className="inline-flex items-center gap-1 font-medium"
+                      style={{ color: STATUS_COLORS[k] }}
+                    >
+                      <span
+                        className="w-1.5 h-1.5 rounded-full"
+                        style={{ backgroundColor: STATUS_COLORS[k] }}
+                      />
+                      {r.counts[k]}
+                    </span>
+                  ) : (
+                    <span className="text-gray-200">0</span>
+                  )}
+                </td>
+              ))}
+              <td
+                className={`${ovTdClass} text-center font-semibold text-gray-800`}
+              >
+                {r.total}
+              </td>
+              <td className={`${ovTdClass} text-center`}>
+                <span className="inline-block px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[9px] font-medium">
+                  {r.completionRate}%
+                </span>
+              </td>
+            </tr>
+          ))
+        )}
+      </tbody>
+    </table>
+  );
+}
 
 export default function StaffPerformanceClient({
   currentUserRole,
@@ -279,16 +405,17 @@ export default function StaffPerformanceClient({
         byStaff[assignedId].counts[r.status]++;
     }
 
-    const computedStaffRows = Object.entries(byStaff).map(([id, data]) => ({
-      id,
-      ...data,
-      completionRate:
-        data.total > 0
-          ? Math.round((data.counts["completed"] / data.total) * 100)
-          : 0,
-    }));
+    const computedStaffRows = Object.entries(byStaff)
+      .map(([id, data]) => ({
+        id,
+        ...data,
+        completionRate:
+          data.total > 0
+            ? Math.round((data.counts["completed"] / data.total) * 100)
+            : 0,
+      }))
+      .sort((a, b) => b.total - a.total);
 
-    // ✨ new: group filtered requests by lead source, same shape as staff grouping
     const bySource: Record<
       string,
       { name: string; counts: Record<string, number>; total: number }
@@ -426,7 +553,9 @@ export default function StaffPerformanceClient({
               status: req.status,
               poLabel: "\u2014",
               itemDesc: materialName,
-              itemQty: `x${item.quantity || 1}`,
+              // ✨ normalized to the same "qty pcs" pattern used below,
+              // was `x${item.quantity || 1}` before
+              itemQty: `${item.quantity || 1} pcs`,
             });
           }
         } else {
@@ -472,7 +601,10 @@ export default function StaffPerformanceClient({
                 supplierCompany,
                 supplierPhone,
                 itemDesc: item.description || "Unnamed item",
-                itemQty: `${item.qty || 1} ${item.unit || "pcs"}`,
+                // ✨ was `${item.qty || 1} ${item.unit || "pcs"}` -- now
+                // always shows "pcs" regardless of what unit string was
+                // saved on the order item, so it matches the pattern above
+                itemQty: `${item.qty || 1} pcs`,
               });
             }
           } else {
@@ -495,7 +627,8 @@ export default function StaffPerformanceClient({
             status: req.status,
             poLabel: "Unassigned",
             itemDesc: item.description || "Unnamed item",
-            itemQty: `${item.qty || 1} ${item.unit || "pcs"}`,
+            // ✨ same normalization
+            itemQty: `${item.qty || 1} pcs`,
           });
         }
         if (rowsForRequest.length === 0) {
@@ -544,300 +677,160 @@ export default function StaffPerformanceClient({
     currentUserRole === "admin" || currentUserRole === "marketing";
 
   const thClass =
-    "bg-[#01172f] text-white text-[9px] font-bold uppercase tracking-widest px-2.5 py-2.5 text-left border-r border-[#1a2d42] last:border-0";
+    "bg-[#01172f] text-white text-[9px] font-semibold uppercase tracking-widest px-3 py-2.5 text-left border-r border-white/10 last:border-0";
   const tdClass =
-    "px-2.5 py-3 border border-gray-200 align-top text-[10px] break-words";
+    "px-3 py-3 border border-gray-100 align-top text-[11px] break-words";
+
+  // "All Requests" (overall status) as its own dedicated table entry --
+  // a single-row table so it visually matches Staff/Lead Source, but
+  // stands apart as its own labeled section.
+  const overallRow: OverviewEntry[] = [
+    {
+      id: "__all__",
+      name: "All Requests",
+      total: overallTotal,
+      counts: overallCounts,
+      completionRate: overallCompletionRate,
+    },
+  ];
 
   return (
-    <div className="w-full max-w-[1400px] mx-auto py-6 sm:py-10 lg:px-4 sm:px-0 font-sans text-gray-800 overflow-x-hidden print:overflow-visible">
-      <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 print:hidden">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-gray-900 mb-1">
+    <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-10 font-sans text-gray-700 overflow-x-hidden print:overflow-visible">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between mb-6 print:hidden">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-gray-900 mb-1">
             Inquiry Overview
           </h1>
-          <p className="text-[13px] text-gray-500">
-            Track workload, filter statuses, and review active requests as a
-            spreadsheet.
+          <p className="text-[13px] text-gray-400 leading-relaxed">
+            Track workload, filter statuses, and review active requests.
             {unassignedCount > 0 && (
-              <span className="text-amber-600 font-medium ml-2">
-                ({unassignedCount} unassigned)
+              <span className="text-amber-600 font-medium ml-1.5">
+                {unassignedCount} unassigned
               </span>
             )}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="shrink-0">
           <CreateRFQModal products={products} />
         </div>
       </div>
 
-      <div className="flex flex-col gap-5 mb-12 print:hidden">
-        <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-6">
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 w-20 shrink-0">
+      {/* Filters -- one aligned row */}
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mb-6 pb-4 border-b border-gray-100 print:hidden">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
             Staff
           </span>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => handleStaffToggle(undefined)}
-              className={`text-[12px] font-medium px-4 py-1.5 rounded-full transition-colors ${!activeStaff ? "bg-[#01172f] text-white shadow-sm" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}
-            >
-              All Staff
-            </button>
-            {staffList.map((s: any) => (
-              <button
-                key={s.id}
-                onClick={() => handleStaffToggle(String(s.id))}
-                className={`text-[12px] font-medium px-4 py-1.5 rounded-full transition-colors ${activeStaff === String(s.id) ? "bg-[#01172f] text-white shadow-sm" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}
-              >
+          <select
+            value={activeStaff || ""}
+            onChange={(e) => handleStaffToggle(e.target.value || undefined)}
+            className="text-[12px] font-medium text-gray-700 bg-transparent border-0 border-b border-gray-200 pb-0.5 pr-5 focus:outline-none focus:border-[#149911] cursor-pointer appearance-none"
+          >
+            <option value="">All Staff</option>
+            {staffList.map((s) => (
+              <option key={s.id} value={s.id}>
                 {s.name || s.email}
-              </button>
+              </option>
             ))}
-          </div>
+          </select>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-6">
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 w-20 shrink-0">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
             Status
           </span>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => handleStatusToggle(undefined)}
-              className={`text-[12px] font-medium px-4 py-1.5 rounded-full transition-colors ${!activeStatus ? "bg-[#01172f] text-white shadow-sm" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}
-            >
-              All Statuses
-            </button>
+          <select
+            value={activeStatus || ""}
+            onChange={(e) => handleStatusToggle(e.target.value || undefined)}
+            className="text-[12px] font-medium text-gray-700 bg-transparent border-0 border-b border-gray-200 pb-0.5 pr-5 focus:outline-none focus:border-[#149911] cursor-pointer appearance-none"
+          >
+            <option value="">All Statuses</option>
             {STATUS_KEYS.map((s) => (
-              <button
-                key={s}
-                onClick={() => handleStatusToggle(s)}
-                className={`text-[12px] font-medium px-4 py-1.5 rounded-full transition-colors ${activeStatus === s ? "bg-[#01172f] text-white shadow-sm" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}
-              >
+              <option key={s} value={s}>
                 {STATUS_LABELS[s]}
-              </button>
+              </option>
             ))}
-          </div>
+          </select>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-6">
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 w-20 shrink-0">
-            Lead Source
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+            Source
           </span>
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => handleSourceToggle(undefined)}
-              className={`text-[12px] font-medium px-4 py-1.5 rounded-full transition-colors ${!activeSource ? "bg-[#01172f] text-white shadow-sm" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}
-            >
-              All Sources
-            </button>
-            {uniqueSources.map((src) => (
-              <button
-                key={src}
-                onClick={() => handleSourceToggle(src)}
-                className={`text-[12px] font-medium px-4 py-1.5 rounded-full capitalize transition-colors ${activeSource === src ? "bg-[#01172f] text-white shadow-sm" : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"}`}
-              >
-                {src.replace("-", " ")}
-              </button>
+          <select
+            value={activeSource || ""}
+            onChange={(e) => handleSourceToggle(e.target.value || undefined)}
+            className="text-[12px] font-medium text-gray-700 bg-transparent border-0 border-b border-gray-200 pb-0.5 pr-5 focus:outline-none focus:border-[#149911] cursor-pointer appearance-none capitalize"
+          >
+            <option value="">All Sources</option>
+            {uniqueSources.map((s) => (
+              <option key={s} value={s}>
+                {s.replace("-", " ")}
+              </option>
             ))}
-          </div>
+          </select>
         </div>
 
-        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-6">
-          <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 w-20 shrink-0">
-            Date
-          </span>
-          <DateGranularityFilter
-            granularity={granularity || ""}
-            periodValue={periodValue || ""}
-          />
-        </div>
+        <div className="hidden sm:block w-px h-4 bg-gray-200" />
+
+        <DateGranularityFilter
+          granularity={granularity || ""}
+          periodValue={periodValue || ""}
+        />
       </div>
 
       <div
         className={`transition-opacity duration-300 ${isPending ? "opacity-50 pointer-events-none" : "opacity-100"} print:hidden`}
       >
-        <div className="flex flex-col lg:flex-row gap-8 mb-12 items-start">
-          <div className="flex-1 w-full">
-            <h2 className="text-[12px] font-semibold tracking-widest text-gray-400 uppercase mb-5">
+        {/* Overview -- three minimalist-but-colorful tables: Overall
+            Status, Staff, Lead Source. All share the same OverviewTable
+            component so they read as one visual system. */}
+        <div className="mb-8">
+          <h2 className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-1.5">
+            Overall Status
+          </h2>
+          <div className="bg-white rounded-lg border border-gray-100 overflow-hidden">
+            <OverviewTable
+              rows={overallRow}
+              nameHeader="Scope"
+              highlightId="__all__"
+            />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <div className="min-w-0">
+            <h2 className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-1.5">
               Staff Overview
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-              {staffRows.map((s) => (
-                <div
-                  key={s.id}
-                  className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow"
-                >
-                  <div className="flex justify-between items-start mb-6">
-                    <div>
-                      <h3 className="text-lg font-semibold text-[#01172f] tracking-tight leading-tight">
-                        {s.name}
-                      </h3>
-                      <p className="text-[11px] text-gray-400 mt-1 font-medium">
-                        {s.total} Total Requests
-                      </p>
-                    </div>
-                    <span className="inline-flex items-center px-2 py-1 rounded bg-[#149911]/10 text-[#149911] text-[10px] font-bold tracking-wide">
-                      {s.completionRate}% Done
-                    </span>
-                  </div>
-
-                  <div className="flex h-1.5 w-full bg-gray-50 rounded-full overflow-hidden mb-6">
-                    {STATUS_KEYS.map((k) =>
-                      s.counts[k] > 0 ? (
-                        <div
-                          key={k}
-                          className="transition-all"
-                          style={{
-                            width: `${(s.counts[k] / s.total) * 100}%`,
-                            backgroundColor: STATUS_COLORS[k],
-                          }}
-                          title={`${STATUS_LABELS[k]}: ${s.counts[k]}`}
-                        />
-                      ) : null,
-                    )}
-                  </div>
-
-                  <div className="grid grid-cols-3 gap-y-4 gap-x-2">
-                    {STATUS_KEYS.map((k) => (
-                      <div key={k} className="flex flex-col">
-                        <span className="text-lg font-light text-gray-800 leading-none mb-1">
-                          {s.counts[k] > 0 ? (
-                            s.counts[k]
-                          ) : (
-                            <span className="text-gray-300">0</span>
-                          )}
-                        </span>
-                        <span className="text-[9px] uppercase tracking-wider text-gray-400 font-semibold leading-tight">
-                          {STATUS_LABELS[k]}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
+            <div className="bg-white rounded-lg border border-gray-100 overflow-hidden">
+              <OverviewTable rows={staffRows} nameHeader="Staff" />
             </div>
           </div>
 
-          <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0">
-            <h2 className="text-[12px] font-semibold tracking-widest text-gray-400 uppercase mb-5">
-              Overall Overview
+          <div className="min-w-0">
+            <h2 className="text-[10px] font-semibold tracking-widest text-gray-400 uppercase mb-1.5">
+              Lead Source
             </h2>
-            <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-100 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
-              <div className="flex justify-between items-start mb-6">
-                <div>
-                  <h3 className="text-lg font-semibold text-[#01172f] tracking-tight leading-tight">
-                    All Requests
-                  </h3>
-                  <p className="text-[11px] text-gray-400 mt-1 font-medium">
-                    {overallTotal} Total Requests
-                  </p>
-                </div>
-                <span className="inline-flex items-center px-2 py-1 rounded bg-[#149911]/10 text-[#149911] text-[10px] font-bold tracking-wide">
-                  {overallCompletionRate}% Done
-                </span>
-              </div>
-
-              <div className="flex h-1.5 w-full bg-gray-50 rounded-full overflow-hidden mb-6">
-                {STATUS_KEYS.map((k) =>
-                  overallCounts[k] > 0 ? (
-                    <div
-                      key={k}
-                      className="transition-all"
-                      style={{
-                        width: `${(overallCounts[k] / overallTotal) * 100}%`,
-                        backgroundColor: STATUS_COLORS[k],
-                      }}
-                      title={`${STATUS_LABELS[k]}: ${overallCounts[k]}`}
-                    />
-                  ) : null,
-                )}
-              </div>
-
-              <div className="grid grid-cols-3 gap-y-4 gap-x-2">
-                {STATUS_KEYS.map((k) => (
-                  <div key={k} className="flex flex-col">
-                    <span className="text-lg font-light text-gray-800 leading-none mb-1">
-                      {overallCounts[k] > 0 ? (
-                        overallCounts[k]
-                      ) : (
-                        <span className="text-gray-300">0</span>
-                      )}
-                    </span>
-                    <span className="text-[9px] uppercase tracking-wider text-gray-400 font-semibold leading-tight">
-                      {STATUS_LABELS[k]}
-                    </span>
-                  </div>
-                ))}
-              </div>
+            <div className="bg-white rounded-lg border border-gray-100 overflow-hidden">
+              <OverviewTable
+                rows={sourceRows}
+                nameHeader="Source"
+                nameBadgeStyle={getSourceBadgeStyle}
+              />
             </div>
           </div>
         </div>
 
-        <div className="w-full lg:w-[320px] xl:w-[360px] shrink-0">
-          <div className="mb-16">
-            <h2 className="text-[12px] font-semibold tracking-widest text-gray-400 uppercase mb-5">
-              Lead Source Overview
-            </h2>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm divide-y divide-gray-100">
-              {sourceRows.length === 0 ? (
-                <div className="px-6 py-8 text-center text-[12px] text-gray-400 italic">
-                  No lead source data for the current filters.
-                </div>
-              ) : (
-                sourceRows.map((s) => (
-                  <div
-                    key={s.id}
-                    className="flex items-center gap-4 px-5 sm:px-6 py-4"
-                  >
-                    <span
-                      className={`shrink-0 inline-flex items-center px-2 py-1 rounded text-[9px] font-bold uppercase tracking-wider capitalize ${getSourceBadgeStyle(s.id)}`}
-                    >
-                      {s.name}
-                    </span>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex h-1.5 w-full bg-gray-50 rounded-full overflow-hidden">
-                        {STATUS_KEYS.map((k) =>
-                          s.counts[k] > 0 ? (
-                            <div
-                              key={k}
-                              className="transition-all"
-                              style={{
-                                width: `${(s.counts[k] / s.total) * 100}%`,
-                                backgroundColor: STATUS_COLORS[k],
-                              }}
-                              title={`${STATUS_LABELS[k]}: ${s.counts[k]}`}
-                            />
-                          ) : null,
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="shrink-0 text-right">
-                      <div className="text-sm font-semibold text-[#01172f] leading-none">
-                        {s.total}
-                      </div>
-                      <div className="text-[9px] text-gray-400 font-medium uppercase tracking-wider mt-1">
-                        Leads
-                      </div>
-                    </div>
-
-                    <div className="shrink-0 text-right w-14">
-                      <span className="inline-flex items-center px-2 py-1 rounded bg-[#149911]/10 text-[#149911] text-[10px] font-bold tracking-wide">
-                        {s.completionRate}%
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-          <div className="px-4 py-3 sm:py-2 border-b border-gray-200 bg-gray-50 flex items-center justify-between">
-            <h2 className="text-[11px] font-semibold uppercase tracking-widest text-gray-600">
+        {/* Detailed Inquiry */}
+        <div className="bg-white border border-gray-100 rounded-xl overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between gap-2">
+            <h2 className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">
               Detailed Inquiry
             </h2>
-            <span className="text-[11px] font-medium text-gray-500">
-              {filteredRequests.length} Record
+            <span className="text-[11px] text-gray-400 shrink-0">
+              {filteredRequests.length} record
               {filteredRequests.length !== 1 ? "s" : ""}
             </span>
           </div>
@@ -845,43 +838,43 @@ export default function StaffPerformanceClient({
           {/* --- MOBILE CARD VIEW --- */}
           <div className="block xl:hidden w-full flex-col">
             {tableRows.length === 0 ? (
-              <div className="px-5 py-8 text-center text-gray-400 italic text-[11px]">
+              <div className="px-5 py-10 text-center text-gray-300 italic text-[12px]">
                 No requests found matching criteria.
               </div>
             ) : (
               tableRows.map((row, i) => (
                 <div
                   key={`${row.reqId}-${i}`}
-                  className={`flex flex-col px-4 pb-4 ${row.isFirstOfRequest ? (i === 0 ? "pt-4" : "border-t-4 border-gray-100 pt-5 mt-2") : "pt-3 mt-3 border-t border-dashed border-gray-100"}`}
+                  className={`flex flex-col px-4 pb-4 ${row.isFirstOfRequest ? (i === 0 ? "pt-4" : "border-t-4 border-gray-50 pt-5 mt-1") : "pt-3 mt-3 border-t border-dashed border-gray-100"}`}
                   style={{ backgroundColor: getRowBgColor(row.status) }}
                 >
                   {row.isFirstOfRequest && (
                     <div className="flex flex-col gap-3 mb-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <div className="font-mono font-bold text-[#01172f] text-sm leading-none">
+                      <div className="flex justify-between items-start gap-3">
+                        <div className="min-w-0">
+                          <div className="font-mono font-semibold text-gray-800 text-sm leading-none truncate">
                             {row.reqId.substring(0, 8).toUpperCase()}
                           </div>
                           {row.orderNumber && (
-                            <div className="font-mono text-[#149911] text-[11px] font-bold mt-1 tracking-tight">
-                              ORD: {row.orderNumber}
+                            <div className="font-mono text-emerald-700 text-[11px] font-medium mt-1 truncate">
+                              {row.orderNumber}
                             </div>
                           )}
-                          <div className="flex items-center gap-2 text-gray-500 text-[10px] mt-1">
-                            {row.reqDate}
+                          <div className="flex items-center gap-2 text-gray-400 text-[10px] mt-1.5">
+                            <span className="shrink-0">{row.reqDate}</span>
                             <span
-                              className={`inline-block text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getSourceBadgeStyle(row.source || "")}`}
+                              className={`inline-block shrink-0 text-[9px] font-medium capitalize px-1.5 py-0.5 rounded-full ${getSourceBadgeStyle(row.source || "")}`}
                             >
                               {row.source}
                             </span>
                           </div>
                         </div>
 
-                        <div className="flex flex-col items-end">
+                        <div className="flex flex-col items-end gap-1 shrink-0">
                           <span
-                            className="inline-block text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded"
+                            className="inline-block text-[9px] font-medium px-2 py-1 rounded-full"
                             style={{
-                              backgroundColor: `${STATUS_COLORS[row.status || ""] || "#94a3b8"}1a`,
+                              backgroundColor: `${STATUS_COLORS[row.status || ""] || "#94a3b8"}18`,
                               color:
                                 STATUS_COLORS[row.status || ""] || "#64748b",
                             }}
@@ -889,42 +882,40 @@ export default function StaffPerformanceClient({
                             {STATUS_LABELS[row.status || ""] || row.status}
                           </span>
                           {row.orderStatus && (
-                            <span className="inline-block text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 mt-1 bg-gray-100 text-gray-500 rounded">
-                              Order: {row.orderStatus.replace("_", " ")}
+                            <span className="inline-block text-[9px] font-medium px-1.5 py-0.5 bg-gray-50 text-gray-400 rounded-full">
+                              {row.orderStatus.replace("_", " ")}
                             </span>
                           )}
                         </div>
                       </div>
 
-                      <div className="bg-gray-50 p-3 rounded-lg border border-gray-100">
-                        <div className="font-bold text-[#01172f] text-[13px] leading-tight mb-1">
+                      <div className="bg-gray-50/70 p-3.5 rounded-lg">
+                        <div className="font-medium text-gray-900 text-[13px] leading-snug mb-0.5 break-words">
                           {row.customerName}
                         </div>
                         {row.company && (
-                          <div className="text-[11px] text-gray-500 leading-tight mb-1">
+                          <div className="text-[11px] text-gray-400 leading-snug mb-1 break-words">
                             {row.company}
                           </div>
                         )}
-                        <div className="text-[11px] text-gray-500 mb-2">
+                        <div className="text-[11px] text-gray-400 mb-2 break-words">
                           {row.contact || "\u2014"}
                         </div>
 
                         {row.facebookLink && (
-                          <div className="text-[11px] mb-2">
-                            <a
-                              href={row.facebookLink}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-blue-600 hover:text-blue-800 underline break-all"
-                            >
-                              View Facebook Link &rarr;
-                            </a>
-                          </div>
+                          <a
+                            href={row.facebookLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block text-[11px] text-blue-600 hover:text-blue-800 underline break-all mb-2"
+                          >
+                            View Facebook post →
+                          </a>
                         )}
 
-                        <div className="text-[11px] pt-3 mt-3 border-t border-gray-200 grid grid-cols-2 gap-3">
-                          <div>
-                            <span className="text-gray-400 block text-[9px] uppercase tracking-wider font-semibold mb-1">
+                        <div className="text-[11px] pt-3 mt-1 border-t border-gray-200 grid grid-cols-2 gap-3">
+                          <div className="min-w-0">
+                            <span className="text-gray-400 block text-[9px] uppercase tracking-wide mb-1">
                               Rep
                             </span>
                             {canAssignStaff ? (
@@ -934,66 +925,58 @@ export default function StaffPerformanceClient({
                                   handleAssignStaff(row.reqId, e.target.value)
                                 }
                                 disabled={updatingReqId === row.reqId}
-                                className={`w-[90%] bg-transparent border-b ${row.assignedStaffId ? "border-transparent text-[#01172f]" : "border-amber-300 text-amber-600"} hover:border-gray-300 focus:border-[#149911] focus:outline-none text-[11px] font-medium py-0.5 transition-colors cursor-pointer disabled:opacity-50 appearance-none`}
+                                className={`w-full bg-transparent border-b ${row.assignedStaffId ? "border-transparent text-gray-800" : "border-amber-300 text-amber-600"} hover:border-gray-300 focus:border-emerald-500 focus:outline-none text-[11px] font-medium py-0.5 transition-colors cursor-pointer disabled:opacity-50 appearance-none truncate`}
                               >
                                 <option value="" disabled>
                                   Unassigned
                                 </option>
                                 {staffList.map((s: any) => (
-                                  <option
-                                    key={s.id}
-                                    value={s.id}
-                                    className="text-[#01172f]"
-                                  >
+                                  <option key={s.id} value={s.id}>
                                     {s.name || s.email}
                                   </option>
                                 ))}
                               </select>
                             ) : (
                               <span
-                                className={
-                                  row.assignedStaff === "Unassigned"
-                                    ? "text-amber-600 font-semibold italic"
-                                    : "text-[#01172f] font-medium"
-                                }
+                                className={`block truncate ${row.assignedStaff === "Unassigned" ? "text-amber-600 font-medium italic" : "text-gray-800 font-medium"}`}
                               >
                                 {row.assignedStaff}
                               </span>
                             )}
                           </div>
-                          <div>
-                            <span className="text-gray-400 block text-[9px] uppercase tracking-wider font-semibold">
+                          <div className="min-w-0">
+                            <span className="text-gray-400 block text-[9px] uppercase tracking-wide mb-1">
                               Pay Mode
                             </span>
-                            <span className="font-medium text-[#01172f] capitalize">
+                            <span className="font-medium text-gray-800 capitalize truncate block">
                               {row.paymentMethod}
                             </span>
                           </div>
-                          <div>
-                            <span className="text-gray-400 block text-[9px] uppercase tracking-wider font-semibold mb-1">
+                          <div className="min-w-0">
+                            <span className="text-gray-400 block text-[9px] uppercase tracking-wide mb-1">
                               Pay Status
                             </span>
                             <span
-                              className={`inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getStatusBadgeStyle(row.paymentStatus || "")}`}
+                              className={`inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full ${getStatusBadgeStyle(row.paymentStatus || "")}`}
                             >
                               {row.paymentStatus}
                             </span>
                           </div>
-                          <div>
-                            <span className="text-gray-400 block text-[9px] uppercase tracking-wider font-semibold mb-1">
+                          <div className="min-w-0">
+                            <span className="text-gray-400 block text-[9px] uppercase tracking-wide mb-1">
                               Shipping
                             </span>
                             <span
-                              className={`inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getStatusBadgeStyle(row.fulfillmentStatus || "")}`}
+                              className={`inline-block text-[9px] font-medium px-1.5 py-0.5 rounded-full ${getStatusBadgeStyle(row.fulfillmentStatus || "")}`}
                             >
                               {row.fulfillmentStatus}
                             </span>
                             {row.orderId && (
                               <Link
                                 href={`/admin-dashboard/deliveries?trackOrderId=${row.orderId}`}
-                                className="block mt-1.5 text-[9px] font-bold uppercase tracking-widest text-[#149911] hover:text-[#103900] transition-colors text-left focus:outline-none"
+                                className="block mt-1.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-700 hover:text-emerald-900 transition-colors"
                               >
-                                Track Route &rarr;
+                                Track route →
                               </Link>
                             )}
                           </div>
@@ -1002,31 +985,33 @@ export default function StaffPerformanceClient({
                     </div>
                   )}
 
-                  <div className="flex flex-col gap-2 pl-3 border-l-[3px] border-[#149911]/30">
+                  <div className="flex flex-col gap-1.5 pl-3 border-l-2 border-emerald-100">
                     <div className="flex justify-between items-start gap-3">
-                      <div className="text-[12px] font-medium text-gray-800 leading-snug">
+                      <div className="text-[12px] font-medium text-gray-700 leading-snug break-words min-w-0">
                         {row.itemDesc}
                       </div>
-                      <div className="font-mono text-[#01172f] font-bold text-[11px] bg-gray-100 px-1.5 py-0.5 rounded shrink-0">
+                      <div className="font-mono text-gray-700 font-medium text-[11px] bg-gray-50 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap">
                         {row.itemQty}
                       </div>
                     </div>
 
-                    <div className="text-[10px]">
-                      <span className="text-gray-400 mr-1">PO:</span>
+                    <div className="text-[10px] flex flex-wrap items-center gap-x-1.5">
+                      <span className="text-gray-400">PO:</span>
                       {row.poHref ? (
                         <Link
                           href={row.poHref}
-                          className="font-mono font-bold text-[#01172f] hover:text-[#149911] transition-colors"
+                          className="font-mono font-medium text-gray-700 hover:text-emerald-700 transition-colors break-all"
                         >
                           {row.poLabel}
                         </Link>
                       ) : (
-                        <span className="text-gray-500">{row.poLabel}</span>
+                        <span className="text-gray-400 break-all">
+                          {row.poLabel}
+                        </span>
                       )}
                       {row.poStatus && (
                         <span
-                          className={`ml-1.5 text-[9px] font-bold uppercase tracking-wider ${row.poStatus === "fulfilled" ? "text-[#149911]" : "text-amber-600"}`}
+                          className={`text-[9px] font-medium ${row.poStatus === "fulfilled" ? "text-emerald-700" : "text-amber-600"}`}
                         >
                           ({row.poStatus})
                         </span>
@@ -1034,11 +1019,17 @@ export default function StaffPerformanceClient({
                     </div>
 
                     {(row.supplierCompany || row.supplierPhone) && (
-                      <div className="text-[9px] text-gray-500 flex gap-2">
+                      <div className="text-[9px] text-gray-400 flex flex-wrap gap-x-2 gap-y-0.5">
                         {row.supplierCompany && (
-                          <span>{row.supplierCompany}</span>
+                          <span className="break-words">
+                            {row.supplierCompany}
+                          </span>
                         )}
-                        {row.supplierPhone && <span>{row.supplierPhone}</span>}
+                        {row.supplierPhone && (
+                          <span className="break-words">
+                            {row.supplierPhone}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -1048,32 +1039,32 @@ export default function StaffPerformanceClient({
           </div>
 
           {/* --- DESKTOP SPREADSHEET VIEW --- */}
-          <div className="hidden xl:block w-full overflow-hidden">
-            <table className="w-full table-fixed border-collapse text-left break-words">
+          <div className="hidden xl:block w-full">
+            <table className="w-full table-fixed border-collapse text-left">
               <thead>
                 <tr>
-                  <th className={`${thClass} w-[6%]`}>ID & Date</th>
-                  <th className={`${thClass} w-[6%]`}>Order</th>
+                  <th className={`${thClass} w-[6%]`}>ID &amp; Date</th>
+                  <th className={`${thClass} w-[5%]`}>Order</th>
                   <th className={`${thClass} w-[9%]`}>Client</th>
-                  <th className={`${thClass} w-[6%]`}>Contact</th>
-                  <th className={`${thClass} w-[6%]`}>FB Link</th>
-                  <th className={`${thClass} w-[10%]`}>Rep</th>
-                  <th className={`${thClass} w-[7%]`}>Inquiry Status</th>
+                  <th className={`${thClass} w-[7%]`}>Contact</th>
+                  <th className={`${thClass} w-[4%]`}>FB</th>
+                  <th className={`${thClass} w-[8%]`}>Rep</th>
+                  <th className={`${thClass} w-[6%]`}>Status</th>
                   <th className={`${thClass} w-[5%]`}>Pay Mode</th>
                   <th className={`${thClass} w-[6%]`}>Pay Status</th>
                   <th className={`${thClass} w-[6%]`}>Shipping</th>
-                  <th className={`${thClass} w-[10%]`}>PO / Supplier</th>
+                  <th className={`${thClass} w-[8%]`}>PO/Supplier</th>
                   <th className={`${thClass} w-[10%]`}>Item</th>
-                  <th className={`${thClass} w-[4%]`}>Qty</th>
+                  <th className={`${thClass} w-[5%]`}>Qty</th>
                   <th className={`${thClass} w-[15%]`}>Latest Update</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 bg-white">
+              <tbody className="divide-y divide-gray-100">
                 {tableRows.length === 0 ? (
                   <tr>
                     <td
                       colSpan={14}
-                      className="px-5 py-8 text-center text-gray-400 italic text-[11px]"
+                      className="px-5 py-10 text-center text-gray-300 italic text-[11px]"
                     >
                       No requests found matching criteria.
                     </td>
@@ -1084,23 +1075,23 @@ export default function StaffPerformanceClient({
                     return (
                       <tr
                         key={`${row.reqId}-${i}`}
-                        className="hover:brightness-95 transition-[filter]"
+                        className="hover:brightness-[0.98] transition-[filter]"
                         style={{ backgroundColor: rowBg }}
                       >
                         {row.isFirstOfRequest && (
                           <>
                             <td className={tdClass} rowSpan={row.rowSpan}>
                               <div
-                                className="font-mono font-bold text-[#01172f] mb-1.5"
+                                className="font-mono font-semibold text-gray-800 mb-1"
                                 title="Inquiry ID"
                               >
-                                REQ: {row.reqId.substring(0, 8).toUpperCase()}
+                                {row.reqId.substring(0, 8).toUpperCase()}
                               </div>
-                              <div className="text-gray-500 mb-1.5">
+                              <div className="text-gray-400 mb-1">
                                 {row.reqDate}
                               </div>
                               <span
-                                className={`inline-block text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getSourceBadgeStyle(row.source || "")}`}
+                                className={`inline-block text-[8px] font-medium capitalize px-1.5 py-0.5 rounded-full ${getSourceBadgeStyle(row.source || "")}`}
                               >
                                 {row.source}
                               </span>
@@ -1110,37 +1101,37 @@ export default function StaffPerformanceClient({
                               {row.orderNumber ? (
                                 <>
                                   <div
-                                    className="font-mono font-bold text-[#149911] text-[10px] mb-1"
+                                    className="font-mono font-medium text-emerald-700 text-[9px] mb-1 break-all"
                                     title="Order Number"
                                   >
                                     {row.orderNumber}
                                   </div>
                                   {row.orderStatus && (
-                                    <span className="inline-block text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">
+                                    <span className="inline-block text-[8px] font-medium px-1.5 py-0.5 bg-gray-50 text-gray-400 rounded-full">
                                       {row.orderStatus.replace("_", " ")}
                                     </span>
                                   )}
                                 </>
                               ) : (
-                                <span className="text-[10px] text-gray-400 italic">
+                                <span className="text-[9px] text-gray-300 italic">
                                   —
                                 </span>
                               )}
                             </td>
 
                             <td className={tdClass} rowSpan={row.rowSpan}>
-                              <div className="font-bold text-[#01172f] leading-tight">
+                              <div className="font-medium text-gray-800 leading-tight">
                                 {row.customerName}
                               </div>
                               {row.company && (
-                                <div className="text-[9px] text-gray-500 mt-1 leading-tight">
+                                <div className="text-[9px] text-gray-400 mt-0.5 leading-tight">
                                   {row.company}
                                 </div>
                               )}
                             </td>
 
                             <td
-                              className={`${tdClass} text-gray-500`}
+                              className={`${tdClass} text-gray-400`}
                               rowSpan={row.rowSpan}
                             >
                               {row.contact || "\u2014"}
@@ -1152,12 +1143,12 @@ export default function StaffPerformanceClient({
                                   href={row.facebookLink}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="text-blue-600 hover:text-blue-800 underline break-all"
+                                  className="text-blue-600 hover:text-blue-800 underline"
                                 >
-                                  View
+                                  Link
                                 </a>
                               ) : (
-                                <span className="text-gray-300 italic">—</span>
+                                <span className="text-gray-200 italic">—</span>
                               )}
                             </td>
 
@@ -1169,28 +1160,20 @@ export default function StaffPerformanceClient({
                                     handleAssignStaff(row.reqId, e.target.value)
                                   }
                                   disabled={updatingReqId === row.reqId}
-                                  className={`w-[95%] bg-transparent border-b ${row.assignedStaffId ? "border-transparent text-[#01172f]" : "border-amber-300 text-amber-600"} hover:border-gray-300 focus:border-[#149911] focus:outline-none text-[10px] font-medium py-1 transition-colors cursor-pointer disabled:opacity-50 appearance-none`}
+                                  className={`w-full bg-transparent border-b ${row.assignedStaffId ? "border-transparent text-gray-800" : "border-amber-300 text-amber-600"} hover:border-gray-300 focus:border-emerald-500 focus:outline-none text-[9px] font-medium py-1 transition-colors cursor-pointer disabled:opacity-50 appearance-none truncate`}
                                 >
                                   <option value="" disabled>
                                     Unassigned
                                   </option>
                                   {staffList.map((s: any) => (
-                                    <option
-                                      key={s.id}
-                                      value={s.id}
-                                      className="text-[#01172f]"
-                                    >
+                                    <option key={s.id} value={s.id}>
                                       {s.name || s.email}
                                     </option>
                                   ))}
                                 </select>
                               ) : (
                                 <span
-                                  className={
-                                    row.assignedStaff === "Unassigned"
-                                      ? "text-amber-600 font-semibold italic"
-                                      : "text-[#01172f] font-medium"
-                                  }
+                                  className={`block truncate ${row.assignedStaff === "Unassigned" ? "text-amber-600 font-medium italic" : "text-gray-800 font-medium"}`}
                                 >
                                   {row.assignedStaff}
                                 </span>
@@ -1199,9 +1182,9 @@ export default function StaffPerformanceClient({
 
                             <td className={tdClass} rowSpan={row.rowSpan}>
                               <span
-                                className="inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
+                                className="inline-block text-[8px] font-medium px-1.5 py-0.5 rounded-full"
                                 style={{
-                                  backgroundColor: `${STATUS_COLORS[row.status || ""] || "#94a3b8"}1a`,
+                                  backgroundColor: `${STATUS_COLORS[row.status || ""] || "#94a3b8"}18`,
                                   color:
                                     STATUS_COLORS[row.status || ""] ||
                                     "#64748b",
@@ -1212,7 +1195,7 @@ export default function StaffPerformanceClient({
                             </td>
 
                             <td
-                              className={`${tdClass} font-medium text-[#01172f] capitalize`}
+                              className={`${tdClass} font-medium text-gray-700 capitalize`}
                               rowSpan={row.rowSpan}
                             >
                               {row.paymentMethod}
@@ -1220,7 +1203,7 @@ export default function StaffPerformanceClient({
 
                             <td className={tdClass} rowSpan={row.rowSpan}>
                               <span
-                                className={`inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getStatusBadgeStyle(row.paymentStatus || "")}`}
+                                className={`inline-block text-[8px] font-medium px-1.5 py-0.5 rounded-full ${getStatusBadgeStyle(row.paymentStatus || "")}`}
                               >
                                 {row.paymentStatus}
                               </span>
@@ -1228,16 +1211,16 @@ export default function StaffPerformanceClient({
 
                             <td className={tdClass} rowSpan={row.rowSpan}>
                               <span
-                                className={`inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${getStatusBadgeStyle(row.fulfillmentStatus || "")}`}
+                                className={`inline-block text-[8px] font-medium px-1.5 py-0.5 rounded-full ${getStatusBadgeStyle(row.fulfillmentStatus || "")}`}
                               >
                                 {row.fulfillmentStatus}
                               </span>
                               {row.orderId && (
                                 <Link
                                   href={`/admin-dashboard/deliveries?trackOrderId=${row.orderId}`}
-                                  className="block mt-2 text-[9px] font-bold uppercase tracking-widest text-[#149911] hover:text-[#103900] transition-colors text-left focus:outline-none"
+                                  className="block mt-1 text-[8px] font-semibold uppercase tracking-wide text-emerald-700 hover:text-emerald-900 transition-colors"
                                 >
-                                  Track Route &rarr;
+                                  Track route →
                                 </Link>
                               )}
                             </td>
@@ -1248,24 +1231,24 @@ export default function StaffPerformanceClient({
                           {row.poHref ? (
                             <Link
                               href={row.poHref}
-                              className="font-mono font-bold text-[#01172f] hover:text-[#149911] transition-colors block leading-tight"
+                              className="font-mono font-medium text-gray-700 hover:text-emerald-700 transition-colors block leading-tight break-words"
                             >
                               {row.poLabel}
                             </Link>
                           ) : (
-                            <span className="text-gray-400 block leading-tight">
+                            <span className="text-gray-400 block leading-tight break-words">
                               {row.poLabel}
                             </span>
                           )}
                           {row.poStatus && (
                             <span
-                              className={`inline-block mt-1 text-[8px] font-bold uppercase tracking-wider ${row.poStatus === "fulfilled" ? "text-[#149911]" : "text-amber-600"}`}
+                              className={`inline-block mt-1 text-[8px] font-medium ${row.poStatus === "fulfilled" ? "text-emerald-700" : "text-amber-600"}`}
                             >
                               {row.poStatus}
                             </span>
                           )}
                           {(row.supplierCompany || row.supplierPhone) && (
-                            <div className="mt-2 text-[9px] text-gray-500 font-normal leading-tight space-y-0.5">
+                            <div className="mt-1.5 text-[8px] text-gray-400 font-normal leading-tight space-y-0.5 break-words">
                               {row.supplierCompany && (
                                 <div>{row.supplierCompany}</div>
                               )}
@@ -1276,8 +1259,12 @@ export default function StaffPerformanceClient({
                           )}
                         </td>
 
-                        <td className={tdClass}>{row.itemDesc}</td>
-                        <td className={`${tdClass} font-mono text-gray-500`}>
+                        <td className={`${tdClass} break-words`}>
+                          {row.itemDesc}
+                        </td>
+                        <td
+                          className={`${tdClass} font-mono text-gray-400 whitespace-nowrap`}
+                        >
                           {row.itemQty}
                         </td>
 
@@ -1290,12 +1277,12 @@ export default function StaffPerformanceClient({
                                   (n: any, idx: number) => (
                                     <li
                                       key={idx}
-                                      className="flex items-start gap-1.5 text-[11px] text-gray-700 leading-snug"
+                                      className="flex items-start gap-1 text-[9.5px] text-gray-600 leading-snug break-words"
                                     >
-                                      <span className="text-[#149911] flex-shrink-0">
+                                      <span className="text-emerald-600 shrink-0">
                                         &bull;
                                       </span>
-                                      <span>{n.note}</span>
+                                      <span className="min-w-0">{n.note}</span>
                                     </li>
                                   ),
                                 )}

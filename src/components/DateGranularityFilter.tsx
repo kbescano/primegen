@@ -3,7 +3,7 @@
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
 
 function getMonday(d: Date): Date {
-  const day = d.getDay() // 0=Sun ... 6=Sat
+  const day = d.getDay()
   const diff = day === 0 ? -6 : 1 - day
   const monday = new Date(d)
   monday.setDate(d.getDate() + diff)
@@ -64,7 +64,7 @@ export default function DateGranularityFilter({
     const params = new URLSearchParams(searchParams.toString())
     params.set('granularity', newGranularity)
     params.set('periodValue', newValue)
-    params.delete('page') // reset to page 1 on filter change
+    params.delete('page')
     router.push(`${pathname}?${params.toString()}`)
   }
 
@@ -83,8 +83,6 @@ export default function DateGranularityFilter({
   const defaultMonth = monthOptions[0]?.value || ''
   const defaultYear = yearOptions[0]?.value || ''
 
-  // Missing/empty granularity defaults to "this month" -- not "all time".
-  // Unchanged: adding "day" below does not touch this default.
   const effectiveGranularity = granularity || 'month'
   const isAllTime = effectiveGranularity === 'all'
   const isMonth = effectiveGranularity === 'month'
@@ -92,102 +90,74 @@ export default function DateGranularityFilter({
   const isYear = effectiveGranularity === 'year'
   const isDay = effectiveGranularity === 'day'
 
+  // ✨ Same visual language as Staff/Status/Source: flat text, thin
+  // underline, no box/border/background. Active state is just a colored
+  // underline + darker text, not a filled pill.
   const selectClass = (active: boolean) =>
-    `text-[12px] font-bold uppercase tracking-wide px-3 py-2 border bg-white cursor-pointer transition-colors ${
-      active ? 'border-[#149911] text-[#01172f]' : 'border-[#01172f]/15 text-[#01172f]/50'
+    `text-[12px] font-medium bg-transparent border-0 border-b pb-0.5 pr-5 focus:outline-none cursor-pointer appearance-none transition-colors ${
+      active ? 'border-[#149911] text-gray-900' : 'border-gray-200 text-gray-500'
     }`
 
   return (
-    <div className="flex flex-wrap gap-3 items-end">
-      <div>
-        <label className="block text-[9px] font-bold uppercase tracking-[0.15em] text-[#01172f]/35 mb-1">
-          &nbsp;
-        </label>
-        <button
-          type="button"
-          onClick={navigateAllTime}
-          className={`text-[12px] font-bold uppercase tracking-wide px-3 py-2 border transition-colors ${
-            isAllTime ? 'bg-[#01172f] border-[#01172f] text-white' : 'bg-white border-[#01172f]/15 text-[#01172f]/50 hover:border-[#01172f]/40'
-          }`}
-        >
-          All Time
-        </button>
-      </div>
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+      <button
+        type="button"
+        onClick={navigateAllTime}
+        className={`text-[12px] font-medium bg-transparent border-0 border-b pb-0.5 transition-colors ${
+          isAllTime ? 'border-[#149911] text-gray-900' : 'border-transparent text-gray-400 hover:text-gray-600'
+        }`}
+      >
+        All Time
+      </button>
 
-      <div>
-        <label className="block text-[9px] font-bold uppercase tracking-[0.15em] text-[#01172f]/35 mb-1">
-          Day
-        </label>
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Day</span>
         <input
           type="date"
-          // Same pattern as Week below -- sits empty on the placeholder
-          // until a specific day is explicitly picked, rather than
-          // silently defaulting to "today" in the background.
           value={isDay ? (periodValue || '') : ''}
           onChange={(e) => e.target.value && navigate('day', e.target.value)}
           className={selectClass(isDay)}
         />
       </div>
 
-      <div>
-        <label className="block text-[9px] font-bold uppercase tracking-[0.15em] text-[#01172f]/35 mb-1">
-          Month
-        </label>
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Month</span>
         <select
           value={isMonth ? (periodValue || defaultMonth) : defaultMonth}
           onChange={(e) => e.target.value && navigate('month', e.target.value)}
           className={selectClass(isMonth)}
         >
-          <option value="" disabled>
-            Select month...
-          </option>
+          <option value="" disabled>Select month...</option>
           {monthOptions.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
+            <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
       </div>
 
-      <div>
-        <label className="block text-[9px] font-bold uppercase tracking-[0.15em] text-[#01172f]/35 mb-1">
-          Week 
-        </label>
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Week</span>
         <select
-          // No default selection -- sits on the placeholder until the
-          // person explicitly picks a week, rather than silently defaulting
-          // to "this week" in the background.
           value={isWeek ? periodValue : ''}
           onChange={(e) => e.target.value && navigate('week', e.target.value)}
           className={selectClass(isWeek)}
         >
-          <option value="" disabled>
-            Select week...
-          </option>
+          <option value="" disabled>Select week...</option>
           {weekOptions.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
+            <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
       </div>
 
-      <div>
-        <label className="block text-[9px] font-bold uppercase tracking-[0.15em] text-[#01172f]/35 mb-1">
-          Year
-        </label>
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400">Year</span>
         <select
           value={isYear ? periodValue : defaultYear}
           onChange={(e) => e.target.value && navigate('year', e.target.value)}
           className={selectClass(isYear)}
         >
-          <option value="" disabled>
-            Select year...
-          </option>
+          <option value="" disabled>Select year...</option>
           {yearOptions.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
+            <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
       </div>
