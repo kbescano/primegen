@@ -36,6 +36,75 @@ export const SupplierPurchaseOrders: CollectionConfig = {
         return data
       },
     ],
+    afterChange: [
+      // ✨ NEW: "Assign/Change supplier" -- admin only. Fires when a PO is
+      // first created (= a supplier is being assigned) or when an
+      // existing PO's supplierName changes.
+      async ({ doc, previousDoc, operation, req }) => {
+        try {
+          const isNewAssignment = operation === 'create'
+          const supplierChanged =
+            operation === 'update' &&
+            doc.supplierName &&
+            doc.supplierName !== previousDoc?.supplierName
+
+          if ((isNewAssignment || supplierChanged) && doc.sourceOrderId) {
+            const verb = isNewAssignment ? 'assigned' : 'changed'
+            await req.payload.create({
+              collection: 'notifications' as any,
+              data: {
+                message: `Supplier ${verb} for PO ${doc.poNumber || ''}: ${doc.supplierName || 'Unnamed supplier'}.`,
+                link: `/admin-dashboard/orders?id=${doc.sourceOrderId}`,
+                audienceRoles: ['admin'],
+                read: false,
+              },
+            })
+          }
+        } catch (err) {
+          console.error('Failed to notify of supplier assignment:', err)
+        }
+        return doc
+      },
+      // ✨ NEW: "Order fulfilled" -- admin only. Fires once, exactly when
+      // the LAST linked PO for an order flips to "fulfilled" (i.e. every
+      // PO belonging to this order is now fulfilled).
+      async ({ doc, previousDoc, operation, req }) => {
+        if (
+          operation === 'update' &&
+          doc.status === 'fulfilled' &&
+          previousDoc?.status !== 'fulfilled' &&
+          doc.sourceOrderId
+        ) {
+          try {
+            const siblingPOs = await req.payload.find({
+              collection: 'supplier-purchase-orders',
+              where: { sourceOrderId: { equals: doc.sourceOrderId } },
+              limit: 100,
+            })
+            const allFulfilled = siblingPOs.docs.every((po: any) => po.status === 'fulfilled')
+
+            if (allFulfilled) {
+              const order: any = await req.payload.findByID({
+                collection: 'orders',
+                id: doc.sourceOrderId,
+              })
+              await req.payload.create({
+                collection: 'notifications' as any,
+                data: {
+                  message: `Order ${order?.orderNumber || ''} (${order?.customerName || 'a customer'}) is fully fulfilled -- all supplier POs complete.`,
+                  link: `/admin-dashboard/orders?id=${doc.sourceOrderId}`,
+                  audienceRoles: ['admin'],
+                  read: false,
+                },
+              })
+            }
+          } catch (err) {
+            console.error('Failed to notify of order fulfillment:', err)
+          }
+        }
+        return doc
+      },
+    ],
   },
   fields: [
     { name: 'poNumber', type: 'text', unique: true, admin: { description: 'Auto-generated on create (SPO-YYYY-####). Editable to override.' } },
@@ -55,7 +124,6 @@ export const SupplierPurchaseOrders: CollectionConfig = {
       label: 'Line Items',
       fields: [
         { name: 'description', type: 'text', required: true },
-        // NEW FIELD ADDED HERE
         { name: 'sizeDescription', type: 'text', label: 'Size / Specs (Optional)' },
         { name: 'qty', type: 'number', required: true, defaultValue: 1 },
         { name: 'unit', type: 'text', defaultValue: 'pcs', label: 'Unit' },

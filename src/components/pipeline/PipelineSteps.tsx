@@ -502,38 +502,13 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
 
     const existing = (type === 'clientPaymentReceipts' ? localOrder.clientPaymentReceipts : localOrder.supplierPaymentReceipts) || [];
 
-    await handleUpdateOrderField({
+   await handleUpdateOrderField({
       [type]: [...existing, newReceipt],
     });
 
-    try {
-      const adminRes = await fetch('/api/users?limit=100', { credentials: 'include' });
-      if (adminRes.ok) {
-        const adminData = await adminRes.json();
-        const admins = (adminData.docs || []).filter((u: any) =>
-          u.role === 'admin' || (Array.isArray(u.roles) && u.roles.includes('admin'))
-        );
-        const label = type === 'clientPaymentReceipts' ? "Client's payment receipt" : "Supplier's payment receipt";
-        await Promise.all(admins.map((admin: any) =>
-          fetch('/api/notifications', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({
-              recipient: admin.id,
-              message: `${label} uploaded for Order ${localOrder.orderNumber || localOrder.customerName}.`,
-              link: `/admin-dashboard/orders`,
-              read: false
-            })
-          })
-        ));
-      }
-    } catch (e) {
-      console.error("Failed to notify admins:", e);
-    }
-
     setUploading(false);
     e.target.value = '';
+
   }
 
   function handleRemoveReceipt(type: 'clientPaymentReceipts' | 'supplierPaymentReceipts', index: number) {

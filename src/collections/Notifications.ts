@@ -1,24 +1,69 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, Where } from 'payload'
 
 export const Notifications: CollectionConfig = {
   slug: 'notifications',
   admin: {
     useAsTitle: 'message',
     group: 'Leads',
-    hidden: true, // internal-only, no admin UI section needed
+    // hidden: true,
   },
   access: {
     read: ({ req }) => {
       if (!req.user) return false
-      if (req.user.role === 'admin' || req.user.role === 'marketing') return true
-      return { recipient: { equals: req.user.id } }
+      const role = req.user.role
+
+      if (role === 'admin' || role === 'marketing') {
+        const clause: Where = {
+          or: [
+            { recipient: { equals: req.user.id } },
+            {
+              and: [
+                { recipient: { exists: false } },
+                { audienceRoles: { exists: false } },
+              ],
+            },
+            {
+              and: [
+                { recipient: { exists: false } },
+                { audienceRoles: { contains: role } },
+              ],
+            },
+          ],
+        }
+        return clause
+      }
+
+      const clause: Where = { recipient: { equals: req.user.id } }
+      return clause
     },
-    create: ({ req }) => Boolean(req.user), // created by hooks/server logic
+    create: ({ req }) => Boolean(req.user),
     update: ({ req }) => {
       if (!req.user) return false
-      if (req.user.role === 'admin' || req.user.role === 'marketing') return true
-      // Staff can only mark their own notifications read
-      return { recipient: { equals: req.user.id } }
+      const role = req.user.role
+
+      if (role === 'admin' || role === 'marketing') {
+        const clause: Where = {
+          or: [
+            { recipient: { equals: req.user.id } },
+            {
+              and: [
+                { recipient: { exists: false } },
+                { audienceRoles: { exists: false } },
+              ],
+            },
+            {
+              and: [
+                { recipient: { exists: false } },
+                { audienceRoles: { contains: role } },
+              ],
+            },
+          ],
+        }
+        return clause
+      }
+
+      const clause: Where = { recipient: { equals: req.user.id } }
+      return clause
     },
     delete: ({ req }) => Boolean(req.user && req.user.role === 'admin'),
   },
@@ -30,7 +75,20 @@ export const Notifications: CollectionConfig = {
       required: false,
       admin: {
         description:
-          'Leave empty for admin-broadcast notifications (e.g. status changes, new RFQs). Any admin can already read every notification regardless of recipient, so broadcast events only need ONE document -- not one per admin. Set a specific user only for notifications meant for a single person (assignment, approval result, etc).',
+          'Set only for notifications meant for one specific person (assignment, approval result, delivery status for the assigned rep, etc). Leave empty for role-broadcast notifications and use audienceRoles instead.',
+      },
+    },
+    {
+      name: 'audienceRoles',
+      type: 'select',
+      hasMany: true,
+      options: [
+        { label: 'Admin', value: 'admin' },
+        { label: 'Marketing', value: 'marketing' },
+      ],
+      admin: {
+        description:
+          'Only used for broadcast notifications (no specific recipient). Leave empty to broadcast to BOTH Admin and Marketing (legacy default). Set to restrict a broadcast to just one role.',
       },
     },
     { name: 'message', type: 'text', required: true },

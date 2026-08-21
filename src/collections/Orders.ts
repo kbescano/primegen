@@ -1,14 +1,11 @@
 import type { CollectionConfig, Field } from "payload";
 
-// Shared subfield shape for a single uploaded receipt. Used by both
-// clientPaymentReceipts and supplierPaymentReceipts below so the two
-// arrays stay in sync if the shape ever needs to change.
 const receiptItemFields: Field[] = [
   {
     name: "fileData",
     type: "textarea",
     required: true,
-    maxLength: 10000000, // Bypasses the 40,000 default limit for base64 image/PDF data.
+    maxLength: 10000000,
     admin: { description: "Base64-encoded image or PDF data." },
   },
   { name: "fileName", type: "text" },
@@ -60,19 +57,20 @@ export const Orders: CollectionConfig = {
       },
     ],
     afterChange: [
-      // Order created == "order confirmed" (this is the moment
-      // handleConfirmOrder() in the pipeline generates the orders doc).
-      // Notify admin + marketing with a direct link into the delivery
-      // route tracker, same URL shape as the "Track Route" link on the
-      // Inquiry Overview page: /admin-dashboard/deliveries?trackOrderId=.
+      // ✨ MODIFIED: "Order Confirmed" -- link changed from the deliveries
+      // route tracker to the order itself, matching the new spec. The
+      // deliveries link now belongs solely to the separate
+      // "target delivery date set" event below. Admin and Marketing both
+      // get this, same message and link.
       async ({ doc, operation, req }) => {
         if (operation !== "create") return doc;
         try {
           await req.payload.create({
             collection: "notifications" as any,
             data: {
-              message: `Order ${doc.orderNumber || ""} confirmed for ${doc.customerName || "a customer"} -- plan the delivery route.`,
-              link: `/admin-dashboard/deliveries?trackOrderId=${doc.id}`,
+              message: `Order ${doc.orderNumber || ""} confirmed for ${doc.customerName || "a customer"}.`,
+              link: `/admin-dashboard/orders?id=${doc.id}`,
+              audienceRoles: ["admin", "marketing"],
               read: false,
             },
           });
@@ -81,11 +79,190 @@ export const Orders: CollectionConfig = {
         }
         return doc;
       },
+      // ✨ NEW: "Target delivery date has been set". Admin and Marketing
+      // get different links per spec -- Admin gets the plain deliveries
+      // list, Marketing gets a direct trackOrderId link -- so these have
+      // to be two separate notification docs rather than one shared one.
       async ({ doc, previousDoc, operation, req }) => {
         if (
           operation === "update" &&
+          doc.targetDeliveryDate &&
+          doc.targetDeliveryDate !== previousDoc?.targetDeliveryDate
+        ) {
+          try {
+            await req.payload.create({
+              collection: "notifications" as any,
+              data: {
+                message: `Target delivery date set for Order ${doc.orderNumber || ""} (${doc.customerName || "a customer"}).`,
+                link: `/admin-dashboard/deliveries`,
+                audienceRoles: ["admin"],
+                read: false,
+              },
+            });
+            await req.payload.create({
+              collection: "notifications" as any,
+              data: {
+                message: `Target delivery date set for Order ${doc.orderNumber || ""} (${doc.customerName || "a customer"}).`,
+                link: `/admin-dashboard/deliveries?trackOrderId=${doc.id}`,
+                audienceRoles: ["marketing"],
+                read: false,
+              },
+            });
+          } catch (err) {
+            console.error("Failed to notify of target delivery date set:", err);
+          }
+        }
+        return doc;
+      },
+      // ✨ NEW: Payment status set to Partial or Paid -- admin only.
+      async ({ doc, previousDoc, operation, req }) => {
+        if (
+          operation === "update" &&
+          (doc.paymentStatus === "partial" || doc.paymentStatus === "paid") &&
+          doc.paymentStatus !== previousDoc?.paymentStatus
+        ) {
+          try {
+            await req.payload.create({
+              collection: "notifications" as any,
+              data: {
+                message: `Order ${doc.orderNumber || ""} payment status set to "${doc.paymentStatus}".`,
+                link: `/admin-dashboard/orders?id=${doc.id}`,
+                audienceRoles: ["admin"],
+                read: false,
+              },
+            });
+          } catch (err) {
+            console.error("Failed to notify of payment status change:", err);
+          }
+        }
+        return doc;
+      },
+      // ✨ NEW: Mode of Payment set -- admin only.
+      async ({ doc, previousDoc, operation, req }) => {
+        if (
+          operation === "update" &&
+          doc.paymentMethod &&
+          doc.paymentMethod !== previousDoc?.paymentMethod
+        ) {
+          try {
+            await req.payload.create({
+              collection: "notifications" as any,
+              data: {
+                message: `Mode of payment set to "${doc.paymentMethod}" for Order ${doc.orderNumber || ""}.`,
+                link: `/admin-dashboard/orders?id=${doc.id}`,
+                audienceRoles: ["admin"],
+                read: false,
+              },
+            });
+          } catch (err) {
+            console.error("Failed to notify of payment method set:", err);
+          }
+        }
+        return doc;
+      },
+      // ✨ NEW: Receipt uploaded (client or supplier) -- admin only.
+      // NOTE: see the flagged conflict below regarding
+      // PipelineSteps.tsx's handleReceiptUpload, which ALSO fires its own
+      // client-side notification fan-out for this same event.
+      async ({ doc, previousDoc, operation, req }) => {
+        if (operation !== "update") return doc;
+        try {
+          const prevClientCount = (previousDoc?.clientPaymentReceipts || []).length;
+          const currClientCount = (doc.clientPaymentReceipts || []).length;
+          const prevSupplierCount = (previousDoc?.supplierPaymentReceipts || []).length;
+          const currSupplierCount = (doc.supplierPaymentReceipts || []).length;
+
+          if (currClientCount > prevClientCount) {
+            await req.payload.create({
+              collection: "notifications" as any,
+              data: {
+                message: `Client payment receipt uploaded for Order ${doc.orderNumber || ""}.`,
+                link: `/admin-dashboard/orders?id=${doc.id}`,
+                audienceRoles: ["admin"],
+                read: false,
+              },
+            });
+          }
+          if (currSupplierCount > prevSupplierCount) {
+            await req.payload.create({
+              collection: "notifications" as any,
+              data: {
+                message: `Supplier payment receipt uploaded for Order ${doc.orderNumber || ""}.`,
+                link: `/admin-dashboard/orders?id=${doc.id}`,
+                audienceRoles: ["admin"],
+                read: false,
+              },
+            });
+          }
+        } catch (err) {
+          console.error("Failed to notify of receipt upload:", err);
+        }
+        return doc;
+      },
+      // ✨ NEW: Delivery status Shipped / Delivered -- specific assigned
+      // staff + admin. Marketing excluded per spec.
+      async ({ doc, previousDoc, operation, req }) => {
+        if (
+          operation === "update" &&
+          (doc.fulfillmentStatus === "shipped" || doc.fulfillmentStatus === "delivered") &&
+          doc.fulfillmentStatus !== previousDoc?.fulfillmentStatus
+        ) {
+          try {
+            const statusLabel = doc.fulfillmentStatus;
+
+            await req.payload.create({
+              collection: "notifications" as any,
+              data: {
+                message: `Order ${doc.orderNumber || ""} (${doc.customerName || "a customer"}) has been ${statusLabel}.`,
+                link: `/admin-dashboard/deliveries`,
+                audienceRoles: ["admin"],
+                read: false,
+              },
+            });
+
+            if (doc.sourceQuotationId) {
+              const quotation: any = await req.payload.findByID({
+                collection: "client-quotations",
+                id: doc.sourceQuotationId,
+              });
+              if (quotation?.sourceRequestId) {
+                const rfqId = isNaN(Number(quotation.sourceRequestId))
+                  ? quotation.sourceRequestId
+                  : Number(quotation.sourceRequestId);
+                const rfq: any = await req.payload.findByID({
+                  collection: "quotation-requests",
+                  id: rfqId,
+                });
+                const staffId =
+                  rfq?.assignedTo && typeof rfq.assignedTo === "object"
+                    ? rfq.assignedTo.id
+                    : rfq?.assignedTo;
+                if (staffId) {
+                  const recipientId = isNaN(Number(staffId)) ? staffId : Number(staffId);
+                  await req.payload.create({
+                    collection: "notifications" as any,
+                    data: {
+                      recipient: recipientId,
+                      message: `Order ${doc.orderNumber || ""} (${doc.customerName || "a customer"}) has been ${statusLabel}.`,
+                      link: `/admin-dashboard/deliveries?trackOrderId=${doc.id}`,
+                      read: false,
+                    },
+                  });
+                }
+              }
+            }
+          } catch (err) {
+            console.error("Failed to notify of delivery status change:", err);
+          }
+        }
+        return doc;
+      },
+              async ({ doc, previousDoc, operation, req }) => {
+        if (
+          operation === "update" &&
           doc.paymentStatus === "paid" &&
-          previousDoc?.paymentStatus !== "paid" &&
+          doc.fulfillmentStatus === "delivered" &&
+          (previousDoc?.paymentStatus !== "paid" || previousDoc?.fulfillmentStatus !== "delivered") &&
           doc.sourceQuotationId
         ) {
           try {
@@ -94,10 +271,17 @@ export const Orders: CollectionConfig = {
               id: doc.sourceQuotationId,
             });
             if (quotation?.sourceRequestId) {
+              // ✨ context flag tells QuotationRequests.ts's generic status
+              // broadcast to skip -- this completion is system-triggered
+              // (cascading from payment+delivery), not a manual status
+              // change by a person, so the "Someone changed..." message is
+              // both misleading and redundant with the delivery
+              // notification that already fired above.
               await req.payload.update({
                 collection: "quotation-requests",
                 id: quotation.sourceRequestId,
                 data: { status: "completed" },
+                context: { skipStatusBroadcast: true },
               });
             }
           } catch {
@@ -106,7 +290,6 @@ export const Orders: CollectionConfig = {
         }
         return doc;
       },
-      // Notify staff when admin approves (liquidates) their OPEX
       async ({ doc, previousDoc, operation, req }) => {
         if (operation === "update" && Array.isArray(doc.opex)) {
           const newlyLiquidated = doc.opex.filter((currExp: any) => {
@@ -139,10 +322,6 @@ export const Orders: CollectionConfig = {
                     : rfq.assignedTo;
 
                 if (staffId) {
-                  // notifications.recipient is a relationship field -- it
-                  // needs the user's ID directly, not their email. Writing
-                  // an email string here silently breaks the notification,
-                  // same bug already fixed once in QuotationRequests.ts.
                   const recipientId = isNaN(Number(staffId))
                     ? staffId
                     : Number(staffId);
@@ -167,9 +346,6 @@ export const Orders: CollectionConfig = {
         }
         return doc;
       },
-      // Notify admins when NEW OPEX is submitted needing their approval --
-      // replaces the "pending OPEX" signal the old synthetic admin feed
-      // used to surface, now as a real persisted notification.
       async ({ doc, previousDoc, operation, req }) => {
         if (operation === "update" && Array.isArray(doc.opex)) {
           const newlyPending = doc.opex.filter((currExp: any) => {
@@ -177,18 +353,11 @@ export const Orders: CollectionConfig = {
             const prevExp = (previousDoc?.opex || []).find(
               (p: any) => String(p.id) === String(currExp.id),
             );
-            // Either brand new (no prevExp at all) or just reverted back to pending
             return !prevExp || prevExp.status !== "pending";
           });
 
           if (newlyPending.length > 0) {
             try {
-              // Broadcast: one notification per newly-pending expense, not
-              // one per admin per expense. Any admin can already read
-              // every notification regardless of `recipient`, so the old
-              // per-admin loop was creating duplicate documents for every
-              // admin account -- visible as literal duplicate rows in the
-              // bell for anyone who could see more than one admin's copy.
               for (const exp of newlyPending) {
                 await req.payload.create({
                   collection: "notifications" as any,

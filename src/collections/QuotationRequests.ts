@@ -90,15 +90,22 @@ export const QuotationRequests: CollectionConfig = {
         }
         return doc;
       },
-      async ({ doc, previousDoc, operation, req }) => {
+            async ({ doc, previousDoc, operation, req }) => {
+        // ✨ Skip the broadcast when this status change came from an
+        // internal system cascade (e.g. Orders.ts auto-completing the RFQ
+        // once payment + delivery are both confirmed) rather than a
+        // person manually changing status. The delivery notification
+        // already covers that event with a proper message -- this generic
+        // hook would otherwise show a misleading "Someone changed..."
+        // line for something no one actually clicked.
+        if (req.context?.skipStatusBroadcast) return doc;
+
         if (
           operation === "update" &&
           previousDoc &&
           doc.status !== previousDoc.status
         ) {
           try {
-            // Broadcast: same fix as the "new RFQ" hook above -- one
-            // notification, not one per admin.
             const changedBy = req.user?.name || req.user?.email || "Someone";
             await req.payload.create({
               collection: "notifications" as any,

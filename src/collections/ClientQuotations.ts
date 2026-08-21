@@ -43,6 +43,45 @@ export const ClientQuotations: CollectionConfig = {
       },
     ],
     afterChange: [
+      // "Send approval quotation" -- fires whether the quotation was
+      // already a saved draft flipping to pending_approval (update), OR
+      // sent for approval on its very first save with no draft step in
+      // between (create -- clicking "Send for Approval" always saves
+      // regardless of whether a draft existed first). Admin gets a link to
+      // the Pending Approval list view (shows everything awaiting action,
+      // not just this one); Marketing gets the same event, no link.
+      async ({ doc, previousDoc, operation, req }) => {
+        const isNewlyPendingApproval =
+          (operation === "create" && doc.status === "pending_approval") ||
+          (operation === "update" &&
+            doc.status === "pending_approval" &&
+            previousDoc?.status !== "pending_approval");
+
+        if (isNewlyPendingApproval) {
+          try {
+            await req.payload.create({
+              collection: "notifications" as any,
+              data: {
+                message: `Quotation ${doc.quotationNumber || ""} for ${doc.customerName || "a customer"} is ready for approval.`,
+                link: `/admin-dashboard/client-quotation?status=pending_approval`,
+                audienceRoles: ["admin"],
+                read: false,
+              },
+            });
+            await req.payload.create({
+              collection: "notifications" as any,
+              data: {
+                message: `Quotation ${doc.quotationNumber || ""} for ${doc.customerName || "a customer"} was sent for approval.`,
+                audienceRoles: ["marketing"],
+                read: false,
+              },
+            });
+          } catch (err) {
+            console.error("Failed to notify of quotation sent for approval:", err);
+          }
+        }
+        return doc;
+      },
       // Trigger when status changes TO 'quotation_approved': notify whichever
       // staff member is assigned to the originating quotation-request. Links to
       // this ClientQuotationPage (not the pipeline) so a click lands directly on
@@ -143,18 +182,20 @@ export const ClientQuotations: CollectionConfig = {
         return doc;
       },
       async ({ doc, previousDoc, operation, req }) => {
+        // Skip statuses that already have their own dedicated notification
+        // above (pending_approval, quotation_approved) or trigger the
+        // Order-created notification (order_confirmed, handled in
+        // Orders.ts) -- otherwise this generic hook fires a redundant
+        // "Someone changed status from X to Y" broadcast right alongside
+        // the specific one, doubling up the bell for the same event.
+        const DEDICATED_STATUSES = ["pending_approval", "quotation_approved", "order_confirmed"];
         if (
           operation === "update" &&
           previousDoc &&
-          doc.status !== previousDoc.status
+          doc.status !== previousDoc.status &&
+          !DEDICATED_STATUSES.includes(doc.status)
         ) {
           try {
-            // Broadcast: one notification, not one per admin. Any admin
-            // (and now marketing) can already read every notification
-            // regardless of `recipient` -- see Notifications.ts access
-            // rules -- so looping over admins.docs here was creating one
-            // duplicate document per admin account, which showed up as
-            // literal duplicate rows in the bell.
             const changedBy = req.user?.name || req.user?.email || "Someone";
             await req.payload.create({
               collection: "notifications" as any,
