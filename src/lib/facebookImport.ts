@@ -92,12 +92,12 @@ for (const [i, url] of photoUrls.entries()) {
 
   const doc = await payload.create({
     collection: 'media',
-    data: { alt: `${post.message?.split('\n')[0]?.slice(0, 80) || 'Delivery photo'} ${i + 1}` },
+    data: {   alt: `${normalizeUnicodeBold(post.message?.split('\n')[0] || '').trim().slice(0, 80) || 'Delivery photo'} ${i + 1}`, },
     file: {
       data: buffer,
       mimetype: contentType,
       name: `fb-${postId}-${i + 1}.${ext}`,
-      size: buffer.length,
+      size: buffer.length,  
     },
     overrideAccess: true,
   })

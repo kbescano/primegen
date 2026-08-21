@@ -4,7 +4,11 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 type Product = { id: string; name: string; unit: string };
-type LineItem = { materialId: string; quantity: number; sizeDescription?: string };
+type LineItem = {
+  materialId: string;
+  quantity: number;
+  sizeDescription?: string;
+};
 type ClientOption = {
   id: string | number;
   name: string;
@@ -28,7 +32,9 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
   );
 
   const [isOpen, setIsOpen] = useState(false);
-  const [view, setView] = useState<"idle" | "picker" | "form" | "submitting" | "done">("idle");
+  const [view, setView] = useState<
+    "idle" | "picker" | "form" | "submitting" | "done"
+  >("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
   const [clients, setClients] = useState<ClientOption[]>([]);
@@ -123,7 +129,9 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
   }
 
   function handleFormChange(
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
+    >,
   ) {
     setFormData({ ...formData, [e.target.name]: e.target.value });
     setErrorMsg("");
@@ -153,7 +161,9 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
               // Coerce back to a number when the material ID is numeric, since
               // <select> option values always arrive as strings but the
               // `products` collection uses Payload's default numeric ID.
-              material: isNaN(Number(i.materialId)) ? i.materialId : Number(i.materialId),
+              material: isNaN(Number(i.materialId))
+                ? i.materialId
+                : Number(i.materialId),
               quantity: Number(i.quantity) || 1,
               sizeDescription: i.sizeDescription || "",
             })),
@@ -179,7 +189,15 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
         onClick={openModal}
         className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#01172f] text-white rounded-lg text-[11px] font-bold uppercase tracking-widest hover:bg-[#149911] transition-colors shadow-md hover:shadow-lg"
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="square"
+        >
           <path d="M12 5v14M5 12h14" />
         </svg>
         Create new Inquiry
@@ -187,15 +205,21 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
 
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-[#01172f]/40 backdrop-blur-sm transition-opacity">
-
           <div className="bg-white w-full max-w-[680px] max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl relative custom-scrollbar flex flex-col">
-
             <button
               onClick={closeModal}
               className="absolute top-5 right-5 w-8 h-8 flex items-center justify-center bg-gray-100 hover:bg-gray-200 text-gray-500 rounded-full transition-colors z-10"
               aria-label="Close Modal"
             >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="square"
+              >
                 <path d="M18 6L6 18M6 6l12 12" />
               </svg>
             </button>
@@ -207,7 +231,8 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
                     Use an Existing Client?
                   </h2>
                   <p className="text-[13px] text-gray-500">
-                    Select a client to auto-fill this inquiry, or start with a blank form.
+                    Select a client to auto-fill this inquiry, or start with a
+                    blank form.
                   </p>
                 </div>
 
@@ -280,7 +305,8 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
                       New Inquiry Details
                     </h2>
                     <p className="text-[13px] text-gray-500">
-                      Manually encode a new Request for Quotation into the system. All fields are required.
+                      Manually encode a new Request for Quotation into the
+                      system. All fields are required.
                     </p>
                   </div>
                 </div>
@@ -295,7 +321,9 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div>
-                      <label className={labelClass} htmlFor="customerName">Full Name</label>
+                      <label className={labelClass} htmlFor="customerName">
+                        Full Name
+                      </label>
                       <input
                         id="customerName"
                         name="customerName"
@@ -307,7 +335,9 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
                       />
                     </div>
                     <div>
-                      <label className={labelClass} htmlFor="phone">Phone Number</label>
+                      <label className={labelClass} htmlFor="phone">
+                        Phone Number
+                      </label>
                       <input
                         id="phone"
                         name="phone"
@@ -322,7 +352,9 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div>
-                      <label className={labelClass} htmlFor="email">Email</label>
+                      <label className={labelClass} htmlFor="email">
+                        Email
+                      </label>
                       <input
                         id="email"
                         name="email"
@@ -334,7 +366,9 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
                       />
                     </div>
                     <div>
-                      <label className={labelClass} htmlFor="projectType">Project Type</label>
+                      <label className={labelClass} htmlFor="projectType">
+                        Project Type
+                      </label>
                       <select
                         id="projectType"
                         name="projectType"
@@ -353,7 +387,9 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
 
                   <div className="grid grid-cols-1 gap-6">
                     <div>
-                      <label className={labelClass} htmlFor="source">Lead Source *</label>
+                      <label className={labelClass} htmlFor="source">
+                        Lead Source *
+                      </label>
                       <select
                         id="source"
                         name="source"
@@ -366,11 +402,14 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
                         <option value="google">Google</option>
                         <option value="viber">Viber</option>
                         <option value="marketPlace">Market Place</option>
+                        <option value="dummy">Dummy</option>
                         <option value="email">Email</option>
                       </select>
                     </div>
 
-                    {formData.source === "facebook" && (
+                    {(formData.source === "facebook" ||
+                      formData.source === "marketPlace" ||
+                      formData.source === "dummy") && (
                       <div>
                         <label className={labelClass} htmlFor="facebookLink">
                           Facebook Profile / Post Link
@@ -405,7 +444,15 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
                           />
                           <div className="w-full h-full border-2 border-[#01172f] rounded-sm bg-white peer-checked:bg-[#01172f] transition-colors flex items-center justify-center">
                             {isProductsTBC && (
-                              <svg className="w-3.5 h-3.5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <svg
+                                className="w-3.5 h-3.5 text-white"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="3"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                              >
                                 <polyline points="20 6 9 17 4 12" />
                               </svg>
                             )}
@@ -426,15 +473,25 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
                     ) : (
                       <div className="flex flex-col gap-5">
                         {items.map((item, index) => {
-                          const selected = products.find((m) => String(m.id) === String(item.materialId)) ?? products[0];
+                          const selected =
+                            products.find(
+                              (m) => String(m.id) === String(item.materialId),
+                            ) ?? products[0];
 
                           return (
-                            <div key={index} className="flex flex-col gap-3 w-full">
+                            <div
+                              key={index}
+                              className="flex flex-col gap-3 w-full"
+                            >
                               <div className="flex flex-col sm:flex-row gap-3 items-center w-full">
                                 <div className="w-full sm:w-[55%] relative">
                                   <select
                                     value={item.materialId}
-                                    onChange={(e) => updateItem(index, { materialId: e.target.value })}
+                                    onChange={(e) =>
+                                      updateItem(index, {
+                                        materialId: e.target.value,
+                                      })
+                                    }
                                     className="w-full px-4 py-3.5 bg-white border border-gray-200 text-[14px] text-[#01172f] focus:outline-none focus:border-[#149911] transition-colors duration-300 rounded-lg shadow-sm appearance-none pr-9 bg-[url('data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2301172f%22 stroke-width=%222%22><path d=%22M6 9l6 6 6-6%22/></svg>')] bg-no-repeat bg-[right_14px_center]"
                                   >
                                     {products.map((m) => (
@@ -452,7 +509,11 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
                                       min={1}
                                       required
                                       value={item.quantity}
-                                      onChange={(e) => updateItem(index, { quantity: Number(e.target.value) })}
+                                      onChange={(e) =>
+                                        updateItem(index, {
+                                          quantity: Number(e.target.value),
+                                        })
+                                      }
                                       className="w-full text-center text-[14px] text-[#01172f] focus:outline-none bg-transparent"
                                       aria-label="Quantity"
                                     />
@@ -468,7 +529,15 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
                                     disabled={items.length === 1}
                                     className="w-10 h-10 flex items-center justify-center flex-shrink-0 text-gray-400 hover:text-red-500 disabled:opacity-0 disabled:pointer-events-none transition-colors"
                                   >
-                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="square">
+                                    <svg
+                                      width="18"
+                                      height="18"
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      stroke="currentColor"
+                                      strokeWidth="2.5"
+                                      strokeLinecap="square"
+                                    >
                                       <path d="M18 6L6 18M6 6l12 12" />
                                     </svg>
                                   </button>
@@ -481,7 +550,9 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
                                   placeholder="Size / Specs (optional) e.g., 20mm, 6m length"
                                   value={item.sizeDescription || ""}
                                   onChange={(e) =>
-                                    updateItem(index, { sizeDescription: e.target.value })
+                                    updateItem(index, {
+                                      sizeDescription: e.target.value,
+                                    })
                                   }
                                   className={`${fieldClass} h-[44px] py-0 text-[13px]`}
                                 />
@@ -523,7 +594,9 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
                   >
                     <span className="absolute inset-0 bg-[#149911] transform scale-x-0 origin-left transition-transform duration-500 ease-[cubic-bezier(0.87,0,0.13,1)] group-hover:scale-x-100" />
                     <span className="relative z-10 text-[13px] text-[#149911] font-bold uppercase tracking-[0.2em] transition-colors duration-300 group-hover:text-[#fdfffc]">
-                      {view === "submitting" ? "Submitting..." : "Submit Inquiry"}
+                      {view === "submitting"
+                        ? "Submitting..."
+                        : "Submit Inquiry"}
                     </span>
                   </button>
 

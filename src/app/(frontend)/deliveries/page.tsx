@@ -1,13 +1,28 @@
 import { getPayloadClient } from '@/lib/getPayloadClient'
-import SectionHeader from '@/components/SectionHeader'
 import ScrollReveal from '@/components/ScrollReveal'
 import Image from 'next/image'
+import type { Metadata } from 'next'
 
 export const dynamic = 'force-dynamic'
 
-export const metadata = {
-  title: 'Deliveries | Primegen',
-  description: 'Recent deliveries completed by Primegen Trading Corporation across the Philippines.',
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams: Promise<{ location?: string }>
+}): Promise<Metadata> {
+  const { location } = await searchParams
+
+  if (location) {
+    return {
+      title: `Deliveries in ${location} | Primegen`,
+      description: `Real steel and construction material deliveries completed by Primegen Trading Corporation in ${location}. See photos and proof of every delivery.`,
+    }
+  }
+
+  return {
+    title: 'Deliveries | Primegen',
+    description: 'Recent deliveries completed by Primegen Trading Corporation across the Philippines.',
+  }
 }
 
 const STAGGER_STEP = 60
