@@ -8,7 +8,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'Primegen Trading Corporation | Steel & Construction products Supplier',
+    default: 'Primegen Trading Corporation | Steel & Construction Materials Supplier',
     template: '%s | Primegen Trading Corporation',
   },
   description:
@@ -18,12 +18,17 @@ export const metadata: Metadata = {
     locale: 'en_PH',
     url: siteUrl,
     siteName: 'Primegen Trading Corporation',
-    title: 'Primegen Trading Corporation | Steel & Construction products Supplier',
+    // ✨ was "Steel & Construction products Supplier" (lowercase, wrong
+    // word) -- now matches twitter.title and the default page title above
+    title: 'Primegen Trading Corporation | Steel & Construction Products Supplier',
     description:
       'Construction products trading -- cement, steel, aggregates, and more. Serving contractors and builders across Cavite and the Philippines.',
     images: [
       {
-        url: '/branding/primegen-logo.png',
+        // ✨ was '/branding/primegen-logo.png' (hyphen) -- standardized to
+        // the underscore filename, which is the one confirmed to actually
+        // exist (it's the file rendering in your live site header)
+        url: '/branding/primegen_trading_logo.png',
         width: 1200,
         height: 630,
         alt: 'Primegen Trading Corporation',
@@ -32,10 +37,10 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Primegen Trading Corporation | Steel & Construction Materials Supplier',
+    title: 'Primegen Trading Corporation | Steel & Construction Products Supplier',
     description:
       'Construction products trading -- cement, steel, aggregates, and more. Serving contractors and builders across Cavite and the Philippines.',
-    images: ['/branding/primegen-logo.png'],
+    images: ['/branding/primegen_trading_logo.png'],
   },
 }
 

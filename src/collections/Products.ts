@@ -1,5 +1,17 @@
 import type { CollectionConfig } from 'payload'
 
+// Turns "Base Plate" into "base-plate". Strips anything that isn't a
+// letter/number/space/hyphen first, so names with special characters
+// (e.g. "G.I. Pipe") still produce a clean slug.
+function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+}
+
 export const Products: CollectionConfig = {
   slug: 'products',
   admin: {
@@ -10,8 +22,55 @@ export const Products: CollectionConfig = {
   access: {
     read: () => true,
   },
+  hooks: {
+    beforeChange: [
+      async ({ data, operation, req, originalDoc }) => {
+        // Only auto-generate once, on create, or if the slug field is
+        // ever cleared out manually -- otherwise leave an existing slug
+        // alone so editing a product's name later doesn't silently break
+        // every link/bookmark/indexed search result pointing at the old
+        // slug.
+        if ((operation === 'create' || !data.slug) && data.name) {
+          const base = slugify(data.name)
+          let candidate = base
+          let suffix = 2
+
+          // Guard against duplicate slugs (e.g. two products both named
+          // "Anchor Bolts" in different categories) by appending -2, -3,
+          // etc. until unique.
+          while (true) {
+            const existing = await req.payload.find({
+              collection: 'products',
+              where: {
+                and: [
+                  { slug: { equals: candidate } },
+                  ...(originalDoc?.id ? [{ id: { not_equals: originalDoc.id } }] : []),
+                ],
+              },
+              limit: 1,
+            })
+            if (existing.docs.length === 0) break
+            candidate = `${base}-${suffix}`
+            suffix++
+          }
+
+          data.slug = candidate
+        }
+        return data
+      },
+    ],
+  },
   fields: [
     { name: 'name', type: 'text', required: true },
+    {
+      name: 'slug',
+      type: 'text',
+      unique: true,
+      admin: {
+        description:
+          'Auto-generated from the product name (e.g. "Base Plate" -> "base-plate"). Used in the public product URL. Editable, but changing it will change the URL.',
+      },
+    },
     { name: 'photo', type: 'upload', relationTo: 'media', required: false },
     {
       name: 'category',

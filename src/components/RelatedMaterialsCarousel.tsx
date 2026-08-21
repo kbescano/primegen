@@ -3,6 +3,7 @@ import Image from 'next/image'
 
 type Material = {
   id: string | number
+  slug?: string
   name: string
   photo?: { url?: string; alt?: string }
 }
@@ -15,7 +16,7 @@ export default function RelatedMaterialsGrid({ products }: { products: Material[
       {products.map((m) => (
         <Link
           key={m.id}
-          href={`/products/${m.id}`}
+          href={`/products/${m.slug || m.id}`}
           className="group flex flex-col cursor-pointer outline-none"
         >
           <div className="relative w-full aspect-[4/3] bg-[#f8f9f7] overflow-hidden">
@@ -36,7 +37,7 @@ export default function RelatedMaterialsGrid({ products }: { products: Material[
           </div>
 
           <div className="flex items-center justify-between mt-4 md:mt-5 gap-2">
-            <h3 className="text-[14px] md:text-[15px] font-medium tracking-tight text-[#01172f] leading-snug transition-colors duration-300 group-hover:text-[#3D5F3B]">
+            <h3 className="text-[14px] md:text-[15px] font-medium tracking-tight text-[#fff] leading-snug transition-colors duration-300 group-hover:text-[#3D5F3B]">
               {m.name}
             </h3>
             <span className="flex-shrink-0 flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.15em] text-[#01172f] opacity-100 translate-x-0 md:opacity-0 md:-translate-x-1 transition-all duration-300 group-hover:opacity-100 group-hover:translate-x-0 group-hover:text-[#3D5F3B]">

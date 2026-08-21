@@ -239,7 +239,7 @@ export default function ProductsCatalog({
                       {product.name}
                     </h3>
                     
-                    <Link href={`/products/${product.id}`} className="mt-auto pt-3 md:pt-4 inline-flex items-center gap-2 text-[12px] md:text-[13px] font-medium text-[#2dd4bf] hover:text-[#5eead4] transition-colors">
+                    <Link href={`/products/${product.slug || product.id}`} className="mt-auto pt-3 md:pt-4 inline-flex items-center gap-2 text-[12px] md:text-[13px] font-medium text-[#2dd4bf] hover:text-[#5eead4] transition-colors">
                       View product
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="transition-transform group-hover:translate-x-1">
                         <path d="M5 12h14M12 5l7 7-7 7"/>

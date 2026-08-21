@@ -1,14 +1,21 @@
 import type { CollectionConfig } from 'payload'
 
+// Shared check: only admin or marketing roles may access this collection
+// at all. Used identically across every operation below.
+const isAdminOrMarketing = ({ req }: { req: { user?: { role?: string } | null } }) =>
+  Boolean(req.user && (req.user.role === 'admin' || req.user.role === 'marketing'))
+
 export const Categories: CollectionConfig = {
   slug: 'categories',
   admin: {
     useAsTitle: 'label',
     defaultColumns: ['label', 'slug', 'order'],
-    hidden: ({ user }) => user?.role === 'marketing',
   },
   access: {
-    read: () => true,
+    create: isAdminOrMarketing,
+    read: isAdminOrMarketing,
+    update: isAdminOrMarketing,
+    delete: isAdminOrMarketing,
   },
   fields: [
     { name: 'label', type: 'text', required: true },

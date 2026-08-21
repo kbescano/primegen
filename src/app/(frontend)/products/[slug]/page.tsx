@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Image from 'next/image'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import WeightCalculatorForm, { type CalcProduct } from '@/components/WeightCalculatorForm'
 import RelatedMaterialsGrid from '@/components/RelatedMaterialsCarousel'
@@ -9,12 +9,41 @@ import TypewriterEffect from '@/components/TypewriterReveal'
 
 export const revalidate = 60
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
-  const { id } = await params
+// Looks up a product by slug first (the normal path going forward). If
+// that finds nothing AND the param is purely numeric, falls back to an
+// ID lookup -- this is what keeps old /products/65-style links (already
+// indexed by Google or shared with clients before this change) working
+// instead of 404ing.
+async function findProductBySlugOrId(payload: any, slugOrId: string) {
+  const bySlug = await payload.find({
+    collection: 'products',
+    where: { slug: { equals: slugOrId } },
+    limit: 1,
+    depth: 2,
+  })
+  if (bySlug.docs.length > 0) {
+    return { doc: bySlug.docs[0], matchedBy: 'slug' as const }
+  }
+
+  if (/^\d+$/.test(slugOrId)) {
+    try {
+      const byId = await payload.findByID({ collection: 'products', id: slugOrId, depth: 2 })
+      if (byId) return { doc: byId, matchedBy: 'id' as const }
+    } catch {
+      // fall through to notFound()
+    }
+  }
+
+  return null
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params
   try {
     const payload = await getPayloadClient()
-    const material: any = await payload.findByID({ collection: 'products', id, depth: 1 })
-    if (!material) return { title: 'Product Not Found' }
+    const result = await findProductBySlugOrId(payload, slug)
+    if (!result) return { title: 'Product Not Found' }
+    const material = result.doc
 
     const categoryName = material.categoryRef?.label || material.category || ''
     const title = categoryName ? `${material.name} -- ${categoryName}` : material.name
@@ -59,17 +88,23 @@ const APPLICABLE_PRODUCTS: CalcProduct[] = [
   { id: 'stainless-sheet', name: 'Stainless Sheet', shape: 'sheet-plate', density: 7930, standardLength: 1 },
 ]
 
-export default async function MaterialDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
+export default async function MaterialDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params
   const payload = await getPayloadClient()
 
-  let material: any
-  try {
-    material = await payload.findByID({ collection: 'products', id, depth: 2 })
-  } catch {
-    notFound()
+  const result = await findProductBySlugOrId(payload, slug)
+  if (!result) notFound()
+  const { doc: material, matchedBy } = result
+
+  // ✨ The redirect: if someone landed here via the OLD numeric-ID URL
+  // (e.g. someone clicked a Google result or old bookmark at /products/65),
+  // 301-redirect to the canonical slug URL. This transfers SEO value to
+  // the new URL instead of leaving two indexable URLs for the same
+  // product, and keeps old links from silently working forever as
+  // duplicate content.
+  if (matchedBy === 'id' && material.slug) {
+    redirect(`/products/${material.slug}`)
   }
-  if (!material) notFound()
 
   const categoryLabel = material.categoryRef?.label || material.category || 'Products'
   const categoryId = typeof material.categoryRef === 'object' ? material.categoryRef?.id : material.categoryRef
@@ -94,8 +129,32 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
 
   const images = [material.photo, material.hoverPhoto].filter((p: any) => p?.url)
 
+  const productJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: material.name,
+    description:
+      material.description ||
+      `${material.name} available from Primegen Trading Corporation.`,
+    image: images.map((img: any) => img.url),
+    brand: {
+      '@type': 'Brand',
+      name: 'Primegen Trading Corporation',
+    },
+    category: categoryLabel,
+    availability: material.inStock
+      ? 'https://schema.org/InStock'
+      : 'https://schema.org/OutOfStock',
+    url: `${process.env.NEXT_PUBLIC_SERVER_URL || ''}/products/${material.slug || material.id}`,
+  }
+
   return (
     <section className="py-24 md:py-32 bg-[#05100d] min-h-screen selection:bg-[#149911]/30 selection:text-white relative overflow-hidden">
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
 
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[700px] bg-[#149911]/[0.08] blur-[140px] rounded-full pointer-events-none" />
 
