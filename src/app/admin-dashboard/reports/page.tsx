@@ -66,27 +66,6 @@ function docReceivable(o: any): number {
     return gross - paid
 }
 
-const PLACEHOLDER_REVIEWS = { rating: 5.0, count: 9, isPlaceholder: true }
-
-async function fetchGoogleReviews(): Promise<{ rating: number; count: number; isPlaceholder?: boolean } | null> {
-  const key = process.env.GOOGLE_PLACES_API_KEY
-  const placeId = process.env.GOOGLE_PLACE_ID
-  if (!key || !placeId) return PLACEHOLDER_REVIEWS
-  try {
-    const res = await fetch(
-      `https://maps.googleapis.com/maps/api/place/details/json?place_id=${placeId}&fields=rating,user_ratings_total&key=${key}`,
-      { next: { revalidate: 3600 } } 
-    )
-    if (!res.ok) return null
-    const data = await res.json()
-    const rating = data?.result?.rating
-    const count = data?.result?.user_ratings_total
-    if (typeof rating !== 'number' || typeof count !== 'number') return null
-    return { rating, count }
-  } catch {
-    return null
-  }
-}
 
 const QUOTATION_STATUS_LABELS: Record<string, string> = {
   draft: 'Draft',
@@ -205,11 +184,10 @@ export default async function ReportsPage({
 
   const payload = await getPayloadClient()
 
-  const [requestsRes, quotationsRes, ordersRes, googleReviews] = await Promise.all([
+  const [requestsRes, quotationsRes, ordersRes] = await Promise.all([
     payload.find({ collection: 'quotation-requests', limit: 1000, depth: 0, sort: '-createdAt' }),
     payload.find({ collection: 'client-quotations', limit: 1000, depth: 0, sort: '-createdAt' }),
     payload.find({ collection: 'orders', limit: 1000, depth: 0, sort: '-createdAt' }),
-    fetchGoogleReviews(),
   ])
 
   // Filtering Logic
@@ -463,33 +441,6 @@ export default async function ReportsPage({
         </div>
 
       </div>
-
-      {/* Google Reviews */}
-      {googleReviews && (
-        <div className="bg-white border border-gray-100 rounded-3xl p-5 sm:p-6 md:p-8 mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm w-full overflow-hidden">
-          <div className="w-full min-w-0">
-            <p className="text-[11px] sm:text-[12px] font-semibold uppercase tracking-wider text-gray-400 mb-2 truncate">
-              Google Reviews
-            </p>
-            <div className="flex items-baseline gap-3">
-              <p className="text-[32px] md:text-[40px] font-semibold tracking-tight leading-none text-gray-900">
-                {googleReviews.rating.toFixed(1)}
-              </p>
-              <p className="text-[18px] sm:text-[20px] text-[#149911] tracking-[0.1em] shrink-0">
-                {'★'.repeat(Math.round(googleReviews.rating))}
-              </p>
-            </div>
-            <p className="text-[12px] sm:text-[13px] text-gray-500 font-medium mt-2 truncate">
-              from {googleReviews.count.toLocaleString()} review{googleReviews.count === 1 ? '' : 's'} on Google
-            </p>
-          </div>
-          <p className="text-[12px] sm:text-[13px] text-gray-400 font-medium w-full md:max-w-[280px] leading-relaxed">
-            {googleReviews.isPlaceholder
-              ? 'Placeholder values -- edit PLACEHOLDER_REVIEWS in this page\u2019s code, or configure the Google Places API for live data.'
-              : 'Live from your Google Business Profile. Google\u2019s API provides the average and count only -- not the star-by-star breakdown.'}
-          </p>
-        </div>
-      )}
 
       {/* Conversion funnel */}
       <div className="flex flex-wrap gap-3 sm:gap-4 mb-8 w-full">
