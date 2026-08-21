@@ -4,7 +4,7 @@ import CinematicVideoHero, {
 } from "@/components/CinematicVideoHero";
 import FeaturedCarousel from "@/components/FeaturedCarousel";
 import ScrollReveal from "@/components/ScrollReveal";
-import CustomerStories from "@/components/CustomerStories"; 
+import CustomerStoriesServer from "@/components/CustomerStoriesServer"; 
 import PainPointsResponse from "@/components/PaintPointResponse";
 
 export const revalidate = 60;
@@ -96,7 +96,7 @@ export default async function HomePage() {
       <CinematicVideoHero slides={slides} />
 
       {/* Insert the new tabbed section here */}
-      <CustomerStories />
+      <CustomerStoriesServer />
 
       <PainPointsResponse />
 
