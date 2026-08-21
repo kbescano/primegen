@@ -1,8 +1,10 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig, Access } from 'payload'
 
 // Shared check: only admin or marketing roles may access this collection
-// at all. Used identically across every operation below.
-const isAdminOrMarketing = ({ req }: { req: { user?: { role?: string } | null } }) =>
+// at all. Typed against Payload's own `Access` type instead of a
+// hand-written parameter shape, so it structurally matches whatever
+// `req.user` actually is (UntypedUser | null) rather than guessing.
+const isAdminOrMarketing: Access = ({ req }) =>
   Boolean(req.user && (req.user.role === 'admin' || req.user.role === 'marketing'))
 
 export const Categories: CollectionConfig = {
