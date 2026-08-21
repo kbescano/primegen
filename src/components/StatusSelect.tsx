@@ -3,11 +3,16 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-const STATUS_STYLES: Record<string, { bg: string; text: string; border: string }> = {
-  pending: { bg: '#ffffff', text: '#0d0d0d', border: '#1f5c34' },
-  processing: { bg: '#1f5c34', text: '#ffffff', border: '#1f5c34' },
-  'quote-sent': { bg: '#2fae62', text: '#ffffff', border: '#2fae62' },
-  completed: { bg: '#0d0d0d', text: '#ffffff', border: '#0d0d0d' },
+// ✨ Aligned to the same status palette used across the dashboard
+// (pending=red, processing=amber, quote-sent=blue, completed=green,
+// rejected=gray), soft-tint style instead of solid fills.
+const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
+  pending: { bg: '#e4574c15', text: '#e4574c' },
+  processing: { bg: '#d18b3d15', text: '#d18b3d' },
+  'quote-sent': { bg: '#3b6fd115', text: '#3b6fd1' },
+  completed: { bg: '#2f9e5c15', text: '#2f9e5c' },
+  // ✨ was missing before -- rejected silently fell back to pending's style
+  rejected: { bg: '#8b93a115', text: '#8b93a1' },
 }
 
 export default function StatusSelect({ id, status }: { id: string; status: string }) {
@@ -39,15 +44,16 @@ export default function StatusSelect({ id, status }: { id: string; status: strin
       onChange={handleChange}
       disabled={saving}
       style={{
-        fontSize: 12,
-        fontWeight: 700,
+        fontSize: 10,
+        fontWeight: 500,
         color: style.text,
         background: style.bg,
-        border: `1.5px solid ${style.border}`,
-        padding: '4px 10px',
-        borderRadius: 4,
-        textTransform: 'uppercase',
+        border: 'none',
+        padding: '3px 8px',
+        borderRadius: 999,
         cursor: 'pointer',
+        opacity: saving ? 0.6 : 1,
+        transition: 'opacity 0.15s',
       }}
     >
       <option value="pending">Pending</option>

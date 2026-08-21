@@ -45,12 +45,16 @@ export default function AssignStaffSelect({
     }
   }
 
+  const isUnassigned = !currentAssignedTo
+
   return (
     <select
       defaultValue={currentAssignedTo || ''}
       onChange={(e) => handleChange(e.target.value)}
       disabled={saving}
-      className="text-[11px] font-bold uppercase tracking-wide px-2.5 py-1.5 rounded border border-gray-200 bg-white text-gray-700 cursor-pointer disabled:opacity-50 focus:outline-none focus:border-[#149911]"
+      className={`text-[10px] font-medium bg-transparent border-0 border-b pb-0.5 pr-4 cursor-pointer appearance-none transition-colors focus:outline-none focus:border-emerald-500 disabled:opacity-50 ${
+        isUnassigned ? 'border-amber-300 text-amber-600' : 'border-transparent text-gray-600 hover:border-gray-300'
+      }`}
     >
       <option value="">Unassigned</option>
       {staffOptions.map((s) => (

@@ -109,8 +109,6 @@ export default async function QuotationInboxPage({
   const { status, page } = await searchParams;
   let { granularity, periodValue } = await searchParams;
 
-  // Default to "this month" rather than "this week" or all-time, matching
-  // DateGranularityFilter's own default state.
   if (!status && !granularity) {
     granularity = "month";
     periodValue = currentMonthValue();
@@ -127,7 +125,6 @@ export default async function QuotationInboxPage({
     headers: reqHeaders,
   });
 
-  // 🔒 STRICT ROLE-BASED ACCESS CONTROL (Admin and User Only)
   if (
     !currentUser ||
     (currentUser.role !== "admin" && currentUser.role !== "user")
@@ -173,7 +170,6 @@ export default async function QuotationInboxPage({
       user: currentUser,
     });
 
-  // Bulk lookup: client-quotations
   const requestIds = docs.map((d: any) => d.id);
   const linkedQuotations =
     requestIds.length > 0
@@ -189,7 +185,6 @@ export default async function QuotationInboxPage({
     if (cq.sourceRequestId) quotationIdByRequestId[cq.sourceRequestId] = cq.id;
   }
 
-  // Bulk lookup: orders
   const linkedQuotationIds = Object.values(quotationIdByRequestId);
   const linkedOrders =
     linkedQuotationIds.length > 0
@@ -208,7 +203,6 @@ export default async function QuotationInboxPage({
     }
   }
 
-  // Bulk lookup: supplier POs
   const orderIds = (linkedOrders.docs as any[]).map((o: any) => String(o.id));
   const linkedPOsRes =
     orderIds.length > 0
@@ -245,29 +239,26 @@ export default async function QuotationInboxPage({
   const filterPills = [{ value: "", label: "All" }, ...STATUS_OPTIONS];
 
   return (
-    <div className="w-full max-w-[1000px] mx-auto py-6 overflow-x-hidden">
+    <div className="w-full max-w-[900px] mx-auto py-6 overflow-x-hidden text-gray-700">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 mb-6">
         <div className="w-full">
-          <h1 className="text-2xl font-black uppercase tracking-tight text-[#01172f] mb-1 truncate">
+          <h1 className="text-lg font-semibold text-gray-900 mb-0.5 truncate">
             Quotation Requests
           </h1>
-          <p className="text-xs text-gray-500 font-medium w-full max-w-[600px]">
+          <p className="text-[11px] text-gray-400 w-full max-w-[600px] leading-relaxed">
             Requests submitted from the website. Follow up by phone or email,
-            then update status -- quotes are always sent by your team directly,
-            never automatically. Showing {totalDocs} total.
+            then update status — quotes are always sent by your team directly, never automatically.
+            <span className="text-gray-500 font-medium"> {totalDocs} total.</span>
           </p>
         </div>
       </div>
 
       {/* Filter Section */}
-      <div className="mb-6 space-y-4">
-        {/* Status Pills */}
-        <div>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">
-            Status
-          </p>
-          <div className="flex flex-wrap gap-1.5">
+      <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-3 pb-4 border-b border-gray-100">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-semibold uppercase tracking-widest text-gray-400 shrink-0">Status</span>
+          <div className="flex flex-wrap gap-1">
             {filterPills.map((pill) => {
               const isActive = (activeStatus || "") === pill.value;
               const href = buildStatusHref(pill.value || undefined);
@@ -275,10 +266,10 @@ export default async function QuotationInboxPage({
                 <Link
                   key={pill.value || "all"}
                   href={href}
-                  className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded transition-all ${
+                  className={`text-[10px] font-medium px-2.5 py-1 rounded-full transition-colors ${
                     isActive
                       ? "bg-[#01172f] text-white"
-                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                      : "text-gray-500 hover:bg-gray-100"
                   }`}
                 >
                   {pill.label}
@@ -288,22 +279,18 @@ export default async function QuotationInboxPage({
           </div>
         </div>
 
-        {/* Date Range Filter */}
-        <div>
-          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">
-            Date Range
-          </p>
-          <DateGranularityFilter
-            granularity={granularity || ""}
-            periodValue={periodValue || ""}
-          />
-        </div>
+        <div className="hidden sm:block w-px h-4 bg-gray-200" />
+
+        <DateGranularityFilter
+          granularity={granularity || ""}
+          periodValue={periodValue || ""}
+        />
       </div>
 
       {/* Quotation Cards */}
       {docs.length === 0 ? (
-        <div className="border border-dashed border-gray-200 py-12 text-center rounded">
-          <p className="text-xs text-gray-400 font-medium">
+        <div className="border border-dashed border-gray-200 py-10 text-center rounded-lg">
+          <p className="text-[11px] text-gray-400">
             No quotation requests
             {activeStatus
               ? ` with status "${STATUS_LABELS[activeStatus]}"`
@@ -312,7 +299,7 @@ export default async function QuotationInboxPage({
           </p>
         </div>
       ) : (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-3">
           {docs.map((q: any) => {
             const linkedQuotationId = quotationIdByRequestId[q.id];
             const linkedQuotation = linkedQuotations.docs.find(
@@ -329,23 +316,23 @@ export default async function QuotationInboxPage({
             return (
               <div
                 key={q.id}
-                className="bg-white border border-gray-200 rounded p-4 sm:p-5 transition-all hover:border-gray-300 overflow-hidden"
+                className="bg-white border border-gray-100 rounded-lg p-3.5 sm:p-4 transition-colors hover:border-gray-200 overflow-hidden"
               >
                 {/* Top Bar: Customer Info & Status Dropdown */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-gray-100">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-3 border-b border-gray-50">
                   <div className="w-full min-w-0">
-                    <h3 className="text-sm font-black uppercase text-[#01172f] mb-0.5 break-words">
+                    <h3 className="text-[13px] font-semibold text-gray-900 mb-0.5 break-words">
                       {q.customerName || "Anonymous"}
                     </h3>
-                    <p className="text-[11px] text-gray-400 font-medium truncate">
+                    <p className="text-[10px] text-gray-400 truncate">
                       {q.email || "No email provided"}
                     </p>
-                    <p className="text-[11px] text-gray-400 font-medium truncate">
+                    <p className="text-[10px] text-gray-400 truncate">
                       {q.phone || "No phone provided"}
                     </p>
                   </div>
                   <div className="w-auto shrink-0">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1.5">
                       {isAdmin && (
                         <AssignStaffSelect
                           requestId={q.id}
@@ -363,43 +350,40 @@ export default async function QuotationInboxPage({
                 </div>
 
                 {q.facebookLink && (
-                  <div className="mb-4">
+                  <div className="mb-3">
                     <a
                       href={q.facebookLink}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-blue-600 hover:text-blue-800 underline underline-offset-2 transition-colors"
+                      className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-600 hover:text-blue-800 underline underline-offset-2 transition-colors"
                     >
-                      View Facebook Link &rarr;
+                      View Facebook Link →
                     </a>
                   </div>
                 )}
 
                 {/* Pipeline Stage Bar */}
-                <div className="flex flex-wrap items-center justify-between gap-3 bg-gray-50 border border-gray-100 rounded px-3.5 py-2.5 mb-4 text-[11px]">
-                  <span className="font-bold text-[#01172f]/70">
-                    Stage:{" "}
-                    <span className="text-[#149911] font-bold ml-1">
-                      {stageLabel}
-                    </span>
+                <div className="flex flex-wrap items-center justify-between gap-2 bg-gray-50/70 rounded px-3 py-2 mb-3 text-[10.5px]">
+                  <span className="text-gray-500">
+                    Stage: <span className="text-emerald-600 font-medium">{stageLabel}</span>
                   </span>
                   <Link
                     href={`/admin-dashboard/pipeline/${q.id}`}
-                    className="text-[10px] font-bold uppercase tracking-wider text-[#01172f] hover:text-[#149911] transition-colors flex items-center gap-1"
+                    className="text-[10px] font-medium text-gray-500 hover:text-[#01172f] transition-colors"
                   >
-                    View Order Workflow &rarr;
+                    View Order Workflow →
                   </Link>
                 </div>
+
                 {/* Items & Message Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
                   {/* Left Column: Requested Items */}
                   <div className="min-w-0">
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">
-                      Requested Items (
-                      {Array.isArray(q.items) ? q.items.length : 0})
+                    <p className="text-[9px] font-semibold uppercase tracking-widest text-gray-300 mb-1.5">
+                      Requested Items ({Array.isArray(q.items) ? q.items.length : 0})
                     </p>
                     {Array.isArray(q.items) && q.items.length > 0 ? (
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-1">
                         {q.items.map((item: any, i: number) => {
                           const material = item.material;
                           const matName =
@@ -411,15 +395,13 @@ export default async function QuotationInboxPage({
                           return (
                             <div
                               key={i}
-                              className="flex items-center justify-between gap-2 text-[11px] text-gray-700 min-w-0"
+                              className="flex items-center justify-between gap-2 text-[10.5px] text-gray-600 min-w-0"
                             >
-                              <span className="font-medium text-[#01172f] truncate min-w-0">
+                              <span className="font-medium text-gray-800 truncate min-w-0">
                                 {matName || "Unnamed Material"}
-                                {item.sizeDescription
-                                  ? ` - ${item.sizeDescription}`
-                                  : ""}
+                                {item.sizeDescription ? ` — ${item.sizeDescription}` : ""}
                               </span>
-                              <span className="font-mono text-gray-400 font-bold shrink-0">
+                              <span className="font-mono text-gray-400 shrink-0">
                                 {item.quantity} {matUnit}
                               </span>
                             </div>
@@ -427,11 +409,10 @@ export default async function QuotationInboxPage({
                         })}
                       </div>
                     ) : (
-                      <p className="text-[11px] text-gray-400 italic">
-                        No items listed
-                      </p>
+                      <p className="text-[10.5px] text-gray-300 italic">No items listed</p>
                     )}
                   </div>
+
                   <AddUpdateNote
                     requestId={q.id}
                     existingNotes={q.statusUpdates || []}
@@ -439,31 +420,30 @@ export default async function QuotationInboxPage({
                       currentUser?.name || currentUser?.email || "Staff"
                     }
                   />
+
                   {/* Right Column: Customer Message */}
                   <div className="min-w-0">
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-2">
+                    <p className="text-[9px] font-semibold uppercase tracking-widest text-gray-300 mb-1.5">
                       Customer Note
                     </p>
                     {q.message ? (
-                      <div className="border-l-2 border-[#149911] bg-gray-50 p-3 rounded-r overflow-hidden">
-                        <p className="text-[11px] text-gray-600 italic leading-relaxed break-words">
+                      <div className="border-l-2 border-emerald-200 bg-gray-50/70 p-2.5 rounded-r overflow-hidden">
+                        <p className="text-[10.5px] text-gray-500 italic leading-relaxed break-words">
                           &quot;{q.message}&quot;
                         </p>
                       </div>
                     ) : (
-                      <p className="text-[11px] text-gray-400 italic">
-                        No message attached
-                      </p>
+                      <p className="text-[10.5px] text-gray-300 italic">No message attached</p>
                     )}
                   </div>
                 </div>
 
                 {/* Bottom Footer */}
-                <div className="mt-4 pt-3 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-[10px] font-bold text-gray-400">
+                <div className="mt-3 pt-2.5 border-t border-gray-50 flex flex-wrap items-center justify-between gap-2">
+                  <p className="text-[9.5px] text-gray-300">
                     Submitted {new Date(q.createdAt).toLocaleString()}
                   </p>
-                  <span className="text-[9px] font-bold uppercase tracking-wider text-gray-500 bg-gray-100 px-2.5 py-1 rounded">
+                  <span className="text-[9px] font-medium text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
                     via {q.source || "website"}
                   </span>
                 </div>
@@ -475,43 +455,43 @@ export default async function QuotationInboxPage({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex flex-wrap items-center justify-center gap-2 mt-8 pt-6 border-t border-gray-100">
+        <div className="flex flex-wrap items-center justify-center gap-2 mt-6 pt-5 border-t border-gray-100">
           {hasPrevPage ? (
             <Link
               href={buildPageHref(currentPage - 1)}
-              className="text-[10px] font-bold uppercase tracking-wider px-4 py-2 rounded border bg-white border-gray-200 text-gray-600 hover:border-[#01172f] hover:text-[#01172f] transition-all"
+              className="text-[10px] font-medium px-3 py-1.5 rounded-md border border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-800 transition-colors"
             >
-              &larr; Prev
+              ← Prev
             </Link>
           ) : (
-            <span className="text-[10px] font-bold uppercase tracking-wider px-4 py-2 rounded border bg-gray-50 border-gray-100 text-gray-300">
-              &larr; Prev
+            <span className="text-[10px] font-medium px-3 py-1.5 rounded-md border border-gray-100 text-gray-200">
+              ← Prev
             </span>
           )}
-          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-3">
+          <span className="text-[10px] text-gray-400 px-2">
             Page {currentPage} of {totalPages}
           </span>
           {hasNextPage ? (
             <Link
               href={buildPageHref(currentPage + 1)}
-              className="text-[10px] font-bold uppercase tracking-wider px-4 py-2 rounded border bg-white border-gray-200 text-gray-600 hover:border-[#01172f] hover:text-[#01172f] transition-all"
+              className="text-[10px] font-medium px-3 py-1.5 rounded-md border border-gray-200 text-gray-500 hover:border-gray-300 hover:text-gray-800 transition-colors"
             >
-              Next &rarr;
+              Next →
             </Link>
           ) : (
-            <span className="text-[10px] font-bold uppercase tracking-wider px-4 py-2 rounded border bg-gray-50 border-gray-100 text-gray-300">
-              Next &rarr;
+            <span className="text-[10px] font-medium px-3 py-1.5 rounded-md border border-gray-100 text-gray-200">
+              Next →
             </span>
           )}
         </div>
       )}
 
       {/* Admin Link Footer */}
-      <p className="mt-8 text-xs text-gray-400 font-medium text-center">
+      <p className="mt-6 text-[11px] text-gray-400 text-center">
         For internal notes or bulk edits, use the{" "}
         <Link
           href="/admin/collections/quotation-requests"
-          className="text-[#149911] font-bold hover:text-[#01172f] transition-colors underline underline-offset-2"
+          className="text-emerald-600 font-medium hover:text-[#01172f] transition-colors underline underline-offset-2"
         >
           full CMS admin view
         </Link>
