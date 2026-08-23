@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 
 const FUN_EMAIL = 'monira@primegen.sales' // temporary easter egg -- safe to delete this whole block later
@@ -8,12 +8,12 @@ const FUN_EMAIL = 'monira@primegen.sales' // temporary easter egg -- safe to del
 export default function AdminLoginForm({ redirectTo = '/admin-dashboard' }: { redirectTo?: string }) {
   const router = useRouter()
   const [mode, setMode] = useState<'login' | 'change'>('login')
-  
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  
+
   const [status, setStatus] = useState<'idle' | 'submitting' | 'error' | 'success'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
   const [funModalOpen, setFunModalOpen] = useState(false)
@@ -21,6 +21,30 @@ export default function AdminLoginForm({ redirectTo = '/admin-dashboard' }: { re
 
   // ✨ State to hold the dynamic redirect URL just in case the Easter Egg modal interrupts the flow
   const [resolvedRedirect, setResolvedRedirect] = useState(redirectTo)
+
+  // ✨ Short chime on successful login/password change — generated, no audio file needed
+  function playSuccessSound() {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext
+      const ctx = new AudioCtx()
+      const now = ctx.currentTime
+      ;[523.25, 659.25].forEach((freq, i) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.type = 'sine'
+        osc.frequency.value = freq
+        gain.gain.setValueAtTime(0, now + i * 0.09)
+        gain.gain.linearRampToValueAtTime(0.12, now + i * 0.09 + 0.02)
+        gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.09 + 0.3)
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.start(now + i * 0.09)
+        osc.stop(now + i * 0.09 + 0.3)
+      })
+    } catch {
+      // Web Audio unsupported or blocked — fail silently
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -74,6 +98,7 @@ export default function AdminLoginForm({ redirectTo = '/admin-dashboard' }: { re
 
         setStatus('success')
         setToast('Password updated successfully 🔒')
+        playSuccessSound()
         setTimeout(() => {
           router.push(finalRedirect) // ✨ Use dynamic redirect
           router.refresh()
@@ -88,7 +113,7 @@ export default function AdminLoginForm({ redirectTo = '/admin-dashboard' }: { re
         credentials: 'include',
         body: JSON.stringify({ email, password }),
       })
-      
+
       if (!res.ok) {
         const data = await res.json().catch(() => null)
         throw new Error(data?.errors?.[0]?.message || 'Invalid email or password')
@@ -97,13 +122,13 @@ export default function AdminLoginForm({ redirectTo = '/admin-dashboard' }: { re
       // ✨ Parse successful login response to check role
       const loginData = await res.json()
       const userRole = loginData?.user?.role
-      
+
       // ✨ Dynamically route Marketing role
       let finalRedirect = redirectTo
       if (userRole === 'marketing') {
         finalRedirect = '/admin-dashboard/inquiry-tracker'
       }
-      
+
       // Save it to state in case the Easter Egg interrupts the redirect flow
       setResolvedRedirect(finalRedirect)
 
@@ -115,7 +140,8 @@ export default function AdminLoginForm({ redirectTo = '/admin-dashboard' }: { re
 
       router.push(finalRedirect) // ✨ Use dynamic redirect
       router.refresh()
-      
+      playSuccessSound()
+
     } catch (err: any) {
       setStatus('error')
       setErrorMsg(err?.message || 'Action failed')
@@ -126,6 +152,7 @@ export default function AdminLoginForm({ redirectTo = '/admin-dashboard' }: { re
     setFunModalOpen(false)
     if (choice === 'ken') {
       setToast('Perfect choice 💚')
+      playSuccessSound()
       setTimeout(() => {
         router.push(resolvedRedirect) // ✨ Uses the role-based redirect
         router.refresh()
@@ -135,19 +162,24 @@ export default function AdminLoginForm({ redirectTo = '/admin-dashboard' }: { re
     }
   }
 
-  const inputClass = "w-full px-3.5 py-2.5 border border-gray-300 rounded text-sm focus:outline-none focus:border-[#149911]"
-  const labelClass = "block text-[11px] font-bold uppercase tracking-wide text-gray-500 mb-1.5"
+  const inputClass =
+    "w-full px-3.5 py-2.5 bg-[#0A0A0A] border border-white/10 text-sm text-white placeholder:text-white/25 focus:outline-none focus:border-[#22C55E] transition-colors"
+  const labelClass = "block text-[11px] font-bold uppercase tracking-wide text-white/40 mb-1.5"
+
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#fdfffc] px-6 py-12">
-      <form onSubmit={handleSubmit} className="w-full max-w-sm bg-white border border-[#01172f]/10 p-8 md:p-10 shadow-sm transition-all duration-300">
-        <div className="w-10 h-[3px] bg-[#149911] mb-6" />
-        <h1 className="text-2xl font-black uppercase tracking-tight text-[#01172f] mb-2">
+    <div className="min-h-screen flex items-center justify-center bg-[#0A0A0A] px-6 py-12">
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-sm bg-[#111111] border border-white/10 p-8 md:p-10"
+      >
+        <div className="w-10 h-[3px] bg-[#22C55E] mb-6" />
+        <h1 className="text-2xl font-black uppercase tracking-tight text-white mb-2">
           {mode === 'login' ? 'Login' : 'Change Password'}
         </h1>
-        <p className="text-sm text-gray-500 mb-8">
-          {mode === 'login' 
-            ? 'Sign in to access the Primegen dashboard.' 
+        <p className="text-sm text-white/40 mb-8">
+          {mode === 'login'
+            ? 'Sign in to access the Primegen dashboard.'
             : 'Enter your current credentials to update your password.'}
         </p>
 
@@ -204,22 +236,22 @@ export default function AdminLoginForm({ redirectTo = '/admin-dashboard' }: { re
           )}
         </div>
 
-        {status === 'error' && <p className="text-sm text-red-600 mb-4">{errorMsg}</p>}
+        {status === 'error' && <p className="text-sm text-red-400 mb-4">{errorMsg}</p>}
 
         <button
           type="submit"
           disabled={status === 'submitting' || status === 'success'}
-          className="w-full py-3 bg-[#3D5F3B] text-white font-bold uppercase tracking-wide text-sm hover:bg-[#01172f] transition-colors disabled:opacity-50"
+          className="w-full py-3 bg-[#22C55E] text-[#0A0A0A] font-bold uppercase tracking-wide text-sm hover:bg-[#2ED573] transition-colors disabled:opacity-50"
         >
-          {status === 'submitting' 
-            ? (mode === 'login' ? 'Signing in...' : 'Updating...') 
-            : status === 'success' 
+          {status === 'submitting'
+            ? (mode === 'login' ? 'Signing in...' : 'Updating...')
+            : status === 'success'
               ? 'Success!'
               : (mode === 'login' ? 'Sign In' : 'Update Password')
           }
         </button>
 
-        <div className="mt-6 pt-5 border-t border-gray-100 text-center">
+        <div className="mt-6 pt-5 border-t border-white/10 text-center">
           <button
             type="button"
             onClick={() => {
@@ -229,7 +261,7 @@ export default function AdminLoginForm({ redirectTo = '/admin-dashboard' }: { re
               setNewPassword('')
               setConfirmPassword('')
             }}
-            className="text-[10px] font-bold uppercase tracking-widest text-[#01172f]/40 hover:text-[#149911] transition-colors"
+            className="text-[10px] font-bold uppercase tracking-widest text-white/30 hover:text-[#22C55E] transition-colors"
           >
             {mode === 'login' ? 'Change your password?' : 'Back to Login'}
           </button>
@@ -238,20 +270,20 @@ export default function AdminLoginForm({ redirectTo = '/admin-dashboard' }: { re
 
       {/* ===== Temporary fun modal -- safe to delete this whole block later ===== */}
       {funModalOpen && (
-        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
-          <div className="bg-white max-w-sm w-full p-8 text-center shadow-[0_30px_80px_-20px_rgba(1,23,47,0.35)]">
-            <div className="w-8 h-[3px] bg-[#149911] mx-auto mb-5" />
-            <h2 className="text-xl font-black text-[#01172f] mb-6">Kanino ka lang Monira?</h2>
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
+          <div className="bg-[#111111] border border-white/10 max-w-sm w-full p-8 text-center">
+            <div className="w-8 h-[3px] bg-[#22C55E] mx-auto mb-5" />
+            <h2 className="text-xl font-black text-white mb-6">Kanino ka lang Monira?</h2>
             <div className="flex flex-col gap-3">
               <button
                 onClick={() => handleFunChoice('ken')}
-                className="py-3 bg-[#3D5F3B] text-white font-bold uppercase tracking-wide text-sm hover:bg-[#149911] transition-colors"
+                className="py-3 font-bold uppercase tracking-wide text-sm text-[#0A0A0A] bg-[#22C55E] hover:bg-[#2ED573] transition-colors"
               >
                 Sayo lang Ken
               </button>
               <button
                 onClick={() => handleFunChoice('other')}
-                className="py-3 border border-gray-300 text-gray-500 font-bold uppercase tracking-wide text-sm hover:border-gray-400 transition-colors"
+                className="py-3 border border-white/15 text-white/40 font-bold uppercase tracking-wide text-sm hover:border-white/30 hover:text-white/60 transition-colors"
               >
                 Sa iba
               </button>
@@ -261,7 +293,7 @@ export default function AdminLoginForm({ redirectTo = '/admin-dashboard' }: { re
       )}
 
       {toast && (
-        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-50 bg-[#01172f] text-white px-10 py-5 font-bold text-[16px] shadow-lg animate-[fadeInDown_0.3s_ease-out]">
+        <div className="fixed top-8 left-1/2 -translate-x-1/2 z-50 bg-[#111111] border border-white/10 text-white px-10 py-5 font-bold text-[16px] animate-[fadeInDown_0.3s_ease-out]">
           {toast}
         </div>
       )}
@@ -270,6 +302,10 @@ export default function AdminLoginForm({ redirectTo = '/admin-dashboard' }: { re
         @keyframes fadeInDown {
           from { opacity: 0; transform: translate(-50%, -12px); }
           to { opacity: 1; transform: translate(-50%, 0); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
     </div>

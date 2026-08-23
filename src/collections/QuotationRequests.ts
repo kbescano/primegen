@@ -24,7 +24,7 @@ export const QuotationRequests: CollectionConfig = {
     },
     update: ({ req }) => {
       if (!req.user) return false;
-      if (req.user.role === "admin" || "marketing") return true;
+      if (req.user.role === "admin" || req.user.role === "marketing") return true;
       return { assignedTo: { equals: req.user.id } };
     },
     delete: ({ req }) => Boolean(req.user && req.user.role === "admin"),

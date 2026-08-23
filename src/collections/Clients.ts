@@ -9,7 +9,13 @@ export const Clients: CollectionConfig = {
     hidden: ({ user }) => user?.role === 'marketing',
   },
   access: {
-    read: () => true,
+    // Client records contain PII (phone, email, address) and are managed
+    // internally -- there's no public-facing use case for this collection,
+    // so every operation requires a logged-in staff account. Create/update/
+    // delete already default to this same check when left unspecified, but
+    // `read` previously overrode it to `() => true`, which let anyone on the
+    // internet list every client's contact details via the REST/GraphQL API.
+    read: ({ req }) => Boolean(req.user),
   },
   fields: [
     { name: 'name', type: 'text', required: true },

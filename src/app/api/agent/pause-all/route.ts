@@ -8,7 +8,9 @@ export async function POST(req: NextRequest) {
   const headers = await getHeaders()
   const { user } = await payload.auth({ headers })
 
-  if (!user) {
+  // Emergency stop for all ad spend -- restricted to admin/marketing, same
+  // as the rest of the ads agent, not just any logged-in account.
+  if (!user || (user.role !== 'admin' && user.role !== 'marketing')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

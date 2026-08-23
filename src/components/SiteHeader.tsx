@@ -74,6 +74,7 @@ export default function SiteHeader() {
                 src="/branding/primegen_trading_logo.png"
                 alt="Primegen Logo"
                 fill
+                sizes="44px"
                 className="object-cover"
               />
             </div>

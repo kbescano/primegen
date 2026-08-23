@@ -4,8 +4,20 @@ import { getPayloadClient } from '@/lib/getPayloadClient'; // ✨ Using your exi
 // Force Next.js to never cache this route so it runs fresh every time
 export const dynamic = 'force-dynamic';
 
+// This mutates data (reassigns inquiries between staff) and previously had
+// no auth check at all -- anyone who found the URL could hit it repeatedly.
+// It's meant to be triggered by a scheduler, so it's protected the same way
+// as /api/agent/run: a shared secret in the Authorization header. Set
+// CRON_SECRET in the environment and add this route to a Vercel Cron
+// (or other scheduler) that sends `Authorization: Bearer <CRON_SECRET>`.
 export async function GET(request: Request) {
   try {
+    const authHeader = request.headers.get('authorization');
+    const secret = process.env.CRON_SECRET;
+    if (!secret || authHeader !== `Bearer ${secret}`) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     // ✨ Initialize Payload using your custom helper
     const payload = await getPayloadClient();
     

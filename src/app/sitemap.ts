@@ -8,10 +8,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const payload = await getPayloadClient()
 
-  const [productsRes, categoriesRes] = await Promise.all([
-    payload.find({ collection: 'products', limit: 1000, depth: 0 }),
-    payload.find({ collection: 'categories', limit: 100, depth: 0 }),
-  ])
+  const productsRes = await payload.find({ collection: 'products', limit: 1000, depth: 0 })
 
   const staticPages: MetadataRoute.Sitemap = [
     { url: siteUrl, changeFrequency: 'weekly', priority: 1 },
@@ -22,19 +19,21 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${siteUrl}/deliveries`, changeFrequency: 'weekly', priority: 0.4 },
   ]
 
+  // Use the canonical slug URL (same one generateMetadata/the page's own
+  // redirect treat as canonical), not the numeric id -- listing the id URL
+  // here was submitting a non-canonical, soon-to-redirect URL to Google.
   const productPages: MetadataRoute.Sitemap = productsRes.docs.map((m: any) => ({
-    url: `${siteUrl}/products/${m.id}`,
+    url: `${siteUrl}/products/${m.slug || m.id}`,
     lastModified: m.updatedAt ? new Date(m.updatedAt) : undefined,
     changeFrequency: 'weekly',
     priority: 0.6,
   }))
 
-  const categoryPages: MetadataRoute.Sitemap = categoriesRes.docs.map((c: any) => ({
-    url: `${siteUrl}/products#${c.slug}`,
-    lastModified: c.updatedAt ? new Date(c.updatedAt) : undefined,
-    changeFrequency: 'weekly',
-    priority: 0.5,
-  }))
+  // Categories were previously listed as `/products#slug` anchor entries,
+  // but a URL fragment isn't a separate crawlable resource -- every one of
+  // those "pages" is byte-for-byte the same /products response, so they
+  // were duplicate entries rather than real additional coverage. Categories
+  // don't have their own route to list here until that changes.
 
-  return [...staticPages, ...productPages, ...categoryPages]
+  return [...staticPages, ...productPages]
 }

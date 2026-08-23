@@ -4,8 +4,11 @@ import WeightCalculatorForm, { type CalcProduct } from '@/components/WeightCalcu
 export const revalidate = 60
 
 export const metadata = {
-  title: 'Weight Calculator | Primegen',
+  // See about/page.tsx: the root layout's title template already appends
+  // "| Primegen Trading Corporation" -- a manual suffix here doubled it up.
+  title: 'Weight Calculator',
   description: 'Estimate the weight of steel products by shape and dimension before you request a quote.',
+  alternates: { canonical: '/calculator' },
 }
 
 const FALLBACK_PRODUCTS: CalcProduct[] = [

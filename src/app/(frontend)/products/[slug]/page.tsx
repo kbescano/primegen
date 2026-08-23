@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Image from 'next/image'
 import { notFound, redirect } from 'next/navigation'
 import { getPayloadClient } from '@/lib/getPayloadClient'
+import { safeJsonLdStringify } from '@/lib/safeJsonLd'
 import WeightCalculatorForm, { type CalcProduct } from '@/components/WeightCalculatorForm'
 import RelatedMaterialsGrid from '@/components/RelatedMaterialsCarousel'
 import ScrollReveal from '@/components/ScrollReveal'
@@ -42,16 +43,22 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   try {
     const payload = await getPayloadClient()
     const result = await findProductBySlugOrId(payload, slug)
-    if (!result) return { title: 'Product Not Found' }
+    if (!result) return { title: 'Product Not Found', robots: { index: false, follow: false } }
     const material = result.doc
 
     const categoryName = material.categoryRef?.label || material.category || ''
     const title = categoryName ? `${material.name} -- ${categoryName}` : material.name
     const description = `${material.name} available from Primegen Trading Corporation -- trusted steel and construction materials supplier based in Imus, Cavite, delivering nationwide across the Philippines. Request a quote today.`
+    // Same canonical target the page body redirects legacy /products/<id>
+    // URLs to -- declared here too so the <head> is correct even on the
+    // request that's about to 301, and for any client that reads metadata
+    // without following the redirect.
+    const canonicalPath = `/products/${material.slug || material.id}`
 
     return {
       title,
       description,
+      alternates: { canonical: canonicalPath },
       openGraph: {
         title,
         description,
@@ -153,7 +160,7 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
 
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLdStringify(productJsonLd) }}
       />
 
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[900px] h-[700px] bg-[#149911]/[0.08] blur-[140px] rounded-full pointer-events-none" />
@@ -199,6 +206,8 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
                     src={images[0].url}
                     alt={images[0].alt || material.name}
                     fill
+                    priority
+                    sizes="(max-width: 1024px) 100vw, 55vw"
                     className="object-contain drop-shadow-sm transition-transform duration-[1200ms] ease-out group-hover:scale-110 z-10"
                   />
                   <div className="absolute inset-0 bg-gradient-to-b from-[#0a1a15]/10 via-transparent to-[#0a1a15]/40 z-20 pointer-events-none" />

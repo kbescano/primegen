@@ -11,6 +11,7 @@ export default function GlobalLoading() {
             src="/branding/primegen_trading_logo.png"
             alt="Primegen Trading Corporation"
             fill
+            sizes="112px"
             className="object-contain"
             priority
           />

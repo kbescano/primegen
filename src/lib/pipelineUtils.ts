@@ -41,12 +41,6 @@ export const PAYMENT_COLORS: Record<string, string> = {
   paid: "bg-[#149911] text-white",
 };
 
-export const ORDER_STATUS_COLORS: Record<string, string> = {
-  pending: "bg-amber-50 text-amber-700",
-  confirmed: "bg-[#149911] text-white",
-  order_confirmed: "bg-[#149911] text-white",
-};
-
 export const peso = (n: number) =>
   "\u20B1" +
   n.toLocaleString("en-PH", {

@@ -15,7 +15,7 @@ export const CustomerStories: CollectionConfig = {
     },
     update: ({ req }) => {
       if (!req.user) return false;
-      if (req.user.role === "admin" || "marketing") return true;
+      if (req.user.role === "admin" || req.user.role === "marketing") return true;
       return { assignedTo: { equals: req.user.id } };
     },
   },

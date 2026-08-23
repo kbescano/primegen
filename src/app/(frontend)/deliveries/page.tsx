@@ -1,4 +1,5 @@
 import { getPayloadClient } from '@/lib/getPayloadClient'
+import { safeJsonLdStringify } from '@/lib/safeJsonLd'
 import ScrollReveal from '@/components/ScrollReveal'
 import Image from 'next/image'
 import type { Metadata } from 'next'
@@ -12,16 +13,24 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { location } = await searchParams
 
+  // The root layout's title template already appends
+  // "| Primegen Trading Corporation" -- a manual suffix here doubled it up.
   if (location) {
     return {
-      title: `Deliveries in ${location} | Primegen`,
+      title: `Deliveries in ${location}`,
       description: `Real steel and construction material deliveries completed by Primegen Trading Corporation in ${location}. See photos and proof of every delivery.`,
+      // Each location has its own title/description above and is genuinely
+      // distinct, locally-relevant content -- self-canonicalize (rather
+      // than pointing at the bare /deliveries) so these can be indexed as
+      // their own local-SEO landing pages instead of being folded away.
+      alternates: { canonical: `/deliveries?location=${encodeURIComponent(location)}` },
     }
   }
 
   return {
-    title: 'Deliveries | Primegen',
+    title: 'Deliveries',
     description: 'Recent deliveries completed by Primegen Trading Corporation across the Philippines.',
+    alternates: { canonical: '/deliveries' },
   }
 }
 
@@ -37,7 +46,7 @@ function PhotoGrid({ photos, altBase }: { photos: any[]; altBase: string }) {
   if (count === 1) {
     return (
       <div className="relative w-full aspect-[4/3] bg-[#05100d] rounded-xl overflow-hidden">
-        <Image src={photos[0].url} alt={altFor(0)} fill className="object-cover" />
+        <Image src={photos[0].url} alt={altFor(0)} fill sizes="(max-width: 720px) 100vw, 720px" className="object-cover" />
       </div>
     )
   }
@@ -47,7 +56,7 @@ function PhotoGrid({ photos, altBase }: { photos: any[]; altBase: string }) {
       <div className="grid grid-cols-2 gap-1 aspect-[16/9] rounded-xl overflow-hidden">
         {photos.map((p, i) => (
           <div key={i} className="relative bg-[#05100d]">
-            <Image src={p.url} alt={altFor(i)} fill className="object-cover" />
+            <Image src={p.url} alt={altFor(i)} fill sizes="(max-width: 720px) 50vw, 360px" className="object-cover" />
           </div>
         ))}
       </div>
@@ -58,13 +67,13 @@ function PhotoGrid({ photos, altBase }: { photos: any[]; altBase: string }) {
     return (
       <div className="grid grid-cols-2 grid-rows-2 gap-1 aspect-[4/3] rounded-xl overflow-hidden">
         <div className="relative row-span-2 bg-[#05100d]">
-          <Image src={photos[0].url} alt={altFor(0)} fill className="object-cover" />
+          <Image src={photos[0].url} alt={altFor(0)} fill sizes="(max-width: 720px) 50vw, 360px" className="object-cover" />
         </div>
         <div className="relative bg-[#05100d]">
-          <Image src={photos[1].url} alt={altFor(1)} fill className="object-cover" />
+          <Image src={photos[1].url} alt={altFor(1)} fill sizes="(max-width: 720px) 50vw, 360px" className="object-cover" />
         </div>
         <div className="relative bg-[#05100d]">
-          <Image src={photos[2].url} alt={altFor(2)} fill className="object-cover" />
+          <Image src={photos[2].url} alt={altFor(2)} fill sizes="(max-width: 720px) 50vw, 360px" className="object-cover" />
         </div>
       </div>
     )
@@ -78,7 +87,7 @@ function PhotoGrid({ photos, altBase }: { photos: any[]; altBase: string }) {
     <div className="grid grid-cols-2 grid-rows-2 gap-1 aspect-square rounded-xl overflow-hidden">
       {visible.map((p, i) => (
         <div key={i} className="relative bg-[#05100d]">
-          <Image src={p.url} alt={altFor(i)} fill className="object-cover" />
+          <Image src={p.url} alt={altFor(i)} fill sizes="(max-width: 720px) 50vw, 360px" className="object-cover" />
           {i === 3 && remaining > 0 && (
             <div className="absolute inset-0 bg-[#05100d]/70 backdrop-blur-sm flex items-center justify-center">
               <span className="text-[#fdfffc] text-xl md:text-2xl font-bold">+{remaining}</span>
@@ -139,7 +148,7 @@ export default async function DeliveriesPage({
       {imageObjectsJsonLd.length > 0 && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(imageObjectsJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLdStringify(imageObjectsJsonLd) }}
         />
       )}
 

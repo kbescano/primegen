@@ -7,12 +7,18 @@ export const DeliveryItineraries: CollectionConfig = {
     defaultColumns: ['trackingNumber', 'sourceOrderId', 'status', 'driverName', 'updatedAt'],
     group: 'Logistics',
     description: 'Delivery routes and waybills generated from confirmed orders.',
-    hidden: ({ user }) => user?.role === 'marketing',
+
   },
   access: {
-    create: () => true,
-    read: () => true,
-    update: () => true,
+    // This is only ever read/written from the internal admin dashboard
+    // (see DeliveryItineraryTracker.tsx) -- there's no public tracking page
+    // that needs anonymous access. It previously allowed anyone on the
+    // internet to list every customer's delivery route (names, phone
+    // numbers, addresses), create fake itineraries, or tamper with existing
+    // ones (e.g. mark a real delivery "Delivered").
+    create: ({ req }) => Boolean(req.user),
+    read: ({ req }) => Boolean(req.user),
+    update: ({ req }) => Boolean(req.user),
     delete: ({ req }) => Boolean(req.user && req.user.role === 'admin'),
   },
   fields: [

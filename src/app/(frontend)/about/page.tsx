@@ -6,8 +6,12 @@ import TypewriterText from '@/components/TypewriterReveal'
 export const revalidate = 60
 
 export const metadata = {
-  title: 'About Us | Primegen',
+  // The root layout already appends "| Primegen Trading Corporation" via
+  // its title template -- a manual suffix here used to double up into
+  // "About Us | Primegen | Primegen Trading Corporation".
+  title: 'About Us',
   description: 'Learn about Primegen Trading Corporation -- your trusted supplier for commercial and industrial equipment, metal supply, and metal fabrication services in Cavite, Philippines.',
+  alternates: { canonical: '/about' },
 }
 
 const SERVICES = [

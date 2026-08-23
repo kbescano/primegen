@@ -9,7 +9,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   const headers = await getHeaders()
   const { user } = await payload.auth({ headers })
 
-  if (!user) {
+  // This spends real ad budget / pauses live campaigns, so it's restricted
+  // to the same roles that can manage the ads agent, not just any logged-in
+  // account.
+  if (!user || (user.role !== 'admin' && user.role !== 'marketing')) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
@@ -27,6 +30,14 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       data: { status: 'rejected', reviewedBy: user.id },
     })
     return NextResponse.json({ success: true })
+  }
+
+  // Fail closed: only an explicit 'approved' should execute a real change
+  // against the ad account. Previously anything that wasn't literally
+  // 'rejected' (missing decision, a typo, an empty body) fell through to
+  // this branch and executed the action anyway.
+  if (decision !== 'approved') {
+    return NextResponse.json({ error: 'decision must be "approved" or "rejected"' }, { status: 400 })
   }
 
   // Approved — execute the actual change on the ad account

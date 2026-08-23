@@ -158,6 +158,7 @@ export default function CustomerStories({ stories }: { stories: Story[] }) {
                     src={activeTab.image}
                     alt={activeTab.title}
                     fill
+                    sizes="(max-width: 1024px) 100vw, 600px"
                     className="object-contain drop-shadow-lg"
                     unoptimized
                   />

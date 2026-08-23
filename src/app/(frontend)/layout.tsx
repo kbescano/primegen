@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import type { Metadata } from 'next'
 import SiteHeader from '@/components/SiteHeader'
+import { safeJsonLdStringify } from '@/lib/safeJsonLd'
 import './globals.css'
 
 const siteUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'
@@ -11,8 +12,12 @@ export const metadata: Metadata = {
     default: 'Primegen Trading Corporation | Steel & Construction Materials Supplier',
     template: '%s | Primegen Trading Corporation',
   },
+  icons: {
+    icon: '/branding/primegen_trading_logo.png',
+  },
   description:
     'Construction products trading -- cement, steel, aggregates, and more. Serving contractors and builders across Cavite and the Philippines.',
+  alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
     locale: 'en_PH',
@@ -78,7 +83,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <head>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(localBusinessJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLdStringify(localBusinessJsonLd) }}
         />
       </head>
       <body>

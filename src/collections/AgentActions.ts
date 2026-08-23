@@ -13,11 +13,15 @@ export const AgentActions: CollectionConfig = {
     description: 'AI agent suggestions and actions on the ad account. Review and approve here.',
   },
   access: {
-    read: ({ req }) => Boolean(req.user),
-    update: ({ req }) => Boolean(req.user),
-    // Only the backend agent service creates these (via API, using a service user)
-    create: ({ req }) => Boolean(req.user),
-    delete: ({ req }) => Boolean(req.user),
+    // Reviewing/approving these can spend real ad budget or pause live
+    // campaigns, so it's scoped to the same roles as the rest of the ads
+    // agent (admin/marketing), not any authenticated account. The daily
+    // analysis job creates these via the Local API, which bypasses access
+    // control by default, so this doesn't affect that.
+    read: ({ req }) => Boolean(req.user && (req.user.role === 'admin' || req.user.role === 'marketing')),
+    update: ({ req }) => Boolean(req.user && (req.user.role === 'admin' || req.user.role === 'marketing')),
+    create: ({ req }) => Boolean(req.user && (req.user.role === 'admin' || req.user.role === 'marketing')),
+    delete: ({ req }) => Boolean(req.user && (req.user.role === 'admin' || req.user.role === 'marketing')),
   },
   fields: [
     {
