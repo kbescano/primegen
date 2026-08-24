@@ -132,7 +132,18 @@ export const QuotationRequests: CollectionConfig = {
       type: "relationship",
       relationTo: "users",
       label: "Assigned Staff",
-      filterOptions: { role: { equals: "user" } },
+      // Payload re-checks filterOptions server-side on every save, not
+      // just to narrow the admin UI's picker -- so this has to match the
+      // same "role=user OR nica@primegen.admin" set the dashboard's own
+      // staff-dropdown queries use (admin-dashboard/page.tsx,
+      // inquiry-tracker/page.tsx), or assigning her gets silently rejected
+      // as an invalid relationship even though she shows up as an option.
+      filterOptions: {
+        or: [
+          { role: { equals: "user" } },
+          { email: { equals: "nica@primegen.admin" } },
+        ],
+      },
       // Filtered on directly by the Staff dropdown in the admin dashboard,
       // and by every single non-admin's read access rule (`{ assignedTo:
       // { equals: user.id } }` runs on every list/read a staff account
