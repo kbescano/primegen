@@ -5,7 +5,7 @@ export const Notifications: CollectionConfig = {
   admin: {
     useAsTitle: 'message',
     group: 'Leads',
-    // hidden: true,
+    hidden: true,
   },
   access: {
     read: ({ req }) => {
