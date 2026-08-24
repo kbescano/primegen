@@ -133,6 +133,12 @@ export const QuotationRequests: CollectionConfig = {
       relationTo: "users",
       label: "Assigned Staff",
       filterOptions: { role: { equals: "user" } },
+      // Filtered on directly by the Staff dropdown in the admin dashboard,
+      // and by every single non-admin's read access rule (`{ assignedTo:
+      // { equals: user.id } }` runs on every list/read a staff account
+      // does) -- indexed so both stay a lookup instead of a table scan as
+      // the collection grows.
+      index: true,
       admin: {
         description:
           "Which sales staff member owns following up on this request. Only admins can change this.",
@@ -225,10 +231,13 @@ export const QuotationRequests: CollectionConfig = {
       name: "status",
       type: "select",
       defaultValue: "pending",
+      // Filtered directly by the Status pills in the admin dashboard inbox.
+      index: true,
       options: [
         { label: "Pending", value: "pending" },
         { label: "Processing", value: "processing" },
         { label: "Quote Sent", value: "quote-sent" },
+        { label: "Informal Quote", value: "informal-quote" },
         { label: "Completed", value: "completed" },
         { label: "Rejected", value: "rejected" },
       ],

@@ -10,6 +10,7 @@ const STATUS_STYLES: Record<string, { bg: string; text: string }> = {
   pending: { bg: '#e4574c15', text: '#e4574c' },
   processing: { bg: '#d18b3d15', text: '#d18b3d' },
   'quote-sent': { bg: '#3b6fd115', text: '#3b6fd1' },
+  'informal-quote': { bg: '#8b5cf615', text: '#8b5cf6' },
   completed: { bg: '#2f9e5c15', text: '#2f9e5c' },
   // ✨ was missing before -- rejected silently fell back to pending's style
   rejected: { bg: '#8b93a115', text: '#8b93a1' },
@@ -59,6 +60,7 @@ export default function StatusSelect({ id, status }: { id: string; status: strin
       <option value="pending">Pending</option>
       <option value="processing">Processing</option>
       <option value="quote-sent">Quote Sent</option>
+      <option value="informal-quote">Informal Quote</option>
       <option value="completed">Completed</option>
       <option value="rejected">Cancelled</option>
     </select>
