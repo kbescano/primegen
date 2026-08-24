@@ -89,11 +89,27 @@ export default function CinematicVideoHero({ slides: rawSlides }: { slides: Hero
   }, [slides.length, current])
 
   useEffect(() => {
-    videoRefs.current.forEach((v) => {
-      if (v) {
-        v.muted = true
-        v.play().catch(() => {})
+    // Previously every video called .play() on every slide change,
+    // including the ones sitting hidden behind opacity-0. Several
+    // concurrent .play() calls on muted <video> elements is exactly the
+    // kind of thing browsers intermittently race/reject -- when that
+    // happened, the failure was swallowed by .catch(() => {}) and nothing
+    // retried until the next slide change 6s later, so the visible slide
+    // could sit frozen on its first frame for part of its window before it
+    // "caught" -- the stop-then-play. Only ever playing the active video
+    // (and explicitly pausing the rest, instead of leaving them running
+    // invisibly) removes that contention, and restarting from frame 0
+    // gives every slide a clean beginning instead of resuming wherever it
+    // happened to drift to while hidden.
+    videoRefs.current.forEach((v, index) => {
+      if (!v) return
+      if (index !== current) {
+        v.pause()
+        return
       }
+      v.muted = true
+      v.currentTime = 0
+      v.play().catch(() => {})
     })
   }, [current])
 
