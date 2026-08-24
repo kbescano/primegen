@@ -47,6 +47,7 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
     projectType: "residential",
     source: "website",
     facebookLink: "",
+    sourceOther: "",
     message: "",
   });
 
@@ -92,6 +93,7 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
       projectType: "residential",
       source: "website",
       facebookLink: "",
+      sourceOther: "",
       message: "",
     });
     setItems([
@@ -153,6 +155,7 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
       message: finalMessage,
       source: formData.source,
       facebookLink: formData.source === "facebook" ? formData.facebookLink : "",
+      sourceOther: formData.source === "other" ? formData.sourceOther : "",
       items: isProductsTBC
         ? []
         : items
@@ -404,6 +407,7 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
                         <option value="marketPlace">Market Place</option>
                         <option value="dummy">Dummy</option>
                         <option value="email">Email</option>
+                        <option value="other">Others</option>
                       </select>
                     </div>
 
@@ -422,6 +426,23 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
                           onChange={handleFormChange}
                           placeholder="Paste the link to their FB profile, page message, or post..."
                           className={`${fieldClass} resize-y`}
+                        />
+                      </div>
+                    )}
+
+                    {formData.source === "other" && (
+                      <div>
+                        <label className={labelClass} htmlFor="sourceOther">
+                          Please Specify
+                        </label>
+                        <input
+                          id="sourceOther"
+                          name="sourceOther"
+                          value={formData.sourceOther}
+                          onChange={handleFormChange}
+                          placeholder="e.g. referral, walk-in..."
+                          required
+                          className={fieldClass}
                         />
                       </div>
                     )}

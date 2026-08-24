@@ -90,7 +90,7 @@ export const QuotationRequests: CollectionConfig = {
         }
         return doc;
       },
-            async ({ doc, previousDoc, operation, req }) => {
+      async ({ doc, previousDoc, operation, req }) => {
         // ✨ Skip the broadcast when this status change came from an
         // internal system cascade (e.g. Orders.ts auto-completing the RFQ
         // once payment + delivery are both confirmed) rather than a
@@ -189,7 +189,7 @@ export const QuotationRequests: CollectionConfig = {
     {
       name: "source",
       type: "select",
-      required: true, // Explicitly required
+      required: true,
       defaultValue: "website",
       options: [
         { label: "Website", value: "website" },
@@ -199,6 +199,7 @@ export const QuotationRequests: CollectionConfig = {
         { label: "Dummy", value: "dummy" },
         { label: "Email", value: "email" },
         { label: "Market Place", value: "marketPlace" },
+        { label: "Other", value: "other" }, 
       ],
     },
     {
@@ -209,6 +210,15 @@ export const QuotationRequests: CollectionConfig = {
         description:
           "Optional: link to the customer's Facebook profile or the post/message thread this inquiry came from.",
         condition: (data) => data?.source === "facebook",
+      },
+    },
+    {
+      name: "sourceOther",
+      type: "text",
+      label: "Specify Source",
+      admin: {
+        description: "What was the actual source, since it wasn't in the list?",
+        condition: (data) => data?.source === "other",
       },
     },
     {
