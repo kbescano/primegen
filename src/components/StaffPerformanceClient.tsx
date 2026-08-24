@@ -38,6 +38,14 @@ const STATUS_COLORS: Record<string, string> = {
   rejected: "#8b93a1",
 };
 
+// "Informal Quote" is a real status value on quotation-requests (see
+// StatusSelect.tsx), but this page deliberately doesn't track it as its
+// own bucket -- it rolls up into "Quote Sent" for the overview counts
+// below, since an informal quote still means a quote went out.
+function overviewStatus(status?: string): string | undefined {
+  return status === "informal-quote" ? "quote-sent" : status;
+}
+
 function getRowBgColor(status?: string) {
   const color = STATUS_COLORS[status || ""];
   if (!color) return undefined;
@@ -461,8 +469,9 @@ export default function StaffPerformanceClient({
         continue;
       }
       byStaff[assignedId].total++;
-      if (STATUS_KEYS.includes(r.status))
-        byStaff[assignedId].counts[r.status]++;
+      const status = overviewStatus(r.status);
+      if (STATUS_KEYS.includes(status as any))
+        byStaff[assignedId].counts[status as string]++;
     }
 
     const computedStaffRows = Object.entries(byStaff)
@@ -490,7 +499,8 @@ export default function StaffPerformanceClient({
         };
       }
       bySource[src].total++;
-      if (STATUS_KEYS.includes(r.status)) bySource[src].counts[r.status]++;
+      const status = overviewStatus(r.status);
+      if (STATUS_KEYS.includes(status as any)) bySource[src].counts[status as string]++;
     }
 
     const computedSourceRows = Object.entries(bySource)
@@ -509,7 +519,8 @@ export default function StaffPerformanceClient({
     );
     const computedOverallTotal = filtered.length;
     for (const r of filtered) {
-      if (STATUS_KEYS.includes(r.status)) computedOverallCounts[r.status]++;
+      const status = overviewStatus(r.status);
+      if (STATUS_KEYS.includes(status as any)) computedOverallCounts[status as string]++;
     }
     const computedOverallCompletionRate =
       computedOverallTotal > 0
