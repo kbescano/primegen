@@ -160,10 +160,12 @@ export const Orders: CollectionConfig = {
         }
         return doc;
       },
-      // ✨ NEW: Receipt uploaded (client or supplier) -- admin only.
-      // NOTE: see the flagged conflict below regarding
-      // PipelineSteps.tsx's handleReceiptUpload, which ALSO fires its own
-      // client-side notification fan-out for this same event.
+      // Receipt uploaded (client or supplier) -- admin only. Verified this
+      // is the only place this event is notified: PipelineSteps.tsx's
+      // handleReceiptUpload only PATCHes the order fields (via
+      // handleUpdateOrderField in PipelineStepper.tsx) and never posts to
+      // /api/notifications itself, so there's no client-side duplicate to
+      // worry about here.
       async ({ doc, previousDoc, operation, req }) => {
         if (operation !== "update") return doc;
         try {

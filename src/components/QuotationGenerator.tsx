@@ -368,39 +368,13 @@ export default function QuotationGenerator({
       setDocStatus(targetStatus);
       await upsertClientRecord();
 
-      // ✨ DYNAMIC ADMIN NOTIFICATION: Fetches all admins and blasts the notification to them
-      if (targetStatus === "pending_approval") {
-        try {
-          // 1. Ask the database for all users where role === 'admin'
-          const adminRes = await fetch(
-            "/api/users?where[role][equals]=admin&limit=50",
-            { credentials: "include" },
-          );
-          if (adminRes.ok) {
-            const adminData = await adminRes.json();
-            const admins = adminData.docs || [];
-
-            // 2. Loop through them and send a notification to each one simultaneously
-            await Promise.all(
-              admins.map((admin: any) =>
-                fetch("/api/notifications", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  credentials: "include",
-                  body: JSON.stringify({
-                    recipient: admin.id,
-                    message: `Approval requested for Quotation ${saved.doc.quotationNumber || "Pending"}.`,
-                    link: `/admin-dashboard/client-quotation?status=pending_approval`,
-                    read: false,
-                  }),
-                }),
-              ),
-            );
-          }
-        } catch (e) {
-          console.error("Failed to send notification to admins:", e);
-        }
-      }
+      // Notifying admins/marketing that this quotation is pending approval
+      // is handled server-side by ClientQuotations.ts's afterChange hook
+      // (fires on the same PATCH/POST above, for both create and update).
+      // This used to ALSO loop over every admin here and fire one more
+      // individually-addressed notification per admin on top of that
+      // hook's single broadcast doc -- duplicating the bell for every
+      // admin every time a quotation was sent for approval.
 
       setSaving("saved");
 

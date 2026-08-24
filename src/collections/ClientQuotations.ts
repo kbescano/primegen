@@ -63,7 +63,7 @@ export const ClientQuotations: CollectionConfig = {
               collection: "notifications" as any,
               data: {
                 message: `Quotation ${doc.quotationNumber || ""} for ${doc.customerName || "a customer"} is ready for approval.`,
-                link: `/admin-dashboard/client-quotation?status=pending_approval`,
+                link: `/admin-dashboard/client-quotation?id=${doc.id}`,
                 audienceRoles: ["admin"],
                 read: false,
               },

@@ -3,13 +3,12 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-export default function CollectionStatusSelect({ 
-  collection, 
-  id, 
-  status, 
-  options, 
+export default function CollectionStatusSelect({
+  collection,
+  id,
+  status,
+  options,
   colorClassMap,
-  notifyOnUpdate // ✨ NEW: Optional array to trigger notifications on specific statuses
 }: any) {
   const [currentStatus, setCurrentStatus] = useState(status);
   const [updating, setUpdating] = useState(false);
@@ -23,26 +22,17 @@ export default function CollectionStatusSelect({
     setUpdating(true);
 
     try {
-      // 1. Update the record in the database
+      // Update the record -- any notification for this status change is the
+      // collection's own responsibility (an afterChange hook on this same
+      // PATCH), not this component's. It used to also fire its own POST to
+      // /api/notifications via an optional `notifyOnUpdate` prop, which
+      // ended up duplicating whatever the collection's hook already sent
+      // for the same event -- removed along with its only caller.
       await fetch(`/api/${collection}/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status: newStatus }),
       });
-
-      // 2. ✨ Check if we passed any notification rules for this specific status change
-      if (notifyOnUpdate) {
-        const config = notifyOnUpdate.find((n: any) => n.triggerStatus === newStatus);
-        
-        // Only send if the rule exists AND there is a valid recipient ID
-        if (config && config.payload?.recipient) {
-          await fetch("/api/notifications", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(config.payload),
-          });
-        }
-      }
 
       router.refresh();
     } catch (err) {

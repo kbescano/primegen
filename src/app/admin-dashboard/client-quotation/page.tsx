@@ -179,23 +179,6 @@ export default async function ClientQuotationPage({
     if (o.sourceQuotationId) orderIdByQuotationId[o.sourceQuotationId] = o.id
   }
 
-  // Fetch Requests to find the original Staff ID for notifications
-  const requestIds = docs.map((d: any) => d.sourceRequestId).filter(Boolean)
-  const requestsRes = requestIds.length > 0
-    ? await payload.find({
-        collection: 'quotation-requests',
-        where: { id: { in: requestIds } },
-        limit: 200,
-      })
-    : { docs: [] as any[] }
-
-  const staffIdByRequestId: Record<string, string> = {}
-  for (const r of requestsRes.docs as any[]) {
-    if (r.assignedTo) {
-      staffIdByRequestId[r.id] = typeof r.assignedTo === 'object' ? r.assignedTo.id : r.assignedTo
-    }
-  }
-
   function buildHref(s?: string) {
     return s ? `/admin-dashboard/client-quotation?status=${s}` : '/admin-dashboard/client-quotation'
   }
@@ -272,8 +255,6 @@ export default async function ClientQuotationPage({
             
             const existingOrderId = orderIdByQuotationId[String(q.id)]
             const availableOptions = STATUS_OPTIONS
-            
-            const staffUserId = q.sourceRequestId ? staffIdByRequestId[String(q.sourceRequestId)] : null;
 
             const date = q.quotationDate
               ? new Date(q.quotationDate).toLocaleDateString('en-PH', {
@@ -304,18 +285,13 @@ export default async function ClientQuotationPage({
                       status={q.status}
                       options={availableOptions}
                       colorClassMap={STATUS_COLORS}
-                      // ✨ Passes the exact rules to the generic component!
-                      notifyOnUpdate={[
-                        {
-                          triggerStatus: "quotation_approved",
-                          payload: {
-                            recipient: staffUserId,
-                            message: `Approved! Quotation ${q.quotationNumber} has been approved by the Admin.`,
-                            link: `/admin-dashboard/pipeline/${q.sourceRequestId || ''}`,
-                            read: false,
-                          }
-                        }
-                      ]}
+                      // Notifying the assigned staff member that their
+                      // quotation was approved is already handled
+                      // server-side by ClientQuotations.ts's afterChange
+                      // hook (fires on the same PATCH this triggers). This
+                      // used to ALSO fire a second, differently-worded
+                      // notification to that same person from here --
+                      // doubling up the bell for this event.
                     />
                   </div>
                 </div>
