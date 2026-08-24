@@ -64,6 +64,57 @@ function getStatusBadgeStyle(val: string) {
   return "bg-gray-50 text-gray-500";
 }
 
+// Some item descriptions are one giant pasted-in materials list rather than
+// a short line-item name -- collapsing the *count* of items (see
+// ITEMS_PREVIEW_COUNT below) doesn't help when it's a single item whose own
+// text runs to hundreds of characters. This clamps that text to a few lines
+// with its own independent "View more" / "Show less" toggle.
+const ITEM_TEXT_PREVIEW_CHARS = 160;
+
+function ClampedItemText({
+  text,
+  expanded,
+  onToggle,
+  textClassName,
+  clampLines = 3,
+}: {
+  text: string;
+  expanded: boolean;
+  onToggle: () => void;
+  textClassName: string;
+  clampLines?: number;
+}) {
+  if (!text || text.length <= ITEM_TEXT_PREVIEW_CHARS) {
+    return <div className={textClassName}>{text}</div>;
+  }
+  return (
+    <div>
+      <div
+        className={textClassName}
+        style={
+          expanded
+            ? undefined
+            : {
+                display: "-webkit-box",
+                WebkitLineClamp: clampLines,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }
+        }
+      >
+        {text}
+      </div>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="mt-0.5 text-[9px] sm:text-[10px] font-semibold text-emerald-700 hover:text-emerald-900 transition-colors"
+      >
+        {expanded ? "Show less" : "View more"}
+      </button>
+    </div>
+  );
+}
+
 function getSourceBadgeStyle(val: string) {
   if (!val) return "bg-gray-50 text-gray-400";
   const lower = val.toLowerCase();
@@ -102,7 +153,18 @@ type TableRow = {
   supplierPhone?: string;
   itemDesc: string;
   itemQty: string;
+  // A request with many line items used to render one full row per item
+  // (desktop) / one card block per item (mobile) unconditionally, making
+  // the whole table balloon in height for any request with a long items
+  // list. These two mark a synthetic row injected in place of the items
+  // past the preview count, rendered as a single "View N more" / "Show
+  // less" toggle spanning the item columns instead of real item data.
+  __toggleRow?: "more" | "less";
+  __hiddenCount?: number;
 };
+
+// How many item rows show per request before collapsing behind "View more".
+const ITEMS_PREVIEW_COUNT = 3;
 
 type OverviewEntry = {
   id: string;
@@ -323,6 +385,33 @@ export default function StaffPerformanceClient({
     undefined,
   );
   const [updatingReqId, setUpdatingReqId] = useState<string | null>(null);
+  const [expandedItemGroups, setExpandedItemGroups] = useState<Set<string>>(
+    new Set(),
+  );
+
+  function toggleItemGroup(reqId: string) {
+    setExpandedItemGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(reqId)) next.delete(reqId);
+      else next.add(reqId);
+      return next;
+    });
+  }
+
+  // Independent of the group-level toggle above -- this expands a single
+  // item's own long description text (see ClampedItemText), keyed by its
+  // position in the rendered row list.
+  const [expandedTextKeys, setExpandedTextKeys] = useState<Set<string>>(
+    new Set(),
+  );
+  function toggleItemText(key: string) {
+    setExpandedTextKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
 
   useEffect(() => {
     setLocalRequests(requests);
@@ -738,6 +827,49 @@ export default function StaffPerformanceClient({
     posByOrderId,
   ]);
 
+  // Collapses each request's item rows down to ITEMS_PREVIEW_COUNT, with a
+  // synthetic toggle row in place of the rest -- recomputing rowSpan so the
+  // rowSpan-merged columns (ID/Date, Client, Rep, Status, etc.) still line
+  // up with however many rows are actually rendered for that group. Shared
+  // by both the mobile card list and the desktop table below.
+  const visibleTableRows = useMemo(() => {
+    const out: TableRow[] = [];
+    let i = 0;
+    while (i < tableRows.length) {
+      const start = i;
+      let end = start + 1;
+      while (end < tableRows.length && !tableRows[end].isFirstOfRequest) end++;
+      const group = tableRows.slice(start, end);
+      i = end;
+
+      if (group.length <= ITEMS_PREVIEW_COUNT) {
+        out.push(...group);
+        continue;
+      }
+
+      const reqId = group[0].reqId;
+      const isExpanded = expandedItemGroups.has(reqId);
+      const visible = isExpanded ? group : group.slice(0, ITEMS_PREVIEW_COUNT);
+
+      out.push({ ...visible[0], rowSpan: visible.length + 1 }, ...visible.slice(1));
+      out.push({
+        ...group[0],
+        isFirstOfRequest: false,
+        rowSpan: 1,
+        poLabel: "",
+        poStatus: undefined,
+        poHref: undefined,
+        supplierCompany: undefined,
+        supplierPhone: undefined,
+        itemDesc: "",
+        itemQty: "",
+        __toggleRow: isExpanded ? "less" : "more",
+        __hiddenCount: group.length - ITEMS_PREVIEW_COUNT,
+      });
+    }
+    return out;
+  }, [tableRows, expandedItemGroups]);
+
   const canAssignStaff =
     currentUserRole === "admin" || currentUserRole === "marketing";
 
@@ -897,12 +1029,12 @@ export default function StaffPerformanceClient({
 
           {/* --- MOBILE CARD VIEW --- */}
           <div className="block xl:hidden w-full flex-col">
-            {tableRows.length === 0 ? (
+            {visibleTableRows.length === 0 ? (
               <div className="px-3 py-8 sm:py-10 text-center text-gray-300 italic text-[11px] sm:text-[12px]">
                 No requests found matching criteria.
               </div>
             ) : (
-              tableRows.map((row, i) => (
+              visibleTableRows.map((row, i) => (
                 <div
                   key={`${row.reqId}-${i}`}
                   className={`flex flex-col px-2 sm:px-4 pb-3 sm:pb-4 ${row.isFirstOfRequest ? (i === 0 ? "pt-3 sm:pt-4" : "border-t-4 border-gray-50 pt-4 sm:pt-5 mt-1") : "pt-2.5 sm:pt-3 mt-2.5 sm:mt-3 border-t border-dashed border-gray-100"}`}
@@ -1070,54 +1202,71 @@ export default function StaffPerformanceClient({
                     </div>
                   )}
 
-                  <div className="flex flex-col gap-1.5 pl-2 sm:pl-3 border-l-2 border-emerald-100">
-                    <div className="flex justify-between items-start gap-2 sm:gap-3">
-                      <div className="text-[11px] sm:text-[12px] font-medium text-gray-700 leading-snug break-words min-w-0">
-                        {row.itemDesc}
+                  {row.__toggleRow ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleItemGroup(row.reqId)}
+                      className="ml-2 sm:ml-3 self-start text-[10px] sm:text-[11px] font-semibold text-emerald-700 hover:text-emerald-900 transition-colors"
+                    >
+                      {row.__toggleRow === "more"
+                        ? `View ${row.__hiddenCount} more item${row.__hiddenCount === 1 ? "" : "s"} →`
+                        : "Show less"}
+                    </button>
+                  ) : (
+                    <div className="flex flex-col gap-1.5 pl-2 sm:pl-3 border-l-2 border-emerald-100">
+                      <div className="flex justify-between items-start gap-2 sm:gap-3">
+                        <div className="min-w-0 flex-1">
+                          <ClampedItemText
+                            text={row.itemDesc}
+                            expanded={expandedTextKeys.has(`mobile-${row.reqId}-${i}`)}
+                            onToggle={() => toggleItemText(`mobile-${row.reqId}-${i}`)}
+                            textClassName="text-[11px] sm:text-[12px] font-medium text-gray-700 leading-snug break-words"
+                          />
+                        </div>
+                        <div className="font-mono text-gray-700 font-medium text-[10px] sm:text-[11px] bg-gray-50 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap">
+                          {row.itemQty}
+                        </div>
                       </div>
-                      <div className="font-mono text-gray-700 font-medium text-[10px] sm:text-[11px] bg-gray-50 px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap">
-                        {row.itemQty}
-                      </div>
-                    </div>
 
-                    <div className="text-[9px] sm:text-[10px] flex flex-wrap items-center gap-x-1.5">
-                      <span className="text-gray-400">PO:</span>
-                      {row.poHref ? (
-                        <Link
-                          href={row.poHref}
-                          className="font-mono font-medium text-gray-700 hover:text-emerald-700 transition-colors break-all"
-                        >
-                          {row.poLabel}
-                        </Link>
-                      ) : (
-                        <span className="text-gray-400 break-all">
-                          {row.poLabel}
-                        </span>
-                      )}
-                      {row.poStatus && (
-                        <span
-                          className={`text-[8px] sm:text-[9px] font-medium ${row.poStatus === "fulfilled" ? "text-emerald-700" : "text-amber-600"}`}
-                        >
-                          ({row.poStatus})
-                        </span>
-                      )}
-                    </div>
-
-                    {(row.supplierCompany || row.supplierPhone) && (
-                      <div className="text-[8px] sm:text-[9px] text-gray-400 flex flex-wrap gap-x-2 gap-y-0.5">
-                        {row.supplierCompany && (
-                          <span className="break-words">
-                            {row.supplierCompany}
+                      <div className="text-[9px] sm:text-[10px] flex flex-wrap items-center gap-x-1.5">
+                        <span className="text-gray-400">PO:</span>
+                        {row.poHref ? (
+                          <Link
+                            href={row.poHref}
+                            className="font-mono font-medium text-gray-700 hover:text-emerald-700 transition-colors break-all"
+                          >
+                            {row.poLabel}
+                          </Link>
+                        ) : (
+                          <span className="text-gray-400 break-all">
+                            {row.poLabel}
                           </span>
                         )}
-                        {row.supplierPhone && (
-                          <span className="break-words">
-                            {row.supplierPhone}
+                        {row.poStatus && (
+                          <span
+                            className={`text-[8px] sm:text-[9px] font-medium ${row.poStatus === "fulfilled" ? "text-emerald-700" : "text-amber-600"}`}
+                          >
+                            ({row.poStatus})
                           </span>
                         )}
                       </div>
-                    )}
-                  </div>
+
+                      {(row.supplierCompany || row.supplierPhone) && (
+                        <div className="text-[8px] sm:text-[9px] text-gray-400 flex flex-wrap gap-x-2 gap-y-0.5">
+                          {row.supplierCompany && (
+                            <span className="break-words">
+                              {row.supplierCompany}
+                            </span>
+                          )}
+                          {row.supplierPhone && (
+                            <span className="break-words">
+                              {row.supplierPhone}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))
             )}
@@ -1145,7 +1294,7 @@ export default function StaffPerformanceClient({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {tableRows.length === 0 ? (
+                {visibleTableRows.length === 0 ? (
                   <tr>
                     <td
                       colSpan={14}
@@ -1155,7 +1304,7 @@ export default function StaffPerformanceClient({
                     </td>
                   </tr>
                 ) : (
-                  tableRows.map((row, i) => {
+                  visibleTableRows.map((row, i) => {
                     const rowBg = getRowBgColor(row.status);
                     return (
                       <tr
@@ -1312,46 +1461,67 @@ export default function StaffPerformanceClient({
                           </>
                         )}
 
-                        <td className={tdClass}>
-                          {row.poHref ? (
-                            <Link
-                              href={row.poHref}
-                              className="font-mono font-medium text-gray-700 hover:text-emerald-700 transition-colors block leading-tight break-words"
+                        {row.__toggleRow ? (
+                          <td className={`${tdClass} text-center`} colSpan={3}>
+                            <button
+                              type="button"
+                              onClick={() => toggleItemGroup(row.reqId)}
+                              className="text-[10px] font-semibold text-emerald-700 hover:text-emerald-900 transition-colors"
                             >
-                              {row.poLabel}
-                            </Link>
-                          ) : (
-                            <span className="text-gray-400 block leading-tight break-words">
-                              {row.poLabel}
-                            </span>
-                          )}
-                          {row.poStatus && (
-                            <span
-                              className={`inline-block mt-1 text-[8px] font-medium ${row.poStatus === "fulfilled" ? "text-emerald-700" : "text-amber-600"}`}
-                            >
-                              {row.poStatus}
-                            </span>
-                          )}
-                          {(row.supplierCompany || row.supplierPhone) && (
-                            <div className="mt-1.5 text-[8px] text-gray-400 font-normal leading-tight space-y-0.5 break-words">
-                              {row.supplierCompany && (
-                                <div>{row.supplierCompany}</div>
+                              {row.__toggleRow === "more"
+                                ? `View ${row.__hiddenCount} more item${row.__hiddenCount === 1 ? "" : "s"} →`
+                                : "Show less"}
+                            </button>
+                          </td>
+                        ) : (
+                          <>
+                            <td className={tdClass}>
+                              {row.poHref ? (
+                                <Link
+                                  href={row.poHref}
+                                  className="font-mono font-medium text-gray-700 hover:text-emerald-700 transition-colors block leading-tight break-words"
+                                >
+                                  {row.poLabel}
+                                </Link>
+                              ) : (
+                                <span className="text-gray-400 block leading-tight break-words">
+                                  {row.poLabel}
+                                </span>
                               )}
-                              {row.supplierPhone && (
-                                <div>{row.supplierPhone}</div>
+                              {row.poStatus && (
+                                <span
+                                  className={`inline-block mt-1 text-[8px] font-medium ${row.poStatus === "fulfilled" ? "text-emerald-700" : "text-amber-600"}`}
+                                >
+                                  {row.poStatus}
+                                </span>
                               )}
-                            </div>
-                          )}
-                        </td>
+                              {(row.supplierCompany || row.supplierPhone) && (
+                                <div className="mt-1.5 text-[8px] text-gray-400 font-normal leading-tight space-y-0.5 break-words">
+                                  {row.supplierCompany && (
+                                    <div>{row.supplierCompany}</div>
+                                  )}
+                                  {row.supplierPhone && (
+                                    <div>{row.supplierPhone}</div>
+                                  )}
+                                </div>
+                              )}
+                            </td>
 
-                        <td className={`${tdClass} break-words`}>
-                          {row.itemDesc}
-                        </td>
-                        <td
-                          className={`${tdClass} font-mono text-gray-400 whitespace-nowrap`}
-                        >
-                          {row.itemQty}
-                        </td>
+                            <td className={tdClass}>
+                              <ClampedItemText
+                                text={row.itemDesc}
+                                expanded={expandedTextKeys.has(`desktop-${row.reqId}-${i}`)}
+                                onToggle={() => toggleItemText(`desktop-${row.reqId}-${i}`)}
+                                textClassName="break-words"
+                              />
+                            </td>
+                            <td
+                              className={`${tdClass} font-mono text-gray-400 whitespace-nowrap`}
+                            >
+                              {row.itemQty}
+                            </td>
+                          </>
+                        )}
 
                         {row.isFirstOfRequest && (
                           <td className={tdClass} rowSpan={row.rowSpan}>

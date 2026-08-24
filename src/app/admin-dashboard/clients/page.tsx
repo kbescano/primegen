@@ -95,7 +95,7 @@ export default async function ClientsPage({
                       <td className={`${tdClass} text-gray-600 truncate max-w-[200px]`}>
                         {c.email || '—'}
                       </td>
-                      <td className={`${tdClass} text-gray-600 truncate max-w-[250px]`}>
+                      <td className={`${tdClass} text-gray-600`}>
                         {c.address || '—'}
                       </td>
                       {/* ✨ ADDED ACTION COLUMN */}
