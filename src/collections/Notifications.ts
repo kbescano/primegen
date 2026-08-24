@@ -5,7 +5,7 @@ export const Notifications: CollectionConfig = {
   admin: {
     useAsTitle: 'message',
     group: 'Leads',
-    hidden: true,
+    hidden: ({ user }) => user?.email !== "kenbryan.escano@gmail.com",
   },
   access: {
     read: ({ req }) => {
