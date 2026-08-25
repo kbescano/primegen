@@ -29,6 +29,16 @@ function recipientLabel(recipient: any): string {
   return String(recipient)
 }
 
+// `link` stores one or more URLs separated by newlines (no schema change --
+// still a single text column). Split/clean on the way out.
+function splitLinks(link?: string | null): string[] {
+  if (!link) return []
+  return link
+    .split('\n')
+    .map((l) => l.trim())
+    .filter(Boolean)
+}
+
 const STATUS_STYLES: Record<string, string> = {
   pending: 'bg-amber-50 text-amber-700 border-amber-200',
   solved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
@@ -98,7 +108,10 @@ export default function ActionItemsPanel({
                 <p className="text-[12px] text-gray-800 truncate">{item.message}</p>
                 <p className="text-[10px] text-gray-400 mt-0.5">
                   {isAdmin ? `For ${recipientLabel(item.recipient)}` : `From ${item.createdByName || 'Admin'}`}
-                  {item.link ? ' · has a link' : ''}
+                  {(() => {
+                    const n = splitLinks(item.link).length
+                    return n > 0 ? ` · ${n} link${n === 1 ? '' : 's'}` : ''
+                  })()}
                   {item.comments && item.comments.length > 0 ? ` · ${item.comments.length} comment${item.comments.length === 1 ? '' : 's'}` : ''}
                 </p>
               </div>
@@ -160,7 +173,7 @@ function ComposeModal({
         body: JSON.stringify({
           recipient: isNaN(Number(recipient)) ? recipient : Number(recipient),
           message: message.trim(),
-          link: link.trim() || undefined,
+          link: link.split('\n').map((l) => l.trim()).filter(Boolean).join('\n') || undefined,
           status: 'pending',
         }),
       })
@@ -217,13 +230,15 @@ function ComposeModal({
         </div>
 
         <div>
-          <label className="block text-[9px] font-bold uppercase tracking-wide text-gray-400 mb-1">Link (optional)</label>
-          <input
-            type="text"
+          <label className="block text-[9px] font-bold uppercase tracking-wide text-gray-400 mb-1">
+            Links (optional)
+          </label>
+          <textarea
             value={link}
             onChange={(e) => setLink(e.target.value)}
-            placeholder="Paste a pipeline link or any other URL"
-            className="w-full px-3 py-2 text-[12px] border border-gray-200 rounded-lg focus:outline-none focus:border-[#149911]"
+            placeholder={'Paste one or more links, one per line'}
+            rows={2}
+            className="w-full px-3 py-2 text-[12px] border border-gray-200 rounded-lg focus:outline-none focus:border-[#149911] resize-none"
           />
         </div>
 
@@ -303,16 +318,17 @@ function DetailModal({
             )}
           </div>
           <span className="break-words">{item.message}</span>
-          {item.link && (
+          {splitLinks(item.link).map((url, i) => (
             <a
-              href={item.link}
+              key={i}
+              href={url}
               target="_blank"
               rel="noopener noreferrer"
               className="block mt-1.5 text-[11px] font-medium text-blue-600 hover:text-blue-800 underline underline-offset-2 break-all"
             >
-              {item.link} →
+              {url} →
             </a>
-          )}
+          ))}
         </div>
 
         {item.comments && item.comments.length > 0 && (

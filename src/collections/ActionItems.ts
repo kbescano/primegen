@@ -41,11 +41,16 @@ export const ActionItems: CollectionConfig = {
   fields: [
     { name: "message", type: "textarea", required: true, label: "Message" },
     {
+      // Kept as "text" (not "textarea") so this doesn't trigger another
+      // drizzle column-type migration -- the custom panel UI already
+      // renders/collects this as a multi-line field regardless of the
+      // Payload field type; this only changes what the auto-generated
+      // Payload admin view looks like, which isn't how this gets edited.
       name: "link",
       type: "text",
-      label: "Link (optional)",
+      label: "Links (optional)",
       admin: {
-        description: "Paste a pipeline link (or any other relevant URL) instead of attaching this to a specific request.",
+        description: "One or more pipeline links (or any other relevant URLs), one per line, instead of attaching this to a specific request.",
       },
     },
     {
