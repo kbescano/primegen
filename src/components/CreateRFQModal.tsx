@@ -407,6 +407,8 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
                         <option value="marketPlace">Market Place</option>
                         <option value="dummy">Dummy</option>
                         <option value="email">Email</option>
+                        <option value="existingClient">Existing Client</option>
+                        <option value="callText">Call/Text</option>
                         <option value="other">Others</option>
                       </select>
                     </div>

@@ -146,6 +146,24 @@ function assignedToId(assignedTo: any): string | undefined {
   return typeof assignedTo === 'object' ? String(assignedTo?.id) : String(assignedTo)
 }
 
+// Same in-memory filtering as Status/Staff -- `needle` is already
+// lowercased and trimmed by the caller. Covers what sales would actually
+// search by: customer, contact info, the requested items, and the note
+// they left themselves.
+function matchesRequestSearch(q: any, needle: string): boolean {
+  const parts: string[] = [q.customerName, q.phone, q.email, q.message]
+  if (Array.isArray(q.items)) {
+    for (const item of q.items) {
+      const material = item?.material
+      parts.push(typeof material === 'object' ? material?.name : undefined)
+      parts.push(item?.sizeDescription)
+    }
+  }
+  return parts
+    .filter(Boolean)
+    .some((p) => String(p).toLowerCase().includes(needle))
+}
+
 type StaffOption = { id: string; name: string; email: string }
 
 // The full content of one request -- shared between the inbox list (where
@@ -339,31 +357,44 @@ export default function QuotationInboxClient({
   // Action Item's link, or any other shared URL, open straight to one
   // specific request (see the stale-request cron, which links here).
   const [openId, setOpenId] = useState<string | undefined>(searchParams.get('id') || undefined)
+  const [searchQuery, setSearchQuery] = useState<string>(searchParams.get('q') || '')
 
   // Sync state if the user uses the browser Back/Forward buttons
   useEffect(() => {
     setActiveStatus(normalizeStatus(searchParams.get('status')))
     setActiveStaff(searchParams.get('staff') || undefined)
     setOpenId(searchParams.get('id') || undefined)
+    setSearchQuery(searchParams.get('q') || '')
   }, [searchParams])
 
   // Silently update the URL so links remain shareable, without triggering a
   // Next.js navigation or server re-render (same as ProductCatalog's
   // toggleCategory / SearchBar).
-  function syncUrl(next: { status?: string; staff?: string; id?: string }) {
+  function syncUrl(next: { status?: string; staff?: string; id?: string; q?: string }) {
     const params = new URLSearchParams(searchParams.toString())
     const nextStatus = 'status' in next ? next.status : activeStatus
     const nextStaff = 'staff' in next ? next.staff : activeStaff
     const nextId = 'id' in next ? next.id : openId
+    const nextQuery = 'q' in next ? next.q : searchQuery
     if (nextStatus) params.set('status', nextStatus)
     else params.delete('status')
     if (nextStaff) params.set('staff', nextStaff)
     else params.delete('staff')
     if (nextId) params.set('id', nextId)
     else params.delete('id')
+    if (nextQuery) params.set('q', nextQuery)
+    else params.delete('q')
     const qs = params.toString()
     window.history.replaceState(null, '', qs ? `${pathname}?${qs}` : pathname)
   }
+
+  // Filtering itself is instant (in-memory), same as Status/Staff -- only
+  // the URL write is debounced, so typing doesn't spam replaceState.
+  useEffect(() => {
+    const timer = setTimeout(() => syncUrl({ q: searchQuery || undefined }), 400)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery])
 
   function handleStatusClick(value: string) {
     const next = value || undefined
@@ -394,12 +425,14 @@ export default function QuotationInboxClient({
   const openRequestDoc = openId ? requests.find((r) => String(r.id) === openId) : undefined
 
   const filteredRequests = useMemo(() => {
+    const needle = searchQuery.trim().toLowerCase()
     return requests.filter((q) => {
       const matchesStatus = !activeStatus || q.status === activeStatus
       const matchesStaff = !activeStaff || assignedToId(q.assignedTo) === activeStaff
-      return matchesStatus && matchesStaff
+      const matchesSearch = !needle || matchesRequestSearch(q, needle)
+      return matchesStatus && matchesStaff && matchesSearch
     })
-  }, [requests, activeStatus, activeStaff])
+  }, [requests, activeStatus, activeStaff, searchQuery])
 
   return (
     <div className="w-full max-w-[900px] mx-auto py-6 overflow-x-hidden text-gray-700">
@@ -425,6 +458,41 @@ export default function QuotationInboxClient({
       </div>
 
       <ActionItemsPanel items={actionItems} isAdmin={isAdmin} staffOptions={staffOptions} />
+
+      {/* Search */}
+      <div className="relative mb-4">
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none"
+        >
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Search by name, phone, email, or item..."
+          className="w-full pl-9 pr-8 py-2 text-[12px] text-gray-700 placeholder:text-gray-300 bg-gray-50/70 border border-gray-100 rounded-lg focus:outline-none focus:border-[#149911] focus:bg-white transition-colors"
+        />
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => setSearchQuery('')}
+            aria-label="Clear search"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
+          >
+            ✕
+          </button>
+        )}
+      </div>
 
       {/* Filter Section */}
       <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-3 pb-4 border-b border-gray-100">
@@ -496,7 +564,8 @@ export default function QuotationInboxClient({
                   staffOptions.find((s) => s.id === activeStaff)?.email ||
                   "that staff member"
                 }`
-              : ""}{" "}
+              : ""}
+            {searchQuery ? ` matching "${searchQuery}"` : ""}{" "}
             in this period.
           </p>
         </div>

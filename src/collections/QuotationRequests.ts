@@ -268,7 +268,9 @@ export const QuotationRequests: CollectionConfig = {
         { label: "Dummy", value: "dummy" },
         { label: "Email", value: "email" },
         { label: "Market Place", value: "marketPlace" },
-        { label: "Other", value: "other" }, 
+        { label: "Existing Client", value: "existingClient" },
+        { label: "Call/Text", value: "callText" },
+        { label: "Other", value: "other" },
       ],
     },
     {

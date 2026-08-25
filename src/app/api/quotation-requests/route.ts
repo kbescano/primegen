@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic'
 const MAX_TEXT = 500
 const MAX_MESSAGE = 5000
 const MAX_ITEMS = 50
-const ALLOWED_SOURCES = ['website', 'facebook', 'google', 'viber', 'dummy', 'email', 'marketPlace']
+const ALLOWED_SOURCES = ['website', 'facebook', 'google', 'viber', 'dummy', 'email', 'marketPlace', 'existingClient', 'callText', 'other']
 const ALLOWED_PROJECT_TYPES = ['residential', 'commercial', 'renovation', 'other']
 
 function isNonEmptyString(v: unknown): v is string {
@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     if (!isNonEmptyString(body.customerName) || body.customerName.trim().length > MAX_TEXT) {
       return NextResponse.json({ error: 'customerName is required' }, { status: 400 })
     }
-    for (const field of ['phone', 'email', 'facebookLink'] as const) {
+    for (const field of ['phone', 'email', 'facebookLink', 'sourceOther'] as const) {
       if (body[field] != null && (typeof body[field] !== 'string' || body[field].length > MAX_TEXT)) {
         return NextResponse.json({ error: `${field} is invalid` }, { status: 400 })
       }
@@ -61,6 +61,7 @@ export async function POST(req: Request) {
         message: body.message,
         source,
         facebookLink: body.facebookLink || '',
+        sourceOther: body.sourceOther || '',
         status: 'pending', // Default status for new inquiries
         items, // Will be an empty array if "To be confirmed" was checked
       },
