@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-type UpdateNote = { note: string; postedByName?: string; createdAt?: string }
+type UpdateNote = { note: string; postedByName?: string; postedAt?: string }
 
 export default function AddUpdateNote({
   requestId,
@@ -87,9 +87,15 @@ export default function AddUpdateNote({
     {sorted.map((n, i) => (
       <li key={i} className="flex items-start gap-2 text-[11px] text-gray-700 leading-snug">
         <span className="text-[#149911] mt-[3px] flex-shrink-0">&bull;</span>
-        <span>
-          {n.note}
+        <span
+          className="w-[52px] shrink-0 text-[9px] text-gray-400 font-mono pt-[1px]"
+          title={n.postedAt ? new Date(n.postedAt).toLocaleString() : undefined}
+        >
+          {n.postedAt
+            ? new Date(n.postedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            : '—'}
         </span>
+        <span className="flex-1 min-w-0">{n.note}</span>
       </li>
     ))}
   </ul>

@@ -74,15 +74,39 @@ export async function checkStaleRequestAlerts(payload: Payload): Promise<void> {
 }
 
 async function runCheck(payload: Payload): Promise<void> {
-  const fiveMinsAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString()
+  // Assigned + still Pending 5+ minutes after the last touch -- nobody's
+  // even started on it yet.
+  await flagStale(payload, {
+    status: 'pending',
+    thresholdMs: 5 * 60 * 1000,
+    messageFor: (doc) => `${doc.customerName || 'A customer'}'s request has been pending for over 5 minutes without action.`,
+  })
+
+  // Assigned + Processing, but untouched for 24+ hours -- `updatedAt` moves
+  // on any status change *and* on every update note posted (see
+  // QuotationRequests.ts's statusUpdates hook and its own updatedAt bump),
+  // so this one check covers both "no note posted" and "no additional
+  // update" without needing to separately inspect statusUpdates.
+  await flagStale(payload, {
+    status: 'processing',
+    thresholdMs: 24 * 60 * 60 * 1000,
+    messageFor: (doc) => `${doc.customerName || 'A customer'}'s request has been processing for over 24 hours with no update.`,
+  })
+}
+
+async function flagStale(
+  payload: Payload,
+  opts: { status: string; thresholdMs: number; messageFor: (doc: any) => string },
+): Promise<void> {
+  const cutoff = new Date(Date.now() - opts.thresholdMs).toISOString()
 
   const staleRequests = await payload.find({
     collection: 'quotation-requests',
     where: {
       and: [
-        { status: { equals: 'pending' } },
+        { status: { equals: opts.status } },
         { assignedTo: { not_equals: null } },
-        { updatedAt: { less_than: fiveMinsAgo } },
+        { updatedAt: { less_than: cutoff } },
       ],
     },
     depth: 0,
@@ -119,7 +143,7 @@ async function runCheck(payload: Payload): Promise<void> {
       await payload.create({
         collection: 'action-items' as any,
         data: {
-          message: `${reqDoc.customerName || 'A customer'}'s request has been pending for over 5 minutes without action.`,
+          message: opts.messageFor(reqDoc),
           link: `/admin-dashboard?id=${requestId}`,
           recipient: isNaN(Number(staffId)) ? staffId : Number(staffId),
           status: 'pending',
