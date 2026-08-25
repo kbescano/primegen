@@ -24,6 +24,7 @@ import { AboutPage } from './globals/AboutPage'
 import { Notifications } from './collections/Notifications'
 import { DeliveryItineraries } from './collections/DeliveryItineraries'
 import { CustomerStories } from './collections/CustomerStories'
+import { ActionItems } from './collections/ActionItems'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -83,7 +84,8 @@ export default buildConfig({
     SupplierPurchaseOrders,
     Notifications,
     DeliveryItineraries,
-    CustomerStories
+    CustomerStories,
+    ActionItems
   ],
   globals: [AboutPage],
   editor: lexicalEditor(),

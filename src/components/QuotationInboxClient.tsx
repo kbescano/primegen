@@ -16,6 +16,7 @@ import StatusSelect from '@/components/StatusSelect'
 import AssignStaffSelect from '@/components/AssignStaffSelect'
 import AddUpdateNote from '@/components/AddUpdateNotes'
 import DateGranularityFilter from '@/components/DateGranularityFilter'
+import ActionItemsPanel from '@/components/ActionItemsPanel'
 
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending' },
@@ -56,6 +57,7 @@ export default function QuotationInboxClient({
   initialStaff,
   granularity,
   periodValue,
+  actionItems,
 }: {
   requests: any[] // each pre-annotated server-side with `.stageLabel`
   staffOptions: StaffOption[]
@@ -65,6 +67,7 @@ export default function QuotationInboxClient({
   initialStaff?: string
   granularity: string
   periodValue: string
+  actionItems: any[]
 }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -133,6 +136,8 @@ export default function QuotationInboxClient({
           </p>
         </div>
       </div>
+
+      <ActionItemsPanel items={actionItems} isAdmin={isAdmin} staffOptions={staffOptions} />
 
       {/* Filter Section */}
       <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-3 pb-4 border-b border-gray-100">

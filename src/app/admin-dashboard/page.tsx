@@ -136,10 +136,10 @@ export default async function QuotationInboxPage({
     conditions.push({ createdAt: { less_than: end.toISOString() } });
   }
 
-  // The staff list (for the filter dropdown) doesn't depend on the
-  // quotation-requests query or vice versa -- run them together instead of
-  // one after the other.
-  const [staffRes, { docs }] = await Promise.all([
+  // The staff list (for the filter dropdown) and the Action Items panel
+  // don't depend on the quotation-requests query or each other -- run all
+  // three together instead of one after the other.
+  const [staffRes, { docs }, actionItemsRes] = await Promise.all([
     isAdmin
       ? payload.find({
           collection: "users",
@@ -162,6 +162,18 @@ export default async function QuotationInboxPage({
       // object (for name/unit). depth: 2 was also resolving each
       // material's OWN relationships (category, photos, weight-calc
       // link) for every item on every row -- unused here.
+      depth: 1,
+      overrideAccess: false,
+      user: currentUser,
+    }),
+    // overrideAccess: false + user here is what scopes this to "all" for
+    // Admin vs "only mine" for Staff -- same as the main query, driven
+    // entirely by ActionItems.ts's own read access, not a where clause.
+    payload.find({
+      collection: "action-items",
+      sort: "-createdAt",
+      limit: 100,
+      where: { status: { not_equals: "closed" } },
       depth: 1,
       overrideAccess: false,
       user: currentUser,
@@ -248,6 +260,7 @@ export default async function QuotationInboxPage({
       initialStaff={isAdmin ? staff : undefined}
       granularity={granularity || ""}
       periodValue={periodValue || ""}
+      actionItems={actionItemsRes.docs}
     />
   );
 }
