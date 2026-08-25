@@ -18,6 +18,47 @@ function currentMonthValue(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
+// Fixed "this week" (Mon-Sun) / "this month" windows for the small overview
+// panel -- independent of whatever date range the granularity filter is
+// currently set to, since the overview is meant to always answer "how am I
+// doing this week/month", not "how did the currently-viewed period go".
+function thisWeekRange(): { start: Date; end: Date } {
+  const now = new Date();
+  const day = now.getDay(); // 0 = Sun .. 6 = Sat
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + diffToMonday);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 7);
+  return { start, end };
+}
+
+function thisMonthRange(): { start: Date; end: Date } {
+  const now = new Date();
+  return {
+    start: new Date(now.getFullYear(), now.getMonth(), 1),
+    end: new Date(now.getFullYear(), now.getMonth() + 1, 1),
+  };
+}
+
+const OVERVIEW_STATUSES = [
+  "pending",
+  "processing",
+  "informal-quote",
+  "quote-sent",
+  "completed",
+  "rejected",
+] as const;
+
+function countByStatus(docs: any[]): Record<string, number> {
+  const counts: Record<string, number> = Object.fromEntries(
+    OVERVIEW_STATUSES.map((s) => [s, 0]),
+  );
+  for (const d of docs) {
+    if (d.status in counts) counts[d.status]++;
+  }
+  return counts;
+}
+
 function getGranularityRange(
   granularity?: string,
   periodValue?: string,
@@ -136,10 +177,14 @@ export default async function QuotationInboxPage({
     conditions.push({ createdAt: { less_than: end.toISOString() } });
   }
 
-  // The staff list (for the filter dropdown) and the Action Items panel
-  // don't depend on the quotation-requests query or each other -- run all
-  // three together instead of one after the other.
-  const [staffRes, { docs }, actionItemsRes] = await Promise.all([
+  const weekRange = thisWeekRange();
+  const monthRange = thisMonthRange();
+
+  // The staff list (for the filter dropdown), the Action Items panel, and
+  // the two small "this week" / "this month" overview counts don't depend
+  // on the main quotation-requests query or each other -- run everything
+  // together instead of one after the other.
+  const [staffRes, { docs }, actionItemsRes, weekOverviewRes, monthOverviewRes] = await Promise.all([
     isAdmin
       ? payload.find({
           collection: "users",
@@ -178,7 +223,40 @@ export default async function QuotationInboxPage({
       overrideAccess: false,
       user: currentUser,
     }),
+    // overrideAccess: false is what makes this "per sales staff" for a
+    // staff user (their own read access already scopes to assignedTo ===
+    // themselves) vs. the combined total for Admin/Marketing -- same as
+    // the main query above, no extra where clause needed for that part.
+    payload.find({
+      collection: "quotation-requests",
+      where: {
+        and: [
+          { createdAt: { greater_than_equal: weekRange.start.toISOString() } },
+          { createdAt: { less_than: weekRange.end.toISOString() } },
+        ],
+      },
+      limit: FETCH_LIMIT,
+      depth: 0,
+      overrideAccess: false,
+      user: currentUser,
+    }),
+    payload.find({
+      collection: "quotation-requests",
+      where: {
+        and: [
+          { createdAt: { greater_than_equal: monthRange.start.toISOString() } },
+          { createdAt: { less_than: monthRange.end.toISOString() } },
+        ],
+      },
+      limit: FETCH_LIMIT,
+      depth: 0,
+      overrideAccess: false,
+      user: currentUser,
+    }),
   ]);
+
+  const weekOverview = countByStatus(weekOverviewRes.docs);
+  const monthOverview = countByStatus(monthOverviewRes.docs);
 
   const staffOptions = staffRes.docs.map((u: any) => ({
     id: String(u.id),
@@ -261,6 +339,8 @@ export default async function QuotationInboxPage({
       granularity={granularity || ""}
       periodValue={periodValue || ""}
       actionItems={actionItemsRes.docs}
+      weekOverview={weekOverview}
+      monthOverview={monthOverview}
     />
   );
 }

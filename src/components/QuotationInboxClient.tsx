@@ -37,6 +37,106 @@ const STATUS_LABELS: Record<string, string> = {
 const filterPills = [{ value: '', label: 'All' }, ...STATUS_OPTIONS]
 const VALID_STATUSES = new Set(STATUS_OPTIONS.map((s) => s.value))
 
+// Order + labels for the small "This Week" / "This Month" overview panel.
+// Same statuses as the filter pills, "rejected" just reads as "Cancelled"
+// here to match how staff talk about it. Each gets its own color so the
+// row reads at a glance, same badge language as everywhere else in the app.
+const OVERVIEW_ROWS: { value: string; label: string; color: string }[] = [
+  { value: 'pending', label: 'Pending', color: 'bg-amber-50 text-amber-700' },
+  { value: 'processing', label: 'Processing', color: 'bg-blue-50 text-blue-700' },
+  { value: 'informal-quote', label: 'Informal', color: 'bg-purple-50 text-purple-700' },
+  { value: 'quote-sent', label: 'Quote Sent', color: 'bg-cyan-50 text-cyan-700' },
+  { value: 'completed', label: 'Completed', color: 'bg-emerald-50 text-emerald-700' },
+  { value: 'rejected', label: 'Cancelled', color: 'bg-rose-50 text-rose-700' },
+]
+
+function OverviewPanel({
+  weekOverview,
+  monthOverview,
+}: {
+  weekOverview: Record<string, number>
+  monthOverview: Record<string, number>
+}) {
+  const rows = [
+    { title: 'This Week', counts: weekOverview },
+    { title: 'This Month', counts: monthOverview },
+  ]
+  return (
+    <div className="shrink-0 w-full md:w-auto">
+      {/* Desktop / tablet: the compact table. There's room to lay all 7
+          columns out flat, so no scrolling is ever needed here either. */}
+      <table className="hidden sm:table border-collapse">
+        <thead>
+          <tr>
+            <th className="pb-1.5 pr-3" />
+            {OVERVIEW_ROWS.map((row) => (
+              <th
+                key={row.value}
+                className="pb-1.5 px-1 text-[8.5px] font-semibold uppercase tracking-wide text-gray-400 whitespace-nowrap"
+              >
+                {row.label}
+              </th>
+            ))}
+            <th className="pb-1.5 pl-2 text-[8.5px] font-semibold uppercase tracking-wide text-gray-400 whitespace-nowrap border-l border-gray-100">
+              Total
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ title, counts }) => (
+            <tr key={title}>
+              <td className="pr-3 py-0.5 text-[9.5px] font-semibold text-gray-500 whitespace-nowrap">
+                {title}
+              </td>
+              {OVERVIEW_ROWS.map((row) => (
+                <td key={row.value} className="px-1 py-0.5 text-center">
+                  <span
+                    className={`inline-flex items-center justify-center min-w-[22px] px-1.5 py-0.5 rounded-full text-[10px] font-bold ${row.color}`}
+                  >
+                    {counts[row.value] ?? 0}
+                  </span>
+                </td>
+              ))}
+              <td className="pl-2 py-0.5 text-center border-l border-gray-100">
+                <span className="inline-flex items-center justify-center min-w-[22px] px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[#01172f]/5 text-[#01172f]">
+                  {OVERVIEW_ROWS.reduce((sum, row) => sum + (counts[row.value] ?? 0), 0)}
+                </span>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* Mobile: badges wrap onto multiple lines instead of scrolling
+          sideways -- each one carries its own label since there's no
+          shared column header to lean on once it's not a table. */}
+      <div className="flex sm:hidden flex-col gap-2">
+        {rows.map(({ title, counts }) => {
+          const total = OVERVIEW_ROWS.reduce((sum, row) => sum + (counts[row.value] ?? 0), 0)
+          return (
+            <div key={title} className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[9.5px] font-semibold text-gray-500 shrink-0">{title}</span>
+              {OVERVIEW_ROWS.map((row) => (
+                <span
+                  key={row.value}
+                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9.5px] font-bold whitespace-nowrap ${row.color}`}
+                >
+                  <span className="font-medium opacity-70">{row.label}</span>
+                  {counts[row.value] ?? 0}
+                </span>
+              ))}
+              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9.5px] font-bold whitespace-nowrap bg-[#01172f]/5 text-[#01172f]">
+                <span className="font-medium opacity-70">Total</span>
+                {total}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 function normalizeStatus(value: string | null | undefined): string | undefined {
   return value && VALID_STATUSES.has(value) ? value : undefined
 }
@@ -58,6 +158,8 @@ export default function QuotationInboxClient({
   granularity,
   periodValue,
   actionItems,
+  weekOverview,
+  monthOverview,
 }: {
   requests: any[] // each pre-annotated server-side with `.stageLabel`
   staffOptions: StaffOption[]
@@ -68,6 +170,8 @@ export default function QuotationInboxClient({
   granularity: string
   periodValue: string
   actionItems: any[]
+  weekOverview: Record<string, number>
+  monthOverview: Record<string, number>
 }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -119,7 +223,7 @@ export default function QuotationInboxClient({
   return (
     <div className="w-full max-w-[900px] mx-auto py-6 overflow-x-hidden text-gray-700">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 mb-6">
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
         <div className="w-full">
           <h1 className="text-lg font-semibold text-gray-900 mb-0.5 truncate">
             Quotation Requests
@@ -135,6 +239,8 @@ export default function QuotationInboxClient({
             </span>
           </p>
         </div>
+
+        <OverviewPanel weekOverview={weekOverview} monthOverview={monthOverview} />
       </div>
 
       <ActionItemsPanel items={actionItems} isAdmin={isAdmin} staffOptions={staffOptions} />
