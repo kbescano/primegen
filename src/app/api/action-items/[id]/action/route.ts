@@ -2,13 +2,16 @@ import { NextRequest, NextResponse } from 'next/server'
 import { headers as getHeaders } from 'next/headers'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 
-// Comment / solve / close transitions on an Action Item. Creating one
-// happens through Payload's own POST /api/action-items (collection
-// `create` access is already admin-only) -- this route only covers what
-// happens after that:
-//   comment (pending/solved)   Admin or the recipient
-//   solve   (pending -> solved) Admin or the recipient
-//   close   (solved -> closed)  Admin only
+// Comment / solve / unresolve / close transitions on an Action Item.
+// Creating one happens through Payload's own POST /api/action-items
+// (collection `create` access is already admin-only) -- this route only
+// covers what happens after that:
+//   comment    (pending/solved)   Admin or the recipient
+//   solve      (pending -> solved) Admin or the recipient
+//   unresolve  (solved -> pending) Admin or the recipient -- undoes an
+//              accidental/premature "solved", or reopens one that turned
+//              out not to be fixed
+//   close      (solved -> closed)  Admin only
 //
 // `status`/`comments` are locked to access.update: () => false on the
 // collection, so this is the only way to change them.
@@ -34,8 +37,8 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const type = body?.type
   const message = typeof body?.message === 'string' ? body.message.trim() : ''
 
-  if (!['comment', 'solve', 'close'].includes(type)) {
-    return NextResponse.json({ error: 'type must be one of: comment, solve, close' }, { status: 400 })
+  if (!['comment', 'solve', 'unresolve', 'close'].includes(type)) {
+    return NextResponse.json({ error: 'type must be one of: comment, solve, unresolve, close' }, { status: 400 })
   }
 
   const item = await payload.findByID({ collection: 'action-items', id }).catch(() => null)
@@ -86,6 +89,27 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       collection: 'action-items',
       id,
       data: { status: 'solved', comments },
+      overrideAccess: true,
+    })
+
+    return NextResponse.json({ success: true })
+  }
+
+  if (type === 'unresolve') {
+    if (item.status !== 'solved') {
+      return NextResponse.json({ error: 'Action item is not solved' }, { status: 409 })
+    }
+    comments.push({
+      message: message || 'Marked as unresolved.',
+      authorName,
+      authorRole,
+      createdAt: new Date().toISOString(),
+    })
+
+    await payload.update({
+      collection: 'action-items',
+      id,
+      data: { status: 'pending', comments },
       overrideAccess: true,
     })
 

@@ -271,7 +271,7 @@ function DetailModal({
   const [sending, setSending] = useState(false)
   const [error, setError] = useState('')
 
-  async function send(type: 'comment' | 'solve' | 'close') {
+  async function send(type: 'comment' | 'solve' | 'unresolve' | 'close') {
     setSending(true)
     setError('')
     try {
@@ -382,21 +382,27 @@ function DetailModal({
           </>
         )}
 
-        {item.status === 'solved' && isAdmin && (
-          <div className="flex justify-end">
+        {item.status === 'solved' && (
+          <div className="flex items-center justify-between gap-2">
             <button
-              onClick={() => send('close')}
+              onClick={() => send('unresolve')}
               disabled={sending}
-              className="px-4 py-1.5 bg-[#1d1d1f] text-white text-[11px] font-bold uppercase tracking-wider rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
+              className="px-4 py-1.5 bg-amber-50 text-amber-700 border border-amber-200 text-[11px] font-bold uppercase tracking-wider rounded-lg hover:bg-amber-100 transition-colors disabled:opacity-50"
             >
-              Close
+              Mark as Unresolved
             </button>
+            {isAdmin ? (
+              <button
+                onClick={() => send('close')}
+                disabled={sending}
+                className="px-4 py-1.5 bg-[#1d1d1f] text-white text-[11px] font-bold uppercase tracking-wider rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
+              >
+                Close
+              </button>
+            ) : (
+              <p className="text-[10.5px] text-gray-400 italic">Waiting for Admin to close.</p>
+            )}
           </div>
-        )}
-        {item.status === 'solved' && !isAdmin && (
-          <p className="text-[11px] text-gray-400 italic text-center">
-            Marked solved — waiting for Admin to close.
-          </p>
         )}
 
         {error && <p className="text-[10.5px] text-red-500">{error}</p>}

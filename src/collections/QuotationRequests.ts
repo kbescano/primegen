@@ -121,6 +121,50 @@ export const QuotationRequests: CollectionConfig = {
         }
         return doc;
       },
+      async ({ doc, previousDoc, operation, req }) => {
+        // The stale-request cron (/api/cron/stale-request-alerts) flags a
+        // request as "Action Needed" once it's sat pending 5+ minutes.
+        // Once staff actually starts on it -- status moves to Processing --
+        // that flag has done its job, so auto-resolve it instead of
+        // leaving it for Admin to notice and close by hand.
+        if (
+          operation === "update" &&
+          previousDoc?.status === "pending" &&
+          doc.status === "processing"
+        ) {
+          try {
+            const openAlerts = await req.payload.find({
+              collection: "action-items" as any,
+              where: {
+                and: [
+                  { sourceRequestId: { equals: String(doc.id) } },
+                  { status: { not_equals: "closed" } },
+                ],
+              },
+              limit: 20,
+              depth: 0,
+            });
+            for (const alert of openAlerts.docs as any[]) {
+              const comments = Array.isArray(alert.comments) ? [...alert.comments] : [];
+              comments.push({
+                message: "Auto-resolved — status changed to Processing.",
+                authorName: "Automated Alert",
+                authorRole: "admin",
+                createdAt: new Date().toISOString(),
+              });
+              await req.payload.update({
+                collection: "action-items" as any,
+                id: alert.id,
+                data: { status: "closed", comments },
+                overrideAccess: true,
+              });
+            }
+          } catch (err) {
+            console.error("Failed to auto-resolve stale-request alert:", err);
+          }
+        }
+        return doc;
+      },
     ],
   },
   fields: [

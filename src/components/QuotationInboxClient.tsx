@@ -11,7 +11,7 @@
 
 import { useState, useMemo, useEffect } from 'react'
 import Link from 'next/link'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import StatusSelect from '@/components/StatusSelect'
 import AssignStaffSelect from '@/components/AssignStaffSelect'
 import AddUpdateNote from '@/components/AddUpdateNotes'
@@ -148,6 +148,153 @@ function assignedToId(assignedTo: any): string | undefined {
 
 type StaffOption = { id: string; name: string; email: string }
 
+// The full content of one request -- shared between the inbox list (where
+// it sits inside a clickable card) and the detail modal (opened by that
+// click, or by a deep link like /admin-dashboard?id=123), so the two never
+// drift out of sync.
+function RequestCardBody({
+  q,
+  isAdmin,
+  staffOptions,
+  currentUserName,
+}: {
+  q: any
+  isAdmin: boolean
+  staffOptions: StaffOption[]
+  currentUserName: string
+}) {
+  return (
+    <>
+      {/* Top Bar: Customer Info & Status Dropdown */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-3 border-b border-gray-50">
+        <div className="w-full min-w-0">
+          <h3 className="text-[13px] font-semibold text-gray-900 mb-0.5 break-words">
+            {q.customerName || "Anonymous"}
+          </h3>
+          <p className="text-[10px] text-gray-400 truncate">
+            {q.email || "No email provided"}
+          </p>
+          <p className="text-[10px] text-gray-400 truncate">
+            {q.phone || "No phone provided"}
+          </p>
+        </div>
+        <div className="w-auto shrink-0" onClick={(e) => e.stopPropagation()}>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {isAdmin && (
+              <AssignStaffSelect
+                requestId={q.id}
+                currentAssignedTo={assignedToId(q.assignedTo)}
+                staffOptions={staffOptions}
+              />
+            )}
+            <StatusSelect id={q.id} status={q.status} />
+          </div>
+        </div>
+      </div>
+
+      {q.facebookLink && (
+        <div className="mb-3" onClick={(e) => e.stopPropagation()}>
+          <a
+            href={q.facebookLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-600 hover:text-blue-800 underline underline-offset-2 transition-colors"
+          >
+            View Facebook Link →
+          </a>
+        </div>
+      )}
+
+      {/* Pipeline Stage Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-2 bg-gray-50/70 rounded px-3 py-2 mb-3 text-[10.5px]">
+        <span className="text-gray-500">
+          Stage: <span className="text-emerald-600 font-medium">{q.stageLabel}</span>
+        </span>
+        <Link
+          href={`/admin-dashboard/pipeline/${q.id}`}
+          onClick={(e) => e.stopPropagation()}
+          className="text-[10px] font-medium text-gray-500 hover:text-[#01172f] transition-colors"
+        >
+          View Order Workflow →
+        </Link>
+      </div>
+
+      {/* Items & Message Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
+        {/* Left Column: Requested Items */}
+        <div className="min-w-0">
+          <p className="text-[9px] font-semibold uppercase tracking-widest text-gray-300 mb-1.5">
+            Requested Items ({Array.isArray(q.items) ? q.items.length : 0})
+          </p>
+          {Array.isArray(q.items) && q.items.length > 0 ? (
+            <div className="flex flex-col gap-1">
+              {q.items.map((item: any, i: number) => {
+                const material = item.material;
+                const matName =
+                  typeof material === "object"
+                    ? material?.name
+                    : material;
+                const matUnit =
+                  typeof material === "object" ? material?.unit : "";
+                return (
+                  <div
+                    key={i}
+                    className="flex items-center justify-between gap-2 text-[10.5px] text-gray-600 min-w-0"
+                  >
+                    <span className="font-medium text-gray-800 truncate min-w-0">
+                      {matName || "Unnamed Material"}
+                      {item.sizeDescription ? ` — ${item.sizeDescription}` : ""}
+                    </span>
+                    <span className="font-mono text-gray-400 shrink-0">
+                      {item.quantity} {matUnit}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-[10.5px] text-gray-300 italic">No items listed</p>
+          )}
+        </div>
+
+        <div onClick={(e) => e.stopPropagation()}>
+          <AddUpdateNote
+            requestId={q.id}
+            existingNotes={q.statusUpdates || []}
+            currentUserName={currentUserName}
+          />
+        </div>
+
+        {/* Right Column: Customer Message */}
+        <div className="min-w-0">
+          <p className="text-[9px] font-semibold uppercase tracking-widest text-gray-300 mb-1.5">
+            Customer Note
+          </p>
+          {q.message ? (
+            <div className="border-l-2 border-emerald-200 bg-gray-50/70 p-2.5 rounded-r overflow-hidden">
+              <p className="text-[10.5px] text-gray-500 italic leading-relaxed break-words">
+                &quot;{q.message}&quot;
+              </p>
+            </div>
+          ) : (
+            <p className="text-[10.5px] text-gray-300 italic">No message attached</p>
+          )}
+        </div>
+      </div>
+
+      {/* Bottom Footer */}
+      <div className="mt-3 pt-2.5 border-t border-gray-50 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[9.5px] text-gray-300">
+          Submitted {new Date(q.createdAt).toLocaleString()}
+        </p>
+        <span className="text-[9px] font-medium text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
+          via {q.source || "website"}
+        </span>
+      </div>
+    </>
+  )
+}
+
 export default function QuotationInboxClient({
   requests,
   staffOptions,
@@ -175,27 +322,45 @@ export default function QuotationInboxClient({
 }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
+  const router = useRouter()
+
+  // No cron for the stale-request alerts (see checkStaleRequestAlerts) --
+  // that check runs server-side on every page load instead, so this just
+  // re-triggers a load periodically for anyone who leaves the inbox open
+  // rather than making them manually refresh to notice anything.
+  useEffect(() => {
+    const id = setInterval(() => router.refresh(), 5 * 60 * 1000)
+    return () => clearInterval(id)
+  }, [router])
 
   const [activeStatus, setActiveStatus] = useState<string | undefined>(normalizeStatus(initialStatus))
   const [activeStaff, setActiveStaff] = useState<string | undefined>(initialStaff)
+  // Which request's modal is open, driven by `?id=` -- this is what lets an
+  // Action Item's link, or any other shared URL, open straight to one
+  // specific request (see the stale-request cron, which links here).
+  const [openId, setOpenId] = useState<string | undefined>(searchParams.get('id') || undefined)
 
   // Sync state if the user uses the browser Back/Forward buttons
   useEffect(() => {
     setActiveStatus(normalizeStatus(searchParams.get('status')))
     setActiveStaff(searchParams.get('staff') || undefined)
+    setOpenId(searchParams.get('id') || undefined)
   }, [searchParams])
 
   // Silently update the URL so links remain shareable, without triggering a
   // Next.js navigation or server re-render (same as ProductCatalog's
   // toggleCategory / SearchBar).
-  function syncUrl(next: { status?: string; staff?: string }) {
+  function syncUrl(next: { status?: string; staff?: string; id?: string }) {
     const params = new URLSearchParams(searchParams.toString())
     const nextStatus = 'status' in next ? next.status : activeStatus
     const nextStaff = 'staff' in next ? next.staff : activeStaff
+    const nextId = 'id' in next ? next.id : openId
     if (nextStatus) params.set('status', nextStatus)
     else params.delete('status')
     if (nextStaff) params.set('staff', nextStaff)
     else params.delete('staff')
+    if (nextId) params.set('id', nextId)
+    else params.delete('id')
     const qs = params.toString()
     window.history.replaceState(null, '', qs ? `${pathname}?${qs}` : pathname)
   }
@@ -211,6 +376,22 @@ export default function QuotationInboxClient({
     setActiveStaff(next)
     syncUrl({ staff: next })
   }
+
+  function openRequest(id: string | number) {
+    const next = String(id)
+    setOpenId(next)
+    syncUrl({ id: next })
+  }
+
+  function closeRequest() {
+    setOpenId(undefined)
+    syncUrl({ id: undefined })
+  }
+
+  // Matched against the full `requests` list, not `filteredRequests` -- a
+  // deep link should open the card even if the current Status/Staff pills
+  // would otherwise hide it.
+  const openRequestDoc = openId ? requests.find((r) => String(r.id) === openId) : undefined
 
   const filteredRequests = useMemo(() => {
     return requests.filter((q) => {
@@ -324,133 +505,46 @@ export default function QuotationInboxClient({
           {filteredRequests.map((q: any) => (
             <div
               key={q.id}
-              className="bg-white border border-gray-100 rounded-lg p-3.5 sm:p-4 transition-colors hover:border-gray-200 overflow-hidden"
+              onClick={() => openRequest(q.id)}
+              className="bg-white border border-gray-100 rounded-lg p-3.5 sm:p-4 transition-colors hover:border-gray-200 hover:shadow-sm cursor-pointer overflow-hidden"
             >
-              {/* Top Bar: Customer Info & Status Dropdown */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 mb-3 border-b border-gray-50">
-                <div className="w-full min-w-0">
-                  <h3 className="text-[13px] font-semibold text-gray-900 mb-0.5 break-words">
-                    {q.customerName || "Anonymous"}
-                  </h3>
-                  <p className="text-[10px] text-gray-400 truncate">
-                    {q.email || "No email provided"}
-                  </p>
-                  <p className="text-[10px] text-gray-400 truncate">
-                    {q.phone || "No phone provided"}
-                  </p>
-                </div>
-                <div className="w-auto shrink-0">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {isAdmin && (
-                      <AssignStaffSelect
-                        requestId={q.id}
-                        currentAssignedTo={assignedToId(q.assignedTo)}
-                        staffOptions={staffOptions}
-                      />
-                    )}
-                    <StatusSelect id={q.id} status={q.status} />
-                  </div>
-                </div>
-              </div>
-
-              {q.facebookLink && (
-                <div className="mb-3">
-                  <a
-                    href={q.facebookLink}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-600 hover:text-blue-800 underline underline-offset-2 transition-colors"
-                  >
-                    View Facebook Link →
-                  </a>
-                </div>
-              )}
-
-              {/* Pipeline Stage Bar */}
-              <div className="flex flex-wrap items-center justify-between gap-2 bg-gray-50/70 rounded px-3 py-2 mb-3 text-[10.5px]">
-                <span className="text-gray-500">
-                  Stage: <span className="text-emerald-600 font-medium">{q.stageLabel}</span>
-                </span>
-                <Link
-                  href={`/admin-dashboard/pipeline/${q.id}`}
-                  className="text-[10px] font-medium text-gray-500 hover:text-[#01172f] transition-colors"
-                >
-                  View Order Workflow →
-                </Link>
-              </div>
-
-              {/* Items & Message Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-3">
-                {/* Left Column: Requested Items */}
-                <div className="min-w-0">
-                  <p className="text-[9px] font-semibold uppercase tracking-widest text-gray-300 mb-1.5">
-                    Requested Items ({Array.isArray(q.items) ? q.items.length : 0})
-                  </p>
-                  {Array.isArray(q.items) && q.items.length > 0 ? (
-                    <div className="flex flex-col gap-1">
-                      {q.items.map((item: any, i: number) => {
-                        const material = item.material;
-                        const matName =
-                          typeof material === "object"
-                            ? material?.name
-                            : material;
-                        const matUnit =
-                          typeof material === "object" ? material?.unit : "";
-                        return (
-                          <div
-                            key={i}
-                            className="flex items-center justify-between gap-2 text-[10.5px] text-gray-600 min-w-0"
-                          >
-                            <span className="font-medium text-gray-800 truncate min-w-0">
-                              {matName || "Unnamed Material"}
-                              {item.sizeDescription ? ` — ${item.sizeDescription}` : ""}
-                            </span>
-                            <span className="font-mono text-gray-400 shrink-0">
-                              {item.quantity} {matUnit}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <p className="text-[10.5px] text-gray-300 italic">No items listed</p>
-                  )}
-                </div>
-
-                <AddUpdateNote
-                  requestId={q.id}
-                  existingNotes={q.statusUpdates || []}
-                  currentUserName={currentUserName}
-                />
-
-                {/* Right Column: Customer Message */}
-                <div className="min-w-0">
-                  <p className="text-[9px] font-semibold uppercase tracking-widest text-gray-300 mb-1.5">
-                    Customer Note
-                  </p>
-                  {q.message ? (
-                    <div className="border-l-2 border-emerald-200 bg-gray-50/70 p-2.5 rounded-r overflow-hidden">
-                      <p className="text-[10.5px] text-gray-500 italic leading-relaxed break-words">
-                        &quot;{q.message}&quot;
-                      </p>
-                    </div>
-                  ) : (
-                    <p className="text-[10.5px] text-gray-300 italic">No message attached</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Bottom Footer */}
-              <div className="mt-3 pt-2.5 border-t border-gray-50 flex flex-wrap items-center justify-between gap-2">
-                <p className="text-[9.5px] text-gray-300">
-                  Submitted {new Date(q.createdAt).toLocaleString()}
-                </p>
-                <span className="text-[9px] font-medium text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">
-                  via {q.source || "website"}
-                </span>
-              </div>
+              <RequestCardBody
+                q={q}
+                isAdmin={isAdmin}
+                staffOptions={staffOptions}
+                currentUserName={currentUserName}
+              />
             </div>
           ))}
+        </div>
+      )}
+
+      {openRequestDoc && (
+        <div
+          className="fixed inset-0 bg-black/40 z-[200] flex items-center justify-center p-4"
+          onClick={closeRequest}
+        >
+          <div
+            className="bg-white max-w-2xl w-full rounded-2xl shadow-2xl p-4 sm:p-5 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-[13px] font-semibold text-gray-900">Quotation Request</h2>
+              <button
+                onClick={closeRequest}
+                className="text-gray-400 hover:text-gray-700 text-[13px] leading-none"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <RequestCardBody
+              q={openRequestDoc}
+              isAdmin={isAdmin}
+              staffOptions={staffOptions}
+              currentUserName={currentUserName}
+            />
+          </div>
         </div>
       )}
 

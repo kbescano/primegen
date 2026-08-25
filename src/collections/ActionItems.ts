@@ -99,6 +99,18 @@ export const ActionItems: CollectionConfig = {
       ],
     },
     { name: "createdByName", type: "text", admin: { readOnly: true } },
+    {
+      // Set only by the stale-request cron (see
+      // /api/cron/stale-request-alerts) so it can find "did I already flag
+      // this one" and so QuotationRequests' afterChange hook can find "is
+      // there an auto-alert for this request to auto-close" when the
+      // request moves to Processing. Not shown on the manual compose form
+      // -- admin-authored items just leave this blank.
+      name: "sourceRequestId",
+      type: "text",
+      index: true,
+      admin: { hidden: true },
+    },
   ],
   timestamps: true,
 };

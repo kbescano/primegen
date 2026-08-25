@@ -1,4 +1,5 @@
 import { getPayloadClient } from "@/lib/getPayloadClient";
+import { checkStaleRequestAlerts } from "@/lib/staleRequestAlerts";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import QuotationInboxClient from "@/components/QuotationInboxClient";
@@ -179,6 +180,13 @@ export default async function QuotationInboxPage({
 
   const weekRange = thisWeekRange();
   const monthRange = thisMonthRange();
+
+  // Runs on every page load/refresh instead of a scheduled cron -- catches
+  // anything that's sat pending 5+ minutes and raises an Action Item for
+  // whoever it's assigned to. Awaited (not fired-and-forgotten) so a freshly
+  // created alert shows up in the actionItemsRes query right below, on this
+  // same load, instead of only appearing after a second refresh.
+  await checkStaleRequestAlerts(payload);
 
   // The staff list (for the filter dropdown), the Action Items panel, and
   // the two small "this week" / "this month" overview counts don't depend
