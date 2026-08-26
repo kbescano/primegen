@@ -328,8 +328,14 @@ export default function SupplierPOGenerator({
       setPoNumber(saved.doc.poNumber);
       await upsertSupplierRecord();
 
-      // CRITICAL FIX: Bulletproof Auto-Assign for "One Single Supplier"
-      if (!isEditing && targetOrderId && saved.doc?.id) {
+      // Keep the Order's own copy of qty/cost in sync with this PO --
+      // orders_items.qty/unitCost is a separate stored snapshot (that's
+      // what /orders and the Pipeline actually render), not a live read of
+      // the PO. Previously this block only ran `if (!isEditing)`, so
+      // creating a PO auto-assigned + synced fine, but editing an existing
+      // PO's quantity/price afterward silently never propagated anywhere --
+      // the Order kept showing whatever was true at PO-creation time.
+      if (targetOrderId && saved.doc?.id) {
         // Force Next.js to fetch the absolute latest order state by skipping cache
         const orderRes = await fetch(`/api/orders/${targetOrderId}?depth=0`, {
           credentials: "include",
@@ -338,12 +344,39 @@ export default function SupplierPOGenerator({
 
         if (orderRes.ok) {
           const orderData = await orderRes.json();
+          const orderItems: any[] = orderData.items || [];
 
-          // Since the user selected "One Single Supplier", explicitly assign ALL order items to this new PO.
-          const updatedItems = (orderData.items || []).map((item: any) => ({
-            ...item,
-            assignedPOId: String(saved.doc.id),
-          }));
+          let updatedItems: any[];
+          if (!isEditing) {
+            // New PO, "one single supplier" flow: assign every order item
+            // to it, and seed qty/cost from what was actually keyed into
+            // the PO form (positionally aligned -- this form's initial
+            // items came from these same order items in the same order).
+            updatedItems = orderItems.map((item, i) => ({
+              ...item,
+              assignedPOId: String(saved.doc.id),
+              qty: items[i]?.qty ?? item.qty,
+              unitCost: items[i]?.unitPrice ?? item.unitCost,
+            }));
+          } else {
+            // Editing an existing PO: push qty/price changes back to
+            // whichever order items are already assigned to it, matched
+            // positionally within that subset.
+            const assignedPositions = orderItems
+              .map((item, i) => ({ item, i }))
+              .filter(({ item }) => String(item.assignedPOId) === String(saved.doc.id));
+            updatedItems = [...orderItems];
+            assignedPositions.forEach(({ i }, matchIdx) => {
+              const poItem = items[matchIdx];
+              if (poItem) {
+                updatedItems[i] = {
+                  ...updatedItems[i],
+                  qty: poItem.qty,
+                  unitCost: poItem.unitPrice,
+                };
+              }
+            });
+          }
 
           const patchRes = await fetch(`/api/orders/${targetOrderId}`, {
             method: "PATCH",
@@ -353,7 +386,7 @@ export default function SupplierPOGenerator({
           });
 
           if (!patchRes.ok) {
-            console.error("Auto-assign failed in Payload CMS");
+            console.error("Failed to sync PO changes back to order in Payload CMS");
           }
         }
       }

@@ -257,9 +257,9 @@ function RequestCardBody({
                 return (
                   <div
                     key={i}
-                    className="flex items-center justify-between gap-2 text-[10.5px] text-gray-600 min-w-0"
+                    className="flex items-start justify-between gap-2 text-[10.5px] text-gray-600 min-w-0"
                   >
-                    <span className="font-medium text-gray-800 truncate min-w-0">
+                    <span className="font-medium text-gray-800 break-words min-w-0">
                       {matName || "Unnamed Material"}
                       {item.sizeDescription ? ` — ${item.sizeDescription}` : ""}
                     </span>

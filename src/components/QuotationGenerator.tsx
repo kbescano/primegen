@@ -378,13 +378,15 @@ export default function QuotationGenerator({
 
       setSaving("saved");
 
-      // Contextual Redirect logic
+      // Contextual Redirect logic. Full reload (not router.push), same fix
+      // as SupplierPOGenerator's save handler: router.push alone can land
+      // on a stale client Router Cache entry for the destination page --
+      // the write above succeeds, but the pipeline (or quotations list)
+      // renders the pre-edit data until something forces a real refetch.
       if (hasPipelineContext && sourceRequestId) {
-        router.push(
-          `/admin-dashboard/pipeline/${sourceRequestId}?step=confirmation`,
-        );
+        window.location.href = `/admin-dashboard/pipeline/${sourceRequestId}?step=confirmation`;
       } else {
-        router.push("/admin-dashboard/client-quotation");
+        window.location.href = "/admin-dashboard/client-quotation";
       }
     } catch (err: any) {
       setSaving("error");

@@ -48,6 +48,11 @@ const STATUS_LABELS: Record<string, string> = {
   solved: 'Solved',
 }
 
+// Admin sees every open item system-wide, which can get long -- staff only
+// ever see their own (naturally few), so the collapse only applies to the
+// admin view.
+const ITEMS_PREVIEW_COUNT = 5
+
 export default function ActionItemsPanel({
   items,
   isAdmin,
@@ -60,9 +65,13 @@ export default function ActionItemsPanel({
   const router = useRouter()
   const [composeOpen, setComposeOpen] = useState(false)
   const [selected, setSelected] = useState<ActionItem | null>(null)
+  const [expanded, setExpanded] = useState(false)
 
   // Nothing pending/solved and nothing to create -> don't take up space.
   if (!isAdmin && items.length === 0) return null
+
+  const isCollapsible = isAdmin && items.length > ITEMS_PREVIEW_COUNT
+  const visibleItems = isCollapsible && !expanded ? items.slice(0, ITEMS_PREVIEW_COUNT) : items
 
   return (
     <div className="mb-6 bg-white border border-amber-100 rounded-xl overflow-hidden shadow-sm">
@@ -92,7 +101,7 @@ export default function ActionItemsPanel({
         </p>
       ) : (
         <div className="divide-y divide-gray-50">
-          {items.map((item) => (
+          {visibleItems.map((item) => (
             <button
               key={item.id}
               type="button"
@@ -118,6 +127,16 @@ export default function ActionItemsPanel({
             </button>
           ))}
         </div>
+      )}
+
+      {isCollapsible && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="w-full py-2 text-[10px] font-bold uppercase tracking-wider text-gray-400 hover:text-gray-600 bg-gray-50/50 hover:bg-gray-50 border-t border-gray-100 transition-colors"
+        >
+          {expanded ? 'Show Less' : `View All (${items.length})`}
+        </button>
       )}
 
       {composeOpen && (
