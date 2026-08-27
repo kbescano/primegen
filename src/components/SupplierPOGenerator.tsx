@@ -10,8 +10,20 @@ type LineItem = {
   qty: number;
   unit: string;
   unitPrice: number;
+  // Same fix as QuotationGenerator's Supplier Cost/Margin fields -- binding
+  // a text input's `value` straight to a number makes it impossible to
+  // type a decimal (typing "12." immediately re-renders as "12"). These
+  // hold the literal string being typed; cleared on blur so the box
+  // re-derives its display from the clean number.
+  qtyInput?: string;
+  unitPriceInput?: string;
   imageDataUrl?: string;
 };
+
+function parseFloatOrZero(raw: string): number {
+  const n = parseFloat(raw);
+  return isNaN(n) ? 0 : n;
+}
 
 export type SupplierPOInitial = {
   id?: string | number;
@@ -308,7 +320,7 @@ export default function SupplierPOGenerator({
           supplierPhone: phone,
           preparedBy,
           preparedByRole,
-          items: items.map(({ imageDataUrl, ...rest }) => rest),
+          items: items.map(({ imageDataUrl, qtyInput, unitPriceInput, ...rest }) => rest),
           status: "draft",
           sourceOrderId: targetOrderId,
           sourceRequestId: finalPipelineId,
@@ -681,11 +693,15 @@ export default function SupplierPOGenerator({
                   />
                   <input
                     type="text"
+                    inputMode="decimal"
                     className={`${inputClass} col-span-4 md:col-span-1`}
-                    value={item.qty}
-                    onChange={(e) =>
-                      updateItem(index, { qty: Number(e.target.value) || 0 })
-                    }
+                    value={item.qtyInput ?? String(item.qty)}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (!/^\d*\.?\d*$/.test(raw)) return;
+                      updateItem(index, { qtyInput: raw, qty: parseFloatOrZero(raw) });
+                    }}
+                    onBlur={() => updateItem(index, { qtyInput: undefined })}
                     placeholder="Qty"
                   />
                   <input
@@ -698,13 +714,18 @@ export default function SupplierPOGenerator({
                   />
                   <input
                     type="text"
+                    inputMode="decimal"
                     className={`${inputClass} col-span-4 md:col-span-1`}
-                    value={item.unitPrice}
-                    onChange={(e) =>
+                    value={item.unitPriceInput ?? String(item.unitPrice)}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (!/^\d*\.?\d*$/.test(raw)) return;
                       updateItem(index, {
-                        unitPrice: Number(e.target.value) || 0,
-                      })
-                    }
+                        unitPriceInput: raw,
+                        unitPrice: parseFloatOrZero(raw),
+                      });
+                    }}
+                    onBlur={() => updateItem(index, { unitPriceInput: undefined })}
                     placeholder="Price"
                   />
                   <div className="col-span-6 md:col-span-1 text-[13px] text-left md:text-right font-mono text-gray-900 font-medium flex items-center md:justify-end overflow-hidden">

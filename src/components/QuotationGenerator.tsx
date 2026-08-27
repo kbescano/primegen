@@ -22,6 +22,7 @@ type LineItem = {
   // while editing; cleared on blur so it re-derives from the clean number.
   unitCostInput?: string;
   marginAmountInput?: string;
+  qtyInput?: string;
   imageDataUrl?: string;
 };
 
@@ -141,6 +142,12 @@ export default function QuotationGenerator({
     initial?.discountAmount ?? 0,
   );
   const [deliveryFee, setDeliveryFee] = useState(initial?.deliveryFee ?? 0);
+  // Same string-mirror fix as the per-item Supplier Cost/Margin fields --
+  // see parseFloatOrZero's comment. Cleared on blur so the box re-derives
+  // its display from the clean number.
+  const [discountAmountInput, setDiscountAmountInput] = useState<string | undefined>(undefined);
+  const [deliveryFeeInput, setDeliveryFeeInput] = useState<string | undefined>(undefined);
+  const [vatRateInput, setVatRateInput] = useState<string | undefined>(undefined);
   const [saving, setSaving] = useState<"idle" | "saving" | "saved" | "error">(
     "idle",
   );
@@ -358,7 +365,7 @@ export default function QuotationGenerator({
           address,
           contactNumber,
           salesPerson,
-          items: items.map(({ imageDataUrl, unitCostInput, marginAmountInput, ...rest }) => ({
+          items: items.map(({ imageDataUrl, unitCostInput, marginAmountInput, qtyInput, ...rest }) => ({
             ...rest,
             unitPrice: unitPriceOf(rest as LineItem),
           })),
@@ -732,11 +739,15 @@ export default function QuotationGenerator({
                 <div className="grid grid-cols-2 md:grid-cols-[70px_90px_1fr_36px] gap-2 items-center mb-2">
                   <input
                     type="text"
+                    inputMode="decimal"
                     className={inputClass}
-                    value={item.qty}
-                    onChange={(e) =>
-                      updateItem(index, { qty: Number(e.target.value) || 0 })
-                    }
+                    value={item.qtyInput ?? String(item.qty)}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (!/^\d*\.?\d*$/.test(raw)) return;
+                      updateItem(index, { qtyInput: raw, qty: parseFloatOrZero(raw) });
+                    }}
+                    onBlur={() => updateItem(index, { qtyInput: undefined })}
                     placeholder="Qty"
                     disabled={isLocked}
                   />
@@ -921,9 +932,16 @@ export default function QuotationGenerator({
             <label className={labelClass}>Discount (₱)</label>
             <input
               type="text"
+              inputMode="decimal"
               className={inputClass}
-              value={discountAmount}
-              onChange={(e) => setDiscountAmount(Number(e.target.value) || 0)}
+              value={discountAmountInput ?? String(discountAmount)}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (!/^\d*\.?\d*$/.test(raw)) return;
+                setDiscountAmountInput(raw);
+                setDiscountAmount(parseFloatOrZero(raw));
+              }}
+              onBlur={() => setDiscountAmountInput(undefined)}
               placeholder="0.00"
               disabled={isLocked}
             />
@@ -932,9 +950,16 @@ export default function QuotationGenerator({
             <label className={labelClass}>Delivery Fee (₱)</label>
             <input
               type="text"
+              inputMode="decimal"
               className={inputClass}
-              value={deliveryFee}
-              onChange={(e) => setDeliveryFee(Number(e.target.value) || 0)}
+              value={deliveryFeeInput ?? String(deliveryFee)}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (!/^\d*\.?\d*$/.test(raw)) return;
+                setDeliveryFeeInput(raw);
+                setDeliveryFee(parseFloatOrZero(raw));
+              }}
+              onBlur={() => setDeliveryFeeInput(undefined)}
               placeholder="0.00"
               disabled={isLocked}
             />
@@ -957,9 +982,16 @@ export default function QuotationGenerator({
             </div>
             <input
               type="text"
+              inputMode="decimal"
               className={`${inputClass} ${!hasVat ? "opacity-40 pointer-events-none" : ""}`}
-              value={vatRate}
-              onChange={(e) => setVatRate(Number(e.target.value) || 0)}
+              value={vatRateInput ?? String(vatRate)}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (!/^\d*\.?\d*$/.test(raw)) return;
+                setVatRateInput(raw);
+                setVatRate(parseFloatOrZero(raw));
+              }}
+              onBlur={() => setVatRateInput(undefined)}
               disabled={!hasVat || isLocked}
             />
           </div>
