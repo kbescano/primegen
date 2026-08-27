@@ -1,0 +1,64 @@
+name: Daily Database Backup
+
+# Runs on GitHub's own infrastructure -- not dependent on this codebase's
+# dev server, Claude, or anyone's machine being on. Produces a full
+# pg_dump of the live Postgres DB every day and stores it two places:
+# Cloudinary (this project's existing media store, reused here for raw
+# file storage so there's no new external service to manage) and as a
+# GitHub Actions artifact (a free 30-day extra copy, handy for a quick
+# grab without touching Cloudinary at all).
+on:
+  schedule:
+    # 20:00 UTC = 4:00 AM Philippine Time (UTC+8, no DST) -- a quiet hour.
+    - cron: '0 20 * * *'
+  workflow_dispatch: {} # lets you trigger an on-demand backup from the Actions tab
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install PostgreSQL client (pg_dump)
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Dump database
+        env:
+          DATABASE_URI: ${{ secrets.DATABASE_URI }}
+        run: |
+          set -e
+          STAMP=$(date +%Y%m%d-%H%M%S)
+          echo "STAMP=$STAMP" >> "$GITHUB_ENV"
+          pg_dump "$DATABASE_URI" --no-owner --no-privileges -f "backup-$STAMP.sql"
+
+      - name: Upload backup to Cloudinary
+        env:
+          CLOUDINARY_CLOUD_NAME: ${{ secrets.CLOUDINARY_CLOUD_NAME }}
+          CLOUDINARY_API_KEY: ${{ secrets.CLOUDINARY_API_KEY }}
+          CLOUDINARY_API_SECRET: ${{ secrets.CLOUDINARY_API_SECRET }}
+        run: |
+          set -e
+          npm install --no-save cloudinary@^2
+          node -e "
+            const cloudinary = require('cloudinary').v2;
+            cloudinary.config({
+              cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+              api_key: process.env.CLOUDINARY_API_KEY,
+              api_secret: process.env.CLOUDINARY_API_SECRET,
+            });
+            cloudinary.uploader.upload('backup-${{ env.STAMP }}.sql', {
+              resource_type: 'raw',
+              folder: 'db-backups',
+              public_id: 'backup-${{ env.STAMP }}',
+            }).then((res) => {
+              console.log('Uploaded to Cloudinary:', res.secure_url);
+            }).catch((err) => {
+              console.error('Cloudinary upload failed:', err.message || err);
+              process.exit(1);
+            });
+          "
+
+      - name: Keep as a workflow artifact too (30-day rolling copy)
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ env.STAMP }}
+          path: backup-*.sql
+          retention-days: 30
