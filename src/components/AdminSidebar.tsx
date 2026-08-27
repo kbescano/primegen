@@ -8,6 +8,7 @@ import NotificationBell from '@/components/NotificationBell'
 // Updated to use a 'roles' array for granular access control
 const NAV_ITEMS = [
   { href: '/admin-dashboard', label: 'Quotation Inbox', roles: ['admin','user'] },
+  { href: '/admin-dashboard/sales-report', label: 'Sales Report', roles: ['user'] },
   { href: '/admin-dashboard/inquiry-tracker', label: 'Inquiry Tracker', roles: ['admin','marketing'] },
   { href: '/admin-dashboard/deliveries', label: 'Logistics', roles: ['admin','marketing'] },
   { href: '/admin-dashboard/clients', label: 'Clients', roles: ['marketing'] },
