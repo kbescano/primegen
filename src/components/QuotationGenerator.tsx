@@ -13,8 +13,22 @@ type LineItem = {
   sizeDescription?: string;
   unitCost: number;
   marginAmount: number;
+  // Mirrors of unitCost/marginAmount as the literal string being typed --
+  // `unitCost`/`marginAmount` stay numbers (everything else here does math
+  // on them directly, e.g. unitPriceOf), but binding the input's `value`
+  // straight to a number makes it impossible to type a decimal: typing
+  // "12." immediately re-renders as "12", so the next keystroke produces
+  // "125" instead of "12.5". These hold whatever's actually in the box
+  // while editing; cleared on blur so it re-derives from the clean number.
+  unitCostInput?: string;
+  marginAmountInput?: string;
   imageDataUrl?: string;
 };
+
+function parseFloatOrZero(raw: string): number {
+  const n = parseFloat(raw);
+  return isNaN(n) ? 0 : n;
+}
 
 export type QuotationInitial = {
   id?: string | number;
@@ -344,7 +358,7 @@ export default function QuotationGenerator({
           address,
           contactNumber,
           salesPerson,
-          items: items.map(({ imageDataUrl, ...rest }) => ({
+          items: items.map(({ imageDataUrl, unitCostInput, marginAmountInput, ...rest }) => ({
             ...rest,
             unitPrice: unitPriceOf(rest as LineItem),
           })),
@@ -781,12 +795,19 @@ export default function QuotationGenerator({
                       </label>
                       <input
                         type="text"
+                        inputMode="decimal"
                         className={inputClass}
-                        value={item.unitCost}
-                        onChange={(e) =>
+                        value={item.unitCostInput ?? String(item.unitCost)}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (!/^\d*\.?\d*$/.test(raw)) return;
                           updateItem(index, {
-                            unitCost: Number(e.target.value) || 0,
-                          })
+                            unitCostInput: raw,
+                            unitCost: parseFloatOrZero(raw),
+                          });
+                        }}
+                        onBlur={() =>
+                          updateItem(index, { unitCostInput: undefined })
                         }
                         placeholder="0.00"
                         disabled={isLocked}
@@ -798,12 +819,19 @@ export default function QuotationGenerator({
                       </label>
                       <input
                         type="text"
+                        inputMode="decimal"
                         className={inputClass}
-                        value={item.marginAmount}
-                        onChange={(e) =>
+                        value={item.marginAmountInput ?? String(item.marginAmount)}
+                        onChange={(e) => {
+                          const raw = e.target.value;
+                          if (!/^\d*\.?\d*$/.test(raw)) return;
                           updateItem(index, {
-                            marginAmount: Number(e.target.value) || 0,
-                          })
+                            marginAmountInput: raw,
+                            marginAmount: parseFloatOrZero(raw),
+                          });
+                        }}
+                        onBlur={() =>
+                          updateItem(index, { marginAmountInput: undefined })
                         }
                         placeholder="0.00"
                         disabled={isLocked}
