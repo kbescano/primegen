@@ -46,6 +46,176 @@ function matchesSearch(q: any, needle: string): boolean {
   return parts.filter(Boolean).some((p) => String(p).toLowerCase().includes(needle))
 }
 
+// Shared between the list row and the detail modal, so the two never drift
+// apart. `View Quotation` still goes to ?id= (the full QuotationGenerator
+// editor -- a different page mode, not this modal) and `View Converted
+// Order` still goes to the Orders page's own ?id= deep link, which now
+// opens that order as a modal there the same way this one does here.
+function QuotationCardBody({
+  q,
+  existingOrderId,
+}: {
+  q: any
+  existingOrderId?: string
+}) {
+  const supplierCostTotal = (q.items || []).reduce((sum: number, i: any) => sum + (i.qty || 0) * (i.unitCost || 0), 0)
+  const markupTotal = (q.items || []).reduce((sum: number, i: any) => sum + (i.qty || 0) * (i.marginAmount || 0), 0)
+  const subtotal = (q.items || []).reduce((sum: number, i: any) => sum + (i.qty || 0) * (i.unitPrice || 0), 0)
+  const discount = Number(q.discountAmount) || 0
+  const delivery = Number(q.deliveryFee) || 0
+  const netRev = subtotal - discount + delivery
+  const vat = netRev * ((q.vatRate || 0) / 100)
+  const total = netRev + vat
+
+  const date = q.quotationDate
+    ? new Date(q.quotationDate).toLocaleDateString('en-PH', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : ''
+
+  return (
+    <>
+      {/* Top Bar: Quotation #, Date & Status Dropdown */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-gray-100">
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-xs font-bold text-[#01172f]">
+            {q.quotationNumber}
+          </span>
+          <span className="text-[10px] text-gray-400">{date}</span>
+        </div>
+
+        <div className="w-full sm:w-auto" onClick={(e) => e.stopPropagation()}>
+          <CollectionStatusSelect
+            collection="client-quotations"
+            id={q.id}
+            status={q.status}
+            options={STATUS_OPTIONS}
+            colorClassMap={STATUS_COLORS}
+          />
+        </div>
+      </div>
+
+      {/* Core Info & Financial Summary */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-5 pb-5 border-b border-gray-100">
+        <div>
+          <h3 className="text-sm font-black uppercase text-[#01172f] mb-0.5">
+            {q.customerName || 'Untitled'}
+            <span className="font-normal text-gray-500 ml-2">({q.company || 'No Company'})</span>
+          </h3>
+          <p className="text-[11px] text-gray-400">
+            Sales Agent: <span className="text-[#149911] font-bold">{q.salesPerson || '--'}</span>
+          </p>
+        </div>
+
+        <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
+          <div className="text-right">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Total Value</p>
+            <p className="text-[14px] font-black font-mono text-[#01172f]">
+              {peso(total)}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Items & Financial Breakdown - SIDE BY SIDE ROW */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
+        {/* Left Column: Request Items */}
+        <div>
+          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-3">
+            Request Items ({(q.items || []).length})
+          </p>
+          <div className="flex flex-col gap-3">
+            {(q.items || []).map((item: any, i: number) => (
+              <div key={i} className="flex items-start justify-between gap-2 text-[11px] text-gray-700">
+                <div className="flex items-baseline gap-1.5 sm:gap-2 min-w-0">
+                  <span className="font-mono text-gray-400 font-bold whitespace-nowrap shrink-0">
+                    {item.qty} {item.unit || 'pcs'}
+                  </span>
+                  <span className="leading-snug break-words">
+                    {item.description || 'Unnamed item'}
+                    {item.sizeDescription ? ` - ${item.sizeDescription}` : ''}
+                  </span>
+                </div>
+                <span className="font-mono font-bold text-[#01172f] shrink-0 text-right">
+                  {peso((item.qty || 0) * (item.unitPrice || 0))}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right Column: Detailed Financial Breakdown */}
+        <div>
+          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-3">
+            Financial Breakdown
+          </p>
+          <div className="bg-gray-50 p-3 rounded border border-gray-100 flex flex-col gap-1.5 text-[11px]">
+            <div className="flex justify-between text-gray-500">
+              <span>Supplier Cost</span>
+              <span className="font-mono">{peso(supplierCostTotal)}</span>
+            </div>
+
+            <div className="flex justify-between text-gray-500">
+              <span>Markup Total</span>
+              <span className="font-mono font-bold text-[#149911]">{peso(markupTotal)}</span>
+            </div>
+
+            <div className="flex justify-between text-gray-500 border-t border-gray-200 pt-1 mt-0.5">
+              <span>Subtotal</span>
+              <span className="font-mono">{peso(subtotal)}</span>
+            </div>
+
+            {discount > 0 && (
+              <div className="flex justify-between text-gray-500">
+                <span>Discount</span>
+                <span className="font-mono text-red-500">-{peso(discount)}</span>
+              </div>
+            )}
+
+            {delivery > 0 && (
+              <div className="flex justify-between text-gray-500">
+                <span>Delivery Fee</span>
+                <span className="font-mono">+{peso(delivery)}</span>
+              </div>
+            )}
+
+            <div className="flex justify-between text-gray-500">
+              <span>VAT ({q.vatRate || 0}%)</span>
+              <span className="font-mono">+{peso(vat)}</span>
+            </div>
+
+            <div className="flex justify-between font-bold text-[#01172f] border-t border-gray-200 pt-1 mt-0.5">
+              <span>Total (Gross)</span>
+              <span className="font-mono">{peso(total)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Bottom Action Footer */}
+      <div className="mt-5 pt-3 border-t border-gray-50 flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
+        <Link
+          href={`/admin-dashboard/client-quotation?id=${q.id}`}
+          className="text-[9px] font-bold uppercase tracking-wider text-blue-600 hover:text-blue-800 transition-colors"
+        >
+          View Quotation &rarr;
+        </Link>
+
+        {existingOrderId && (
+          <Link
+            href={`/admin-dashboard/orders?id=${existingOrderId}`}
+            className="text-[9px] font-bold uppercase tracking-wider px-3 py-1 bg-[#01172f] text-white rounded hover:bg-[#149911] transition-colors"
+          >
+            View Converted Order &rarr;
+          </Link>
+        )}
+      </div>
+    </>
+  )
+}
+
 export default function ClientQuotationsListClient({
   quotations,
   orderIdByQuotationId,
@@ -60,20 +230,29 @@ export default function ClientQuotationsListClient({
     normalizeStatus(searchParams.get('status')),
   )
   const [searchQuery, setSearchQuery] = useState<string>(searchParams.get('q') || '')
+  // Deliberately a different param from `id` -- on this page `?id=` already
+  // means "open the full QuotationGenerator editor" (see page.tsx), a
+  // completely different navigation. `view` is just "show this card's
+  // detail as a modal without leaving the list".
+  const [openViewId, setOpenViewId] = useState<string | undefined>(searchParams.get('view') || undefined)
 
   useEffect(() => {
     setActiveStatus(normalizeStatus(searchParams.get('status')))
     setSearchQuery(searchParams.get('q') || '')
+    setOpenViewId(searchParams.get('view') || undefined)
   }, [searchParams])
 
-  function syncUrl(next: { status?: string; q?: string }) {
+  function syncUrl(next: { status?: string; q?: string; view?: string }) {
     const params = new URLSearchParams(searchParams.toString())
     const nextStatus = 'status' in next ? next.status : activeStatus
     const nextQuery = 'q' in next ? next.q : searchQuery
+    const nextView = 'view' in next ? next.view : openViewId
     if (nextStatus) params.set('status', nextStatus)
     else params.delete('status')
     if (nextQuery) params.set('q', nextQuery)
     else params.delete('q')
+    if (nextView) params.set('view', nextView)
+    else params.delete('view')
     const qs = params.toString()
     window.history.replaceState(null, '', qs ? `${pathname}?${qs}` : pathname)
   }
@@ -90,6 +269,17 @@ export default function ClientQuotationsListClient({
     syncUrl({ status: next })
   }
 
+  function openView(id: string | number) {
+    const next = String(id)
+    setOpenViewId(next)
+    syncUrl({ view: next })
+  }
+
+  function closeView() {
+    setOpenViewId(undefined)
+    syncUrl({ view: undefined })
+  }
+
   const filtered = useMemo(() => {
     const needle = searchQuery.trim().toLowerCase()
     return quotations.filter((q) => {
@@ -98,6 +288,11 @@ export default function ClientQuotationsListClient({
       return matchesStatus && matchesQ
     })
   }, [quotations, activeStatus, searchQuery])
+
+  // Matched against the full `quotations` list, not `filtered` -- a deep
+  // link should open the card even if the current Status/Search filters
+  // would otherwise hide it.
+  const openQuotation = openViewId ? quotations.find((q) => String(q.id) === openViewId) : undefined
 
   return (
     <>
@@ -164,169 +359,39 @@ export default function ClientQuotationsListClient({
         </div>
       ) : (
         <div className="flex flex-col gap-5">
-          {filtered.map((q: any) => {
-            const supplierCostTotal = (q.items || []).reduce((sum: number, i: any) => sum + (i.qty || 0) * (i.unitCost || 0), 0)
-            const markupTotal = (q.items || []).reduce((sum: number, i: any) => sum + (i.qty || 0) * (i.marginAmount || 0), 0)
-            const subtotal = (q.items || []).reduce((sum: number, i: any) => sum + (i.qty || 0) * (i.unitPrice || 0), 0)
-            const discount = Number(q.discountAmount) || 0
-            const delivery = Number(q.deliveryFee) || 0
-            const netRev = subtotal - discount + delivery
-            const vat = netRev * ((q.vatRate || 0) / 100)
-            const total = netRev + vat
+          {filtered.map((q: any) => (
+            <div
+              key={q.id}
+              onClick={() => openView(q.id)}
+              className="bg-white border border-gray-200 rounded p-4 sm:p-5 transition-all hover:border-gray-300 hover:shadow-sm cursor-pointer"
+            >
+              <QuotationCardBody q={q} existingOrderId={orderIdByQuotationId[String(q.id)]} />
+            </div>
+          ))}
+        </div>
+      )}
 
-            const existingOrderId = orderIdByQuotationId[String(q.id)]
-
-            const date = q.quotationDate
-              ? new Date(q.quotationDate).toLocaleDateString('en-PH', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })
-              : ''
-
-            return (
-              <div
-                key={q.id}
-                className="bg-white border border-gray-200 rounded p-4 sm:p-5 transition-all hover:border-gray-300"
+      {openQuotation && (
+        <div
+          className="fixed inset-0 bg-black/40 z-[200] flex items-center justify-center p-4"
+          onClick={closeView}
+        >
+          <div
+            className="bg-white max-w-2xl w-full rounded-2xl shadow-2xl p-4 sm:p-5 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-[13px] font-semibold text-gray-900">Client Quotation</h2>
+              <button
+                onClick={closeView}
+                className="text-gray-400 hover:text-gray-700 text-[13px] leading-none"
+                aria-label="Close"
               >
-                {/* Top Bar: Quotation #, Date & Status Dropdown */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-4 border-b border-gray-100">
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-xs font-bold text-[#01172f]">
-                      {q.quotationNumber}
-                    </span>
-                    <span className="text-[10px] text-gray-400">{date}</span>
-                  </div>
-
-                  <div className="w-full sm:w-auto">
-                    <CollectionStatusSelect
-                      collection="client-quotations"
-                      id={q.id}
-                      status={q.status}
-                      options={STATUS_OPTIONS}
-                      colorClassMap={STATUS_COLORS}
-                    />
-                  </div>
-                </div>
-
-                {/* Core Info & Financial Summary */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-5 pb-5 border-b border-gray-100">
-                  <div>
-                    <h3 className="text-sm font-black uppercase text-[#01172f] mb-0.5">
-                      {q.customerName || 'Untitled'}
-                      <span className="font-normal text-gray-500 ml-2">({q.company || 'No Company'})</span>
-                    </h3>
-                    <p className="text-[11px] text-gray-400">
-                      Sales Agent: <span className="text-[#149911] font-bold">{q.salesPerson || '--'}</span>
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-6 w-full md:w-auto justify-between md:justify-end">
-                    <div className="text-right">
-                      <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400">Total Value</p>
-                      <p className="text-[14px] font-black font-mono text-[#01172f]">
-                        {peso(total)}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Items & Financial Breakdown - SIDE BY SIDE ROW */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12">
-                  {/* Left Column: Request Items */}
-                  <div>
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-3">
-                      Request Items ({(q.items || []).length})
-                    </p>
-                    <div className="flex flex-col gap-3">
-                      {(q.items || []).map((item: any, i: number) => (
-                        <div key={i} className="flex items-start justify-between gap-2 text-[11px] text-gray-700">
-                          <div className="flex items-baseline gap-1.5 sm:gap-2 min-w-0">
-                            <span className="font-mono text-gray-400 font-bold whitespace-nowrap shrink-0">
-                              {item.qty} {item.unit || 'pcs'}
-                            </span>
-                            <span className="leading-snug break-words">
-                              {item.description || 'Unnamed item'}
-                              {item.sizeDescription ? ` - ${item.sizeDescription}` : ''}
-                            </span>
-                          </div>
-                          <span className="font-mono font-bold text-[#01172f] shrink-0 text-right">
-                            {peso((item.qty || 0) * (item.unitPrice || 0))}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Right Column: Detailed Financial Breakdown */}
-                  <div>
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-3">
-                      Financial Breakdown
-                    </p>
-                    <div className="bg-gray-50 p-3 rounded border border-gray-100 flex flex-col gap-1.5 text-[11px]">
-                      <div className="flex justify-between text-gray-500">
-                        <span>Supplier Cost</span>
-                        <span className="font-mono">{peso(supplierCostTotal)}</span>
-                      </div>
-
-                      <div className="flex justify-between text-gray-500">
-                        <span>Markup Total</span>
-                        <span className="font-mono font-bold text-[#149911]">{peso(markupTotal)}</span>
-                      </div>
-
-                      <div className="flex justify-between text-gray-500 border-t border-gray-200 pt-1 mt-0.5">
-                        <span>Subtotal</span>
-                        <span className="font-mono">{peso(subtotal)}</span>
-                      </div>
-
-                      {discount > 0 && (
-                        <div className="flex justify-between text-gray-500">
-                          <span>Discount</span>
-                          <span className="font-mono text-red-500">-{peso(discount)}</span>
-                        </div>
-                      )}
-
-                      {delivery > 0 && (
-                        <div className="flex justify-between text-gray-500">
-                          <span>Delivery Fee</span>
-                          <span className="font-mono">+{peso(delivery)}</span>
-                        </div>
-                      )}
-
-                      <div className="flex justify-between text-gray-500">
-                        <span>VAT ({q.vatRate || 0}%)</span>
-                        <span className="font-mono">+{peso(vat)}</span>
-                      </div>
-
-                      <div className="flex justify-between font-bold text-[#01172f] border-t border-gray-200 pt-1 mt-0.5">
-                        <span>Total (Gross)</span>
-                        <span className="font-mono">{peso(total)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Bottom Action Footer */}
-                <div className="mt-5 pt-3 border-t border-gray-50 flex items-center justify-between">
-                  <Link
-                    href={`/admin-dashboard/client-quotation?id=${q.id}`}
-                    className="text-[9px] font-bold uppercase tracking-wider text-blue-600 hover:text-blue-800 transition-colors"
-                  >
-                    View Quotation &rarr;
-                  </Link>
-
-                  {existingOrderId && (
-                    <Link
-                      href={`/admin-dashboard/orders?id=${existingOrderId}`}
-                      className="text-[9px] font-bold uppercase tracking-wider px-3 py-1 bg-[#01172f] text-white rounded hover:bg-[#149911] transition-colors"
-                    >
-                      View Converted Order &rarr;
-                    </Link>
-                  )}
-                </div>
-              </div>
-            )
-          })}
+                ✕
+              </button>
+            </div>
+            <QuotationCardBody q={openQuotation} existingOrderId={orderIdByQuotationId[String(openQuotation.id)]} />
+          </div>
         </div>
       )}
     </>

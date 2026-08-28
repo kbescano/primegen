@@ -144,6 +144,302 @@ function MinimalStepper({ status }: { status: string }) {
   )
 }
 
+// Shared between the list card and the detail modal. "View Source
+// Quotation" still goes to the Client Quotation page's ?id= (its full
+// editor mode, unrelated to that page's own ?view= modal param).
+function OrderCardBody({ o, orderPOs }: { o: any; orderPOs: any[] }) {
+  const total = orderTotal(o)
+  const orderItems = o.items || []
+
+  const subtotal = orderItems.reduce((sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitPrice) || 0), 0)
+  const discount = Number(o.discountAmount) || 0
+  const delivery = Number(o.deliveryFee) || 0
+  const netRevenue = subtotal - discount + delivery
+
+  const vatAmount = netRevenue * ((Number(o.vatRate) || 0) / 100)
+  const grossRevenue = netRevenue + vatAmount
+
+  const cogs = orderItems.reduce((sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitCost) || 0), 0)
+  const markupTotal = netRevenue - cogs
+
+  const liquidatedOpex = (o.opex || []).reduce((sum: number, exp: any) => sum + (exp.status === 'liquidated' ? Number(exp.amount) || 0 : 0), 0)
+  const pendingOpex = (o.opex || []).reduce((sum: number, exp: any) => sum + (exp.status === 'pending' ? Number(exp.amount) || 0 : 0), 0)
+  const trueNet = markupTotal - liquidatedOpex
+
+  const amountPaid = Number(o.amountPaid) || 0
+  const paymentStatusLabel = o.paymentStatus === 'partial' ? 'Partial' : (o.paymentStatus || 'unpaid')
+  const receivables = o.paymentStatus === 'partial'
+      ? grossRevenue - amountPaid
+      : (o.paymentStatus === 'paid' ? 0 : grossRevenue)
+
+  const showPaymentMethod = (o.paymentStatus === 'partial' || o.paymentStatus === 'paid') && o.paymentMethod
+
+  const date = o.orderDate
+    ? new Date(o.orderDate).toLocaleDateString('en-PH', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : ''
+
+  // Target delivery date
+  let targetDateStr = ''
+  let isLateOrToday = false
+  let deadlineLabel = ''
+
+  if (o.targetDeliveryDate) {
+    const tDate = new Date(o.targetDeliveryDate)
+    targetDateStr = tDate.toLocaleDateString('en-PH', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric'
+    })
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    const targetMidnight = new Date(tDate)
+    targetMidnight.setHours(0, 0, 0, 0)
+
+    if (o.fulfillmentStatus !== 'delivered' && o.fulfillmentStatus !== 'cancelled') {
+      if (targetMidnight.getTime() < today.getTime()) {
+        isLateOrToday = true
+        deadlineLabel = '(Overdue)'
+      } else if (targetMidnight.getTime() === today.getTime()) {
+        isLateOrToday = true
+        deadlineLabel = '(Today)'
+      }
+    }
+  }
+
+  return (
+    <>
+      {/* Top Tracker Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-5 border-b border-gray-100">
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-xs font-bold text-[#01172f]">
+              {o.orderNumber}
+            </span>
+            <span className="text-[10px] text-gray-400">{date}</span>
+          </div>
+
+          {targetDateStr && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-[8px] font-bold uppercase tracking-wider text-gray-400">
+                Deadline:
+              </span>
+              <span className={`text-[10px] font-bold ${
+                isLateOrToday
+                  ? 'text-red-600 bg-red-50 px-1.5 py-0.5 rounded'
+                  : 'text-[#01172f]'
+              }`}>
+                {targetDateStr} {deadlineLabel}
+              </span>
+            </div>
+          )}
+        </div>
+
+        <MinimalStepper status={o.fulfillmentStatus || 'preparing'} />
+      </div>
+
+      {/* Core Info */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-6 border-b border-gray-100">
+        <div>
+          <h3 className="text-sm font-black uppercase text-[#01172f] mb-0.5">
+            {o.customerName || '--'}
+            <span className="font-normal text-gray-500 ml-2">({o.company || 'No Company'})</span>
+          </h3>
+          <p className="text-[11px] text-gray-400">
+            Sales Agent: <span className="text-[#149911] font-bold">{o.salesPerson || '--'}</span>
+          </p>
+          <p className="text-[11px] text-gray-400">
+            Contact: <span className="text-gray-800">{o.contactNumber || '--'}</span>
+          </p>
+        </div>
+
+        <div className="flex flex-col items-end gap-2 w-full md:w-auto">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <span className={`px-2.5 py-1 text-[9px] font-bold uppercase rounded-md ${PAYMENT_COLORS[o.paymentStatus || 'unpaid'] || PAYMENT_COLORS['unpaid']}`}>
+              Payment: {paymentStatusLabel}
+            </span>
+            {showPaymentMethod && (
+              <span className="flex items-center gap-1.5 px-2.5 py-1 text-[9px] font-bold uppercase rounded-md bg-blue-50 text-blue-700">
+                <PaymentMethodIcon method={o.paymentMethod} />
+                {PAYMENT_METHOD_LABELS[o.paymentMethod] || o.paymentMethod}
+              </span>
+            )}
+          </div>
+          <p className="text-[15px] font-black font-mono text-[#01172f]">
+            {peso(total - receivables)}
+          </p>
+        </div>
+      </div>
+
+      {/* Items & POs - SIDE BY SIDE ROW */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-8">
+        {/* Left Column: Order Items */}
+        <div>
+          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-3">
+            Order Items ({orderItems.length})
+          </p>
+          <div className="flex flex-col gap-3">
+            {orderItems.map((item: any, i: number) => (
+              <div key={i} className="flex items-baseline justify-between gap-2 text-[11px] text-gray-700">
+                <div className="flex items-baseline gap-1.5 sm:gap-2 min-w-0">
+                  <span className="font-mono text-gray-400 font-bold whitespace-nowrap shrink-0">
+                    {Number(item.qty) || 0} {item.unit || 'x'}
+                  </span>
+                  <span className="leading-snug break-words">
+                    {item.description || '--'}
+                    {item.sizeDescription ? ` - ${item.sizeDescription}` : ''}
+                  </span>
+                </div>
+                <span className="font-mono font-bold text-[#01172f] shrink-0 text-right">
+                  {peso((Number(item.qty) || 0) * (Number(item.unitPrice) || 0))}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Right Column: Linked POs */}
+        <div onClick={(e) => e.stopPropagation()}>
+          <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-3">
+            Linked Supplier POs ({orderPOs.length})
+          </p>
+          <div className="flex flex-col gap-2">
+            {orderPOs.length > 0 ? (
+              orderPOs.map((po: any) => (
+                <Link
+                  key={po.id}
+                  href={`/admin-dashboard/supplier-po?listSupplier=${encodeURIComponent(po.supplierName || '')}`}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100 hover:border-gray-300 hover:shadow-sm transition-all text-[11px]"
+                >
+                  <span className="text-gray-700 font-medium truncate">
+                    <span className="font-mono font-bold text-[#01172f] mr-2">{po.poNumber}</span>
+                    {po.supplierName || 'Unnamed Supplier'}
+                  </span>
+                  <span className="text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#149911]/10 text-[#149911] rounded flex-shrink-0">
+                    {po.status}
+                  </span>
+                </Link>
+              ))
+            ) : (
+              <p className="text-[11px] text-gray-400 italic py-1">No supplier POs created yet.</p>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* OPEX Section */}
+      <div className="mb-6" onClick={(e) => e.stopPropagation()}>
+        <OrderOpexSection
+          orderId={o.id}
+          opex={o.opex || []}
+          allowApprove={true}
+        />
+      </div>
+
+      {/* Payment Receipts -- read only, reflects uploads made in Pipeline Step 4. No approval needed. */}
+      <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-6 p-4 bg-gray-50/50 rounded-xl border border-gray-100" onClick={(e) => e.stopPropagation()}>
+        <ReceiptsPreview label="Client's Payment Receipts" receipts={o.clientPaymentReceipts} />
+        <ReceiptsPreview label="Supplier's Payment Receipts" receipts={o.supplierPaymentReceipts} />
+      </div>
+
+      {/* Financial Summary */}
+      <div className="flex flex-col md:flex-row justify-end items-start md:items-end border-t border-gray-100 pt-6 gap-4 mt-2">
+        <div className="bg-gray-50 p-4 md:p-5 rounded-xl flex flex-col gap-2.5 border border-gray-200 w-full md:w-[340px]">
+          <div className="flex justify-between items-center text-[11px] text-gray-500">
+            <span>Subtotal</span>
+            <span className="font-mono">{peso(subtotal)}</span>
+          </div>
+          {discount > 0 && (
+            <div className="flex justify-between items-center text-[11px] text-gray-500">
+              <span>Discount</span>
+              <span className="font-mono text-red-500">-{peso(discount)}</span>
+            </div>
+          )}
+          {delivery > 0 && (
+            <div className="flex justify-between items-center text-[11px] text-gray-500">
+              <span>Delivery Fee</span>
+              <span className="font-mono">{peso(delivery)}</span>
+            </div>
+          )}
+          <div className="flex justify-between items-center text-[11px] text-gray-500">
+            <span>VAT ({o.vatRate || 0}%)</span>
+            <span className="font-mono">+{peso(vatAmount)}</span>
+          </div>
+
+          <div className="flex justify-between items-center text-[11px] font-semibold text-gray-800 border-t border-gray-200 pt-2 mt-1">
+            <span>Gross Revenue</span>
+            <span className="font-mono">{peso(grossRevenue)}</span>
+          </div>
+
+          {o.paymentStatus === 'partial' && (
+              <div className="bg-amber-50/50 border border-amber-100/50 -mx-3 px-3 py-2.5 rounded-lg flex flex-col gap-2 my-1">
+                  <div className="flex justify-between items-center text-[11px] text-amber-600/80">
+                      <span>Amount Paid</span>
+                      <span className="font-mono">-{peso(amountPaid)}</span>
+                  </div>
+                  {showPaymentMethod && (
+                    <div className="flex justify-between items-center text-[10px] text-amber-600/70">
+                      <span>Mode of Payment</span>
+                      <span className="font-semibold uppercase tracking-wide">{PAYMENT_METHOD_LABELS[o.paymentMethod] || o.paymentMethod}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center text-[11px] font-semibold text-amber-600">
+                      <span>Receivables (Unpaid)</span>
+                      <span className="font-mono">{peso(receivables)}</span>
+                  </div>
+              </div>
+          )}
+          {o.paymentStatus !== 'paid' && o.paymentStatus !== 'partial' && (
+               <div className="flex justify-between items-center text-[11px] font-semibold text-amber-600 bg-amber-50/50 border border-amber-100/50 -mx-3 px-3 py-2.5 rounded-lg my-1">
+                  <span>Receivables (Unpaid)</span>
+                  <span className="font-mono">{peso(grossRevenue)}</span>
+              </div>
+          )}
+          {o.paymentStatus === 'paid' && showPaymentMethod && (
+              <div className="flex justify-between items-center text-[10px] text-[#149911]/70 bg-[#149911]/[0.04] border border-[#149911]/10 -mx-3 px-3 py-2 rounded-lg my-1">
+                  <span>Mode of Payment</span>
+                  <span className="font-semibold uppercase tracking-wide">{PAYMENT_METHOD_LABELS[o.paymentMethod] || o.paymentMethod}</span>
+              </div>
+          )}
+
+          <div className="flex justify-between items-center text-[11px] text-gray-500 border-t border-gray-200 pt-2.5 mt-1 border-dashed">
+            <span>Total COGS</span>
+            <span className="font-mono text-red-500">-{peso(cogs)}</span>
+          </div>
+          <div className="flex justify-between items-center text-[11px] text-gray-500">
+            <span>
+              Liquidated OPEX
+              {pendingOpex > 0 && <span className="text-amber-500 italic ml-1">(+ {peso(pendingOpex)} pending)</span>}
+            </span>
+            <span className="font-mono text-red-500">-{peso(liquidatedOpex)}</span>
+          </div>
+          <div className="flex justify-between items-center text-[12px] font-bold text-[#149911] border-t border-gray-200 pt-2.5 mt-1">
+            <span className="uppercase tracking-wide">Net Profit</span>
+            <span className="font-mono text-[15px] leading-none">{peso(trueNet)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Subtle Link footer */}
+      {o.sourceQuotationId && (
+        <div className="mt-5 pt-3 flex justify-end" onClick={(e) => e.stopPropagation()}>
+          <Link
+            href={`/admin-dashboard/client-quotation?id=${o.sourceQuotationId}`}
+            className="text-[9px] font-bold uppercase tracking-wider text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            View Source Quotation &rarr;
+          </Link>
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function OrdersListClient({
   orders,
   posByOrderId,
@@ -160,20 +456,29 @@ export default function OrdersListClient({
     normalizeStatus(searchParams.get('status')),
   )
   const [searchQuery, setSearchQuery] = useState<string>(searchParams.get('q') || '')
+  // Same `id` param the page already used for the highlight border --
+  // extended to also open that order as a modal, same deep-link pattern as
+  // the Quotation Inbox. This is what "View Converted Order" on the Client
+  // Quotations page links to.
+  const [openId, setOpenId] = useState<string | undefined>(searchParams.get('id') || highlightId || undefined)
 
   useEffect(() => {
     setActiveStatus(normalizeStatus(searchParams.get('status')))
     setSearchQuery(searchParams.get('q') || '')
+    setOpenId(searchParams.get('id') || undefined)
   }, [searchParams])
 
-  function syncUrl(next: { status?: string; q?: string }) {
+  function syncUrl(next: { status?: string; q?: string; id?: string }) {
     const params = new URLSearchParams(searchParams.toString())
     const nextStatus = 'status' in next ? next.status : activeStatus
     const nextQuery = 'q' in next ? next.q : searchQuery
+    const nextId = 'id' in next ? next.id : openId
     if (nextStatus) params.set('status', nextStatus)
     else params.delete('status')
     if (nextQuery) params.set('q', nextQuery)
     else params.delete('q')
+    if (nextId) params.set('id', nextId)
+    else params.delete('id')
     const qs = params.toString()
     window.history.replaceState(null, '', qs ? `${pathname}?${qs}` : pathname)
   }
@@ -190,6 +495,17 @@ export default function OrdersListClient({
     syncUrl({ status: next })
   }
 
+  function openOrder(id: string | number) {
+    const next = String(id)
+    setOpenId(next)
+    syncUrl({ id: next })
+  }
+
+  function closeOrder() {
+    setOpenId(undefined)
+    syncUrl({ id: undefined })
+  }
+
   const filtered = useMemo(() => {
     const needle = searchQuery.trim().toLowerCase()
     return orders.filter((o) => {
@@ -198,6 +514,11 @@ export default function OrdersListClient({
       return matchesStatus && matchesQ
     })
   }, [orders, posByOrderId, activeStatus, searchQuery])
+
+  // Matched against the full `orders` list, not `filtered` -- a deep link
+  // (e.g. from Client Quotations' "View Converted Order") should open the
+  // card even if the current Status/Search filters would otherwise hide it.
+  const openOrderDoc = openId ? orders.find((o) => String(o.id) === openId) : undefined
 
   return (
     <>
@@ -265,304 +586,43 @@ export default function OrdersListClient({
       ) : (
         <div className="flex flex-col gap-5">
           {filtered.map((o: any) => {
-            const total = orderTotal(o)
-            const orderItems = o.items || []
-            const orderPOs = posByOrderId[String(o.id)] || []
-
-            const subtotal = orderItems.reduce((sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitPrice) || 0), 0)
-            const discount = Number(o.discountAmount) || 0
-            const delivery = Number(o.deliveryFee) || 0
-            const netRevenue = subtotal - discount + delivery
-
-            const vatAmount = netRevenue * ((Number(o.vatRate) || 0) / 100)
-            const grossRevenue = netRevenue + vatAmount
-
-            const cogs = orderItems.reduce((sum: number, i: any) => sum + (Number(i.qty) || 0) * (Number(i.unitCost) || 0), 0)
-            const markupTotal = netRevenue - cogs
-
-            const liquidatedOpex = (o.opex || []).reduce((sum: number, exp: any) => sum + (exp.status === 'liquidated' ? Number(exp.amount) || 0 : 0), 0)
-            const pendingOpex = (o.opex || []).reduce((sum: number, exp: any) => sum + (exp.status === 'pending' ? Number(exp.amount) || 0 : 0), 0)
-            const trueNet = markupTotal - liquidatedOpex
-
-            const amountPaid = Number(o.amountPaid) || 0
-            const paymentStatusLabel = o.paymentStatus === 'partial' ? 'Partial' : (o.paymentStatus || 'unpaid')
-            const receivables = o.paymentStatus === 'partial'
-                ? grossRevenue - amountPaid
-                : (o.paymentStatus === 'paid' ? 0 : grossRevenue)
-
-            const showPaymentMethod = (o.paymentStatus === 'partial' || o.paymentStatus === 'paid') && o.paymentMethod
-
-            const isHighlighted = highlightId && String(o.id) === String(highlightId)
-            const date = o.orderDate
-              ? new Date(o.orderDate).toLocaleDateString('en-PH', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })
-              : ''
-
-            // Target delivery date
-            let targetDateStr = ''
-            let isLateOrToday = false
-            let deadlineLabel = ''
-
-            if (o.targetDeliveryDate) {
-              const tDate = new Date(o.targetDeliveryDate)
-              targetDateStr = tDate.toLocaleDateString('en-PH', {
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
-              })
-
-              const today = new Date()
-              today.setHours(0, 0, 0, 0)
-
-              const targetMidnight = new Date(tDate)
-              targetMidnight.setHours(0, 0, 0, 0)
-
-              if (o.fulfillmentStatus !== 'delivered' && o.fulfillmentStatus !== 'cancelled') {
-                if (targetMidnight.getTime() < today.getTime()) {
-                  isLateOrToday = true
-                  deadlineLabel = '(Overdue)'
-                } else if (targetMidnight.getTime() === today.getTime()) {
-                  isLateOrToday = true
-                  deadlineLabel = '(Today)'
-                }
-              }
-            }
-
+            const isHighlighted = openId && String(o.id) === openId
             return (
               <div
                 key={o.id}
-                className={`bg-white border rounded-2xl p-5 md:p-7 transition-all ${
+                onClick={() => openOrder(o.id)}
+                className={`bg-white border rounded-2xl p-5 md:p-7 transition-all cursor-pointer ${
                   isHighlighted ? 'border-[#149911] shadow-[0_8px_30px_-12px_rgba(20,153,17,0.25)]' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                 }`}
               >
-                {/* Top Tracker Bar */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 mb-5 border-b border-gray-100">
-                  <div className="flex flex-col gap-1.5">
-                    <div className="flex items-center gap-3">
-                      <span className="font-mono text-xs font-bold text-[#01172f]">
-                        {o.orderNumber}
-                      </span>
-                      <span className="text-[10px] text-gray-400">{date}</span>
-                    </div>
-
-                    {targetDateStr && (
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[8px] font-bold uppercase tracking-wider text-gray-400">
-                          Deadline:
-                        </span>
-                        <span className={`text-[10px] font-bold ${
-                          isLateOrToday
-                            ? 'text-red-600 bg-red-50 px-1.5 py-0.5 rounded'
-                            : 'text-[#01172f]'
-                        }`}>
-                          {targetDateStr} {deadlineLabel}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-
-                  <MinimalStepper status={o.fulfillmentStatus || 'preparing'} />
-                </div>
-
-                {/* Core Info */}
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 pb-6 border-b border-gray-100">
-                  <div>
-                    <h3 className="text-sm font-black uppercase text-[#01172f] mb-0.5">
-                      {o.customerName || '--'}
-                      <span className="font-normal text-gray-500 ml-2">({o.company || 'No Company'})</span>
-                    </h3>
-                    <p className="text-[11px] text-gray-400">
-                      Sales Agent: <span className="text-[#149911] font-bold">{o.salesPerson || '--'}</span>
-                    </p>
-                    <p className="text-[11px] text-gray-400">
-                      Contact: <span className="text-gray-800">{o.contactNumber || '--'}</span>
-                    </p>
-                  </div>
-
-                  <div className="flex flex-col items-end gap-2 w-full md:w-auto">
-                    <div className="flex items-center gap-2 flex-wrap justify-end">
-                      <span className={`px-2.5 py-1 text-[9px] font-bold uppercase rounded-md ${PAYMENT_COLORS[o.paymentStatus || 'unpaid'] || PAYMENT_COLORS['unpaid']}`}>
-                        Payment: {paymentStatusLabel}
-                      </span>
-                      {showPaymentMethod && (
-                        <span className="flex items-center gap-1.5 px-2.5 py-1 text-[9px] font-bold uppercase rounded-md bg-blue-50 text-blue-700">
-                          <PaymentMethodIcon method={o.paymentMethod} />
-                          {PAYMENT_METHOD_LABELS[o.paymentMethod] || o.paymentMethod}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[15px] font-black font-mono text-[#01172f]">
-                      {peso(total - receivables)}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Items & POs - SIDE BY SIDE ROW */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 mb-8">
-                  {/* Left Column: Order Items */}
-                  <div>
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-3">
-                      Order Items ({orderItems.length})
-                    </p>
-                    <div className="flex flex-col gap-3">
-                      {orderItems.map((item: any, i: number) => (
-                        <div key={i} className="flex items-baseline justify-between gap-2 text-[11px] text-gray-700">
-                          <div className="flex items-baseline gap-1.5 sm:gap-2 min-w-0">
-                            <span className="font-mono text-gray-400 font-bold whitespace-nowrap shrink-0">
-                              {Number(item.qty) || 0} {item.unit || 'x'}
-                            </span>
-                            <span className="leading-snug break-words">
-                              {item.description || '--'}
-                              {item.sizeDescription ? ` - ${item.sizeDescription}` : ''}
-                            </span>
-                          </div>
-                          <span className="font-mono font-bold text-[#01172f] shrink-0 text-right">
-                            {peso((Number(item.qty) || 0) * (Number(item.unitPrice) || 0))}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Right Column: Linked POs */}
-                  <div>
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-gray-400 mb-3">
-                      Linked Supplier POs ({orderPOs.length})
-                    </p>
-                    <div className="flex flex-col gap-2">
-                      {orderPOs.length > 0 ? (
-                        orderPOs.map((po: any) => (
-                          <Link
-                            key={po.id}
-                            href={`/admin-dashboard/supplier-po?listSupplier=${encodeURIComponent(po.supplierName || '')}`}
-                            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-3 py-2 bg-gray-50 rounded-xl border border-gray-100 hover:border-gray-300 hover:shadow-sm transition-all text-[11px]"
-                          >
-                            <span className="text-gray-700 font-medium truncate">
-                              <span className="font-mono font-bold text-[#01172f] mr-2">{po.poNumber}</span>
-                              {po.supplierName || 'Unnamed Supplier'}
-                            </span>
-                            <span className="text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 bg-[#149911]/10 text-[#149911] rounded flex-shrink-0">
-                              {po.status}
-                            </span>
-                          </Link>
-                        ))
-                      ) : (
-                        <p className="text-[11px] text-gray-400 italic py-1">No supplier POs created yet.</p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* OPEX Section */}
-                <div className="mb-6">
-                  <OrderOpexSection
-                    orderId={o.id}
-                    opex={o.opex || []}
-                    allowApprove={true}
-                  />
-                </div>
-
-                {/* Payment Receipts -- read only, reflects uploads made in Pipeline Step 4. No approval needed. */}
-                <div className="mb-6 grid grid-cols-1 sm:grid-cols-2 gap-6 p-4 bg-gray-50/50 rounded-xl border border-gray-100">
-                  <ReceiptsPreview label="Client's Payment Receipts" receipts={o.clientPaymentReceipts} />
-                  <ReceiptsPreview label="Supplier's Payment Receipts" receipts={o.supplierPaymentReceipts} />
-                </div>
-
-                {/* Financial Summary */}
-                <div className="flex flex-col md:flex-row justify-end items-start md:items-end border-t border-gray-100 pt-6 gap-4 mt-2">
-                  <div className="bg-gray-50 p-4 md:p-5 rounded-xl flex flex-col gap-2.5 border border-gray-200 w-full md:w-[340px]">
-                    <div className="flex justify-between items-center text-[11px] text-gray-500">
-                      <span>Subtotal</span>
-                      <span className="font-mono">{peso(subtotal)}</span>
-                    </div>
-                    {discount > 0 && (
-                      <div className="flex justify-between items-center text-[11px] text-gray-500">
-                        <span>Discount</span>
-                        <span className="font-mono text-red-500">-{peso(discount)}</span>
-                      </div>
-                    )}
-                    {delivery > 0 && (
-                      <div className="flex justify-between items-center text-[11px] text-gray-500">
-                        <span>Delivery Fee</span>
-                        <span className="font-mono">{peso(delivery)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between items-center text-[11px] text-gray-500">
-                      <span>VAT ({o.vatRate || 0}%)</span>
-                      <span className="font-mono">+{peso(vatAmount)}</span>
-                    </div>
-
-                    <div className="flex justify-between items-center text-[11px] font-semibold text-gray-800 border-t border-gray-200 pt-2 mt-1">
-                      <span>Gross Revenue</span>
-                      <span className="font-mono">{peso(grossRevenue)}</span>
-                    </div>
-
-                    {o.paymentStatus === 'partial' && (
-                        <div className="bg-amber-50/50 border border-amber-100/50 -mx-3 px-3 py-2.5 rounded-lg flex flex-col gap-2 my-1">
-                            <div className="flex justify-between items-center text-[11px] text-amber-600/80">
-                                <span>Amount Paid</span>
-                                <span className="font-mono">-{peso(amountPaid)}</span>
-                            </div>
-                            {showPaymentMethod && (
-                              <div className="flex justify-between items-center text-[10px] text-amber-600/70">
-                                <span>Mode of Payment</span>
-                                <span className="font-semibold uppercase tracking-wide">{PAYMENT_METHOD_LABELS[o.paymentMethod] || o.paymentMethod}</span>
-                              </div>
-                            )}
-                            <div className="flex justify-between items-center text-[11px] font-semibold text-amber-600">
-                                <span>Receivables (Unpaid)</span>
-                                <span className="font-mono">{peso(receivables)}</span>
-                            </div>
-                        </div>
-                    )}
-                    {o.paymentStatus !== 'paid' && o.paymentStatus !== 'partial' && (
-                         <div className="flex justify-between items-center text-[11px] font-semibold text-amber-600 bg-amber-50/50 border border-amber-100/50 -mx-3 px-3 py-2.5 rounded-lg my-1">
-                            <span>Receivables (Unpaid)</span>
-                            <span className="font-mono">{peso(grossRevenue)}</span>
-                        </div>
-                    )}
-                    {o.paymentStatus === 'paid' && showPaymentMethod && (
-                        <div className="flex justify-between items-center text-[10px] text-[#149911]/70 bg-[#149911]/[0.04] border border-[#149911]/10 -mx-3 px-3 py-2 rounded-lg my-1">
-                            <span>Mode of Payment</span>
-                            <span className="font-semibold uppercase tracking-wide">{PAYMENT_METHOD_LABELS[o.paymentMethod] || o.paymentMethod}</span>
-                        </div>
-                    )}
-
-                    <div className="flex justify-between items-center text-[11px] text-gray-500 border-t border-gray-200 pt-2.5 mt-1 border-dashed">
-                      <span>Total COGS</span>
-                      <span className="font-mono text-red-500">-{peso(cogs)}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-[11px] text-gray-500">
-                      <span>
-                        Liquidated OPEX
-                        {pendingOpex > 0 && <span className="text-amber-500 italic ml-1">(+ {peso(pendingOpex)} pending)</span>}
-                      </span>
-                      <span className="font-mono text-red-500">-{peso(liquidatedOpex)}</span>
-                    </div>
-                    <div className="flex justify-between items-center text-[12px] font-bold text-[#149911] border-t border-gray-200 pt-2.5 mt-1">
-                      <span className="uppercase tracking-wide">Net Profit</span>
-                      <span className="font-mono text-[15px] leading-none">{peso(trueNet)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Subtle Link footer */}
-                {o.sourceQuotationId && (
-                  <div className="mt-5 pt-3 flex justify-end">
-                    <Link
-                      href={`/admin-dashboard/client-quotation?id=${o.sourceQuotationId}`}
-                      className="text-[9px] font-bold uppercase tracking-wider text-blue-600 hover:text-blue-800 transition-colors"
-                    >
-                      View Source Quotation &rarr;
-                    </Link>
-                  </div>
-                )}
+                <OrderCardBody o={o} orderPOs={posByOrderId[String(o.id)] || []} />
               </div>
             )
           })}
+        </div>
+      )}
+
+      {openOrderDoc && (
+        <div
+          className="fixed inset-0 bg-black/40 z-[200] flex items-center justify-center p-4"
+          onClick={closeOrder}
+        >
+          <div
+            className="bg-white max-w-2xl w-full rounded-2xl shadow-2xl p-4 sm:p-5 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-[13px] font-semibold text-gray-900">Order</h2>
+              <button
+                onClick={closeOrder}
+                className="text-gray-400 hover:text-gray-700 text-[13px] leading-none"
+                aria-label="Close"
+              >
+                ✕
+              </button>
+            </div>
+            <OrderCardBody o={openOrderDoc} orderPOs={posByOrderId[String(openOrderDoc.id)] || []} />
+          </div>
         </div>
       )}
     </>
