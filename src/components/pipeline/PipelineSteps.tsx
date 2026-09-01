@@ -238,12 +238,17 @@ export function StepSupplierPO({ quotation, localOrder, isQuotationApprovedOrBey
 
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full sm:w-auto">
               <div className="w-full sm:w-auto text-left">
-                <label className="block text-[8px] font-semibold uppercase tracking-wide text-gray-400 mb-1 ml-1">Target Delivery Date</label>
+                <label className="block text-[8px] font-semibold uppercase tracking-wide text-gray-400 mb-1 ml-1">
+                  Target Delivery Date <span className="text-red-500">*</span>
+                </label>
                 <input
                   type="date"
+                  required
                   value={localOrder.targetDeliveryDate ? new Date(localOrder.targetDeliveryDate).toISOString().split('T')[0] : ''}
                   onChange={(e) => handleUpdateOrderField?.('targetDeliveryDate', e.target.value || null)}
-                  className="w-full sm:w-[150px] appearance-none px-3 py-1.5 text-[11px] font-medium rounded-lg cursor-pointer focus:outline-none ring-1 ring-inset ring-gray-200 focus:ring-[#149911]/40 transition-all bg-white hover:bg-gray-50 text-gray-900 shadow-sm"
+                  className={`w-full sm:w-[150px] appearance-none px-3 py-1.5 text-[11px] font-medium rounded-lg cursor-pointer focus:outline-none ring-1 ring-inset transition-all bg-white hover:bg-gray-50 text-gray-900 shadow-sm ${
+                    localOrder.targetDeliveryDate ? 'ring-gray-200 focus:ring-[#149911]/40' : 'ring-amber-300 focus:ring-amber-400'
+                  }`}
                 />
               </div>
               <div className="w-full sm:w-auto text-left">
@@ -267,12 +272,19 @@ export function StepSupplierPO({ quotation, localOrder, isQuotationApprovedOrBey
           <div className="border-t border-gray-100 pt-5 mt-5 flex flex-col-reverse lg:flex-row gap-5 justify-between items-start">
             <div className="w-full lg:w-auto flex-1 flex justify-start">
               {linkedPOs.length > 0 && isFullyAssigned && (
-                <button
-                  onClick={() => handleTabChange("fulfilled")}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[10px] font-medium shadow-sm"
-                >
-                  Next Step: Order Fulfilled &rarr;
-                </button>
+                localOrder.targetDeliveryDate ? (
+                  <button
+                    onClick={() => handleTabChange("fulfilled")}
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[10px] font-medium shadow-sm"
+                  >
+                    Next Step: Order Fulfilled &rarr;
+                  </button>
+                ) : (
+                  <div className="text-[9px] text-amber-600 bg-amber-50 px-3 py-2 rounded-lg border border-amber-100/50 leading-snug">
+                    <span className="font-semibold uppercase tracking-wide">⚠️ Action Required to Proceed:</span><br/>
+                    Set a Target Delivery Date above to unlock Step 4.
+                  </div>
+                )
               )}
             </div>
             <FinancialSummary localOrder={localOrder} />
@@ -422,6 +434,13 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
   const hasClientReceipt = clientReceipts.length > 0;
   const hasSupplierReceipt = supplierReceipts.length > 0;
   const receiptsComplete = hasClientReceipt && hasSupplierReceipt;
+  // Mandatory before Step 5: Mode of Payment only ever renders once
+  // Payment Status has been moved off "unpaid" (see the condition further
+  // down), so requiring both here just means "unpaid" alone can no longer
+  // proceed -- staff have to actually record how the client paid.
+  const hasPaymentStatus = Boolean(localOrder?.paymentStatus);
+  const hasPaymentMethod = Boolean(localOrder?.paymentMethod);
+  const paymentDetailsComplete = hasPaymentStatus && hasPaymentMethod;
 
   if (!localOrder) {
     return (
@@ -560,7 +579,9 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
 
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-2.5">
           <div>
-            <p className="text-[11px] text-gray-500 font-medium mb-1">Payment Status</p>
+            <p className="text-[11px] text-gray-500 font-medium mb-1">
+              Payment Status <span className="text-red-500">*</span>
+            </p>
             <p className="text-[12px] text-gray-900 font-medium">Monitor client payment progress.</p>
           </div>
           <div className="flex flex-col gap-3 w-full sm:w-auto">
@@ -585,7 +606,7 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
             {(localOrder.paymentStatus === 'partial' || localOrder.paymentStatus === 'paid') && (
               <div className="w-full sm:w-[200px] ml-auto flex flex-col gap-1.5">
                 <label className="block text-[9px] font-semibold uppercase tracking-wide text-gray-500 ml-1">
-                  Mode of Payment
+                  Mode of Payment <span className="text-red-500">*</span>
                 </label>
                 <select
                   value={localOrder.paymentMethod || ''}
@@ -662,7 +683,7 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
                 <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
                 Saving Updates...
               </div>
-            ) : receiptsComplete ? (
+            ) : receiptsComplete && paymentDetailsComplete ? (
               <button
                 onClick={() => handleTabChange("delivery")}
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[12px] font-medium shadow-sm"
@@ -671,12 +692,13 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
               </button>
             ) : (
               <div className="text-[9px] text-amber-600 bg-amber-50 px-3 py-2 rounded-lg border border-amber-100/50 leading-snug">
-                <span className="font-semibold uppercase tracking-wide">⚠️ Action Required to Proceed:</span><br/>
-                {!hasClientReceipt && !hasSupplierReceipt
-                  ? "Upload at least one Client Payment Receipt and one Supplier Payment Receipt to unlock Step 5."
-                  : !hasClientReceipt
-                  ? "Upload at least one Client Payment Receipt to unlock Step 5."
-                  : "Upload at least one Supplier Payment Receipt to unlock Step 5."}
+                <span className="font-semibold uppercase tracking-wide">⚠️ Action Required to Proceed:</span>
+                <ul className="list-disc list-inside mt-1 space-y-0.5">
+                  {!hasClientReceipt && <li>Upload at least one Client Payment Receipt.</li>}
+                  {!hasSupplierReceipt && <li>Upload at least one Supplier Payment Receipt.</li>}
+                  {!hasPaymentStatus && <li>Set the Payment Status above.</li>}
+                  {hasPaymentStatus && !hasPaymentMethod && <li>Select the Mode of Payment above (only shows once Payment Status is Partial or Paid).</li>}
+                </ul>
               </div>
             )}
           </div>
