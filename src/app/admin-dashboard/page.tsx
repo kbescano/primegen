@@ -192,7 +192,7 @@ export default async function QuotationInboxPage({
   // the two small "this week" / "this month" overview counts don't depend
   // on the main quotation-requests query or each other -- run everything
   // together instead of one after the other.
-  const [staffRes, { docs }, actionItemsRes, weekOverviewRes, monthOverviewRes] = await Promise.all([
+  const [staffRes, productsRes, { docs }, actionItemsRes, weekOverviewRes, monthOverviewRes] = await Promise.all([
     isAdmin
       ? payload.find({
           collection: "users",
@@ -205,6 +205,14 @@ export default async function QuotationInboxPage({
           limit: 100,
         })
       : Promise.resolve({ docs: [] as any[] }),
+    // For the "Create new Inquiry" modal (CreateRFQModal) -- same lookup
+    // inquiry-tracker/page.tsx does for the same modal.
+    payload.find({
+      collection: "products",
+      limit: 300,
+      sort: "name",
+      select: { name: true, unit: true },
+    }),
     payload.find({
       collection: "quotation-requests",
       sort: "-createdAt",
@@ -270,6 +278,12 @@ export default async function QuotationInboxPage({
     id: String(u.id),
     name: u.name || "",
     email: u.email || "",
+  }));
+
+  const products = productsRes.docs.map((m: any) => ({
+    id: m.id,
+    name: m.name,
+    unit: m.unit || "pcs",
   }));
 
   const requestIds = docs.map((d: any) => d.id);
@@ -349,6 +363,7 @@ export default async function QuotationInboxPage({
       actionItems={actionItemsRes.docs}
       weekOverview={weekOverview}
       monthOverview={monthOverview}
+      products={products}
     />
   );
 }

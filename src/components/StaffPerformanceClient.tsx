@@ -906,7 +906,10 @@ export default function StaffPerformanceClient({
           </p>
         </div>
         <div className="shrink-0">
-          <CreateRFQModal products={products} />
+          {/* Explicitly false, not just the default -- new inquiries here
+              stay unassigned so admin/marketing can route them, same as
+              the "unassigned" count already tracked on this page. */}
+          <CreateRFQModal products={products} assignToSelf={false} />
         </div>
       </div>
 

@@ -5,6 +5,12 @@ import QuotationGenerator, { type QuotationInitial } from '@/components/Quotatio
 import ClientQuotationsListClient from '@/components/ClientQuotationsListClient'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 
+// Belt-and-suspenders alongside this page's own headers() call below --
+// same explicit marker as deliveries/inquiry-tracker/reports/sales-report,
+// so the list and the editor (both server-rendered here, driven by ?id=)
+// always re-read items fresh instead of risking a cached pre-edit render.
+export const dynamic = 'force-dynamic'
+
 function mapDocToInitial(q: any): QuotationInitial {
   return {
     id: q.id,

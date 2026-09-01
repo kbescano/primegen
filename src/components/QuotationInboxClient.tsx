@@ -17,6 +17,7 @@ import AssignStaffSelect from '@/components/AssignStaffSelect'
 import AddUpdateNote from '@/components/AddUpdateNotes'
 import DateGranularityFilter from '@/components/DateGranularityFilter'
 import ActionItemsPanel from '@/components/ActionItemsPanel'
+import CreateRFQModal from '@/components/CreateRFQModal'
 
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending' },
@@ -325,6 +326,7 @@ export default function QuotationInboxClient({
   actionItems,
   weekOverview,
   monthOverview,
+  products,
 }: {
   requests: any[] // each pre-annotated server-side with `.stageLabel`
   staffOptions: StaffOption[]
@@ -337,6 +339,7 @@ export default function QuotationInboxClient({
   actionItems: any[]
   weekOverview: Record<string, number>
   monthOverview: Record<string, number>
+  products: { id: string; name: string; unit: string }[]
 }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -437,6 +440,12 @@ export default function QuotationInboxClient({
   return (
     <div className="w-full max-w-[900px] mx-auto py-6 overflow-x-hidden text-gray-700">
       {/* Header */}
+      {/* Encode an inquiry that came in by phone/walk-in instead of the
+          website form -- lands in this same inbox, assigned to whoever's
+          logged in (see /api/quotation-requests). */}
+      <div className="mb-5 flex align-self-right justify-end">
+        <CreateRFQModal products={products} assignToSelf />
+      </div>
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
         <div className="w-full">
           <h1 className="text-lg font-semibold text-gray-900 mb-0.5 truncate">

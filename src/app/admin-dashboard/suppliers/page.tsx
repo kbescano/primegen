@@ -39,7 +39,7 @@ export default async function SuppliersPage({
   const tdClass = "px-3.5 py-3.5 border-b border-gray-200 align-middle text-[11px] text-gray-800 break-words"
 
   return (
-    <div className="w-full max-w-[1200px] mx-auto py-6 px-4 sm:px-6 overflow-x-hidden">
+    <div className="w-full max-w-[1200px] mx-auto py-6 overflow-x-hidden">
       <div className="mb-8">
         <div className="w-10 h-[3px] bg-[#149911] mb-4" />
         <h1 className="text-[26px] md:text-[32px] font-black uppercase tracking-tight text-[#01172f] leading-none mb-2">
@@ -63,11 +63,12 @@ export default async function SuppliersPage({
         </div>
       ) : (
         <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
-          <div className="w-full overflow-x-auto">
-            <table className="w-full min-w-[800px] border-collapse text-left">
+          {/* Desktop/tablet: the table. Mobile: a stacked card per supplier
+              instead of a table forced to scroll sideways like a carousel. */}
+          <div className="hidden sm:block w-full overflow-x-auto">
+            <table className="w-full table-fixed border-collapse text-left">
               <thead>
                 <tr>
-                  {/* ✨ UPDATED WIDTHS */}
                   <th className={`${thClass} w-[20%]`}>Supplier Name</th>
                   <th className={`${thClass} w-[20%]`}>Company</th>
                   <th className={`${thClass} w-[15%]`}>Contact Number</th>
@@ -98,7 +99,6 @@ export default async function SuppliersPage({
                       <td className={`${tdClass} text-center`}>
                         {s.address || '—'}
                       </td>
-                      {/* ✨ ADDED ACTION COLUMN */}
                       <td className={`${tdClass} text-center`}>
                         <EditDirectoryModal collection="suppliers" record={s} />
                       </td>
@@ -107,6 +107,35 @@ export default async function SuppliersPage({
                 })}
               </tbody>
             </table>
+          </div>
+
+          <div className="sm:hidden flex flex-col divide-y divide-gray-200">
+            {docs.map((s: any) => (
+              <div key={s.id} className="bg-white">
+                <div className="bg-[#01172f] text-white px-4 py-2.5">
+                  <span className="font-bold uppercase text-[12px] leading-tight block truncate">
+                    {s.name || 'Unnamed Supplier'}
+                  </span>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {[
+                    ['Company', s.company || '—'],
+                    ['Contact Number', s.phone || s.contactNumber || '—'],
+                    ['Email', s.email || '—'],
+                    ['Address', s.address || '—'],
+                  ].map(([label, value]) => (
+                    <div key={label} className="flex items-start justify-between gap-3 px-4 py-2.5 text-[12px]">
+                      <span className="text-gray-500 flex-shrink-0">{label}</span>
+                      <span className="text-gray-800 text-right break-words">{value}</span>
+                    </div>
+                  ))}
+                  <div className="flex items-center justify-between gap-3 px-4 py-2.5 text-[12px] bg-gray-50">
+                    <span className="text-gray-500">Action</span>
+                    <EditDirectoryModal collection="suppliers" record={s} />
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
 
           {totalPages > 1 && (

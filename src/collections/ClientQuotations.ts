@@ -181,6 +181,87 @@ export const ClientQuotations: CollectionConfig = {
         }
         return doc;
       },
+      // The hook above only ever COPIES items into the order once, at the
+      // moment status first becomes "order_confirmed" -- after that, the
+      // order's items are a frozen snapshot. Editing the quotation later
+      // (qty, cost, margin, adding/removing a line, VAT/discount/delivery
+      // fee) silently stopped showing up in the order and the pipeline's
+      // Step 3+ views, even though the quotation itself stayed editable.
+      // Keep them in sync on every subsequent edit instead.
+      async ({ doc, previousDoc, operation, req }) => {
+        if (operation !== "update" || !previousDoc) return doc;
+        // The hook above already seeds the order from `doc.items` at the
+        // exact moment of this same request when it's the create-order
+        // transition -- re-running the sync here would just be a
+        // redundant, no-op write against what it just wrote.
+        if (doc.status === "order_confirmed" && previousDoc.status !== "order_confirmed") {
+          return doc;
+        }
+        const itemsChanged = JSON.stringify(doc.items || []) !== JSON.stringify(previousDoc.items || []);
+        const pricingChanged =
+          doc.vatRate !== previousDoc.vatRate ||
+          doc.discountAmount !== previousDoc.discountAmount ||
+          doc.deliveryFee !== previousDoc.deliveryFee;
+        if (!itemsChanged && !pricingChanged) return doc;
+
+        try {
+          const existingOrders = await req.payload.find({
+            collection: "orders",
+            where: { sourceQuotationId: { equals: String(doc.id) } },
+            limit: 1,
+          });
+          const order: any = existingOrders.docs[0];
+          if (!order) return doc;
+
+          const priorItems: any[] = Array.isArray(order.items) ? order.items : [];
+          // No stable id links a quotation line item to its order copy (the
+          // create-order hook above never carries `id` across), so match by
+          // description + size -- good enough to survive a qty/cost/margin
+          // edit on the same line, which is the overwhelmingly common case.
+          const matchKey = (i: any) =>
+            `${String(i.description || "").trim().toLowerCase()}|${String(i.sizeDescription || "").trim().toLowerCase()}`;
+          const priorByKey = new Map(priorItems.map((i) => [matchKey(i), i]));
+
+          const newItems = (Array.isArray(doc.items) ? doc.items : []).map((i: any) => {
+            const prior = priorByKey.get(matchKey(i));
+            return {
+              description: i.description || "",
+              sizeDescription: i.sizeDescription || "",
+              qty: i.qty || 1,
+              unit: i.unit || "pcs",
+              unitPrice: i.unitPrice || 0,
+              unitCost: i.unitCost || 0,
+              // Carry over this line's existing supplier-PO assignment, if
+              // any -- never silently sever an already-issued PO just
+              // because the quotation was re-saved.
+              ...(prior?.assignedPOId ? { assignedPOId: prior.assignedPOId } : {}),
+            };
+          });
+
+          // The order mirrors the quotation exactly, including removals --
+          // a line dropped from the quotation disappears from the order
+          // even if it was already tied to an issued PO. That PO keeps its
+          // own copy of the line (it's a separate array on a separate
+          // collection, untouched here), so nothing is destroyed -- it's
+          // just now a PO line with no matching order item, for a human to
+          // reconcile. Silently keeping a removed line in the order was
+          // the previous behavior; it's exactly what stayed stale in the
+          // pipeline.
+          await req.payload.update({
+            collection: "orders",
+            id: order.id,
+            data: {
+              items: newItems,
+              vatRate: doc.vatRate ?? order.vatRate,
+              discountAmount: doc.discountAmount ?? order.discountAmount,
+              deliveryFee: doc.deliveryFee ?? order.deliveryFee,
+            },
+          });
+        } catch (err) {
+          console.error("Failed to sync client-quotation edit to its order:", err);
+        }
+        return doc;
+      },
       async ({ doc, previousDoc, operation, req }) => {
         // Skip statuses that already have their own dedicated notification
         // above (pending_approval, quotation_approved) or trigger the

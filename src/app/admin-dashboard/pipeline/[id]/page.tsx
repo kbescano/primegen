@@ -3,6 +3,14 @@ import { getPayloadClient } from '@/lib/getPayloadClient'
 import PipelineStepper from '@/components/PipelineStepper'
 import { StepKey } from '@/lib/pipelineUtils'
 
+// Unlike admin-dashboard/page.tsx or client-quotation/page.tsx, this page
+// never calls headers()/cookies() itself -- with only `params` (no dynamic
+// API usage of its own) Next.js can treat it as eligible for the Full
+// Route Cache and serve back the pre-edit render, so quotation items
+// updated or deleted elsewhere (they live-edit, then land back here) don't
+// show up. Same fix as deliveries/inquiry-tracker/reports/sales-report.
+export const dynamic = 'force-dynamic'
+
 export default async function PipelinePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const payload = await getPayloadClient()

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type Product = { id: string; name: string; unit: string };
 type LineItem = {
@@ -24,7 +24,21 @@ const fieldClass =
 const labelClass =
   "text-[10px] font-bold uppercase tracking-[0.2em] text-[#01172f]/40 mb-2 block";
 
-export default function CreateRFQModal({ products }: { products: Product[] }) {
+export default function CreateRFQModal({
+  products,
+  assignToSelf = false,
+}: {
+  products: Product[];
+  // Quotation Inbox is a rep's own view -- an inquiry they encode there is
+  // naturally theirs. Inquiry Tracker is the admin/marketing triage board,
+  // where "unassigned" is a tracked, meaningful state staff route from --
+  // so it must default to false and stay false there, not just happen to
+  // land that way because of who's logged in. The server independently
+  // re-checks who's allowed to be assigned (see /api/quotation-requests)
+  // regardless of this flag, so this only ever narrows, never grants.
+  assignToSelf?: boolean;
+}) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const preselected = searchParams.get("product");
   const preselectedMaterial = products.find(
@@ -156,6 +170,7 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
       source: formData.source,
       facebookLink: formData.source === "facebook" ? formData.facebookLink : "",
       sourceOther: formData.source === "other" ? formData.sourceOther : "",
+      assignToSelf,
       items: isProductsTBC
         ? []
         : items
@@ -176,10 +191,14 @@ export default function CreateRFQModal({ products }: { products: Product[] }) {
       const res = await fetch("/api/quotation-requests", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        credentials: "include",
         body: JSON.stringify(data),
       });
       if (!res.ok) throw new Error("Request failed");
       setView("done");
+      // Auto-assigned to whoever's logged in server-side -- refresh so the
+      // new inquiry shows up (assigned to them) without a manual reload.
+      router.refresh();
     } catch {
       setErrorMsg("Something went wrong. Please try again.");
       setView("form");
