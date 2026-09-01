@@ -1,6 +1,7 @@
 import { headers as getHeaders } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getPayloadClient } from '@/lib/getPayloadClient'
+import { FULFILLMENT_OPTIONS } from '@/lib/pipelineUtils'
 
 // Sales-staff version of /admin-dashboard/reports -- same table shape as
 // the "Sales Performance Breakdown" sheet in the Export Center's Excel
@@ -62,7 +63,7 @@ function docTrueNetProfit(o: any): number {
 export default async function SalesReportPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; year?: string }>
+  searchParams: Promise<{ month?: string; year?: string; status?: string }>
 }) {
   const payload = await getPayloadClient()
   const reqHeaders = await getHeaders()
@@ -81,6 +82,10 @@ export default async function SalesReportPage({
   const defaultYear = String(now.getFullYear())
   const activeMonth = searchParamsResolved.month || defaultMonth
   const activeYear = searchParamsResolved.year || defaultYear
+  // Defaults to "Delivered" -- this report is about performance on
+  // finished business, not everything currently in flight. All Statuses
+  // is still one click away in the filter.
+  const activeStatus = searchParamsResolved.status || 'delivered'
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -117,7 +122,9 @@ export default async function SalesReportPage({
     depth: 0,
     sort: '-createdAt',
   })
-  const orders = (ordersRes.docs as any[]).filter((o) => inPeriod(o.orderDate || o.createdAt))
+  const orders = (ordersRes.docs as any[]).filter(
+    (o) => inPeriod(o.orderDate || o.createdAt) && (activeStatus === 'all' || o.fulfillmentStatus === activeStatus),
+  )
 
   const orderCount = orders.length
   const gross = orders.reduce((sum, o) => sum + docTotal(o), 0)
@@ -175,6 +182,11 @@ export default async function SalesReportPage({
         </h1>
         <p className="text-[13px] text-gray-500 font-medium">
           Period: {periodLabel}
+          {activeStatus !== 'all' && (
+            <>
+              {' '}&middot; Status: {FULFILLMENT_OPTIONS.find((s) => s.value === activeStatus)?.label || activeStatus}
+            </>
+          )}
         </p>
       </div>
 
@@ -198,6 +210,16 @@ export default async function SalesReportPage({
           >
             <option value="all">All Years</option>
             {filterYears.map((y) => <option key={y} value={y}>{y}</option>)}
+          </select>
+        </div>
+        <div className="relative">
+          <select
+            name="status"
+            defaultValue={activeStatus}
+            className="appearance-none bg-white border border-gray-200 rounded-full pl-5 pr-9 py-2 text-[13px] font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200 cursor-pointer shadow-sm"
+          >
+            <option value="all">All Statuses</option>
+            {FULFILLMENT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
           </select>
         </div>
         <script dangerouslySetInnerHTML={{ __html: `
@@ -269,7 +291,9 @@ export default async function SalesReportPage({
 
       {orderCount === 0 ? (
         <p className="text-[12px] text-gray-400 italic mt-4">
-          No confirmed orders under your name in this period.
+          No confirmed orders under your name
+          {activeStatus !== 'all' ? ` with status "${FULFILLMENT_OPTIONS.find((s) => s.value === activeStatus)?.label || activeStatus}"` : ''}
+          {' '}in this period.
         </p>
       ) : (
         <>
@@ -285,9 +309,8 @@ export default async function SalesReportPage({
                 <tr className="bg-[#01172f] text-white">
                   <th className={`${detailCell} text-left font-semibold w-[8%] whitespace-nowrap`}>Order #</th>
                   <th className={`${detailCell} text-left font-semibold w-[7%] whitespace-nowrap`}>Date</th>
-                  <th className={`${detailCell} text-left font-semibold w-[13%]`}>Customer</th>
-                  <th className={`${detailCell} text-left font-semibold w-[8%]`}>Status</th>
-                  <th className={`${detailCell} text-left font-semibold w-[7%] whitespace-nowrap`}>Pay</th>
+                  <th className={`${detailCell} text-left font-semibold w-[16%]`}>Customer</th>
+                  <th className={`${detailCell} text-left font-semibold w-[10%]`}>Status</th>
                   <th className={`${detailCell} text-right font-semibold w-[9.5%] whitespace-nowrap`}>Gross</th>
                   <th className={`${detailCell} text-right font-semibold w-[9.5%] whitespace-nowrap`}>Paid</th>
                   <th className={`${detailCell} text-right font-semibold w-[9.5%] whitespace-nowrap`}>AR</th>
@@ -304,7 +327,6 @@ export default async function SalesReportPage({
                     <td className={`${detailCell} text-gray-600 whitespace-nowrap`}>{dateStr}</td>
                     <td className={`${detailCell} text-gray-900`}>{o.customerName || '--'}</td>
                     <td className={`${detailCell} text-gray-600 capitalize`}>{o.fulfillmentStatus || '--'}</td>
-                    <td className={`${detailCell} text-gray-600 capitalize`}>{o.paymentStatus || '--'}</td>
                     <td className={`${detailCell} text-right font-mono text-gray-700 whitespace-nowrap`}>{peso(oGross)}</td>
                     <td className={`${detailCell} text-right font-mono text-gray-700 whitespace-nowrap`}>{peso(oPaid)}</td>
                     <td className={`${detailCell} text-right font-mono text-gray-700 whitespace-nowrap`}>{peso(oAr)}</td>
@@ -317,7 +339,7 @@ export default async function SalesReportPage({
               </tbody>
               <tfoot>
                 <tr className="bg-gray-100 border-t-2 border-[#01172f]">
-                  <td className={`${detailCell} font-bold text-gray-900 whitespace-nowrap`} colSpan={5}>GRAND TOTAL</td>
+                  <td className={`${detailCell} font-bold text-gray-900 whitespace-nowrap`} colSpan={4}>GRAND TOTAL</td>
                   <td className={`${detailCell} text-right font-mono font-bold text-gray-900 whitespace-nowrap`}>{peso(gross)}</td>
                   <td className={`${detailCell} text-right font-mono font-bold text-gray-900 whitespace-nowrap`}>{peso(paid)}</td>
                   <td className={`${detailCell} text-right font-mono font-bold text-gray-900 whitespace-nowrap`}>{peso(receivables)}</td>
