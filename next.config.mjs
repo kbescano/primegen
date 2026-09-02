@@ -7,6 +7,17 @@ const nextConfig = {
       { hostname: 'localhost' },
       { protocol: 'https', hostname: 'res.cloudinary.com' },
     ],
+    // Cloudinary already resizes/optimizes on upload, so running its URLs
+    // through Vercel's own Image Optimization on top was pure redundancy
+    // -- and it's a separately metered, capped resource (Image
+    // Optimization Transformations), unlike plain bandwidth. Once that
+    // monthly cap is hit, every image Vercel hasn't already optimized and
+    // cached starts 402ing (newest product photos first), even though
+    // nothing is actually broken. Turning optimization off site-wide -- a
+    // handful of static/branding images plus a product catalog that's
+    // already served pre-optimized by Cloudinary -- removes the failure
+    // mode entirely instead of just buying more headroom.
+    unoptimized: true,
   },
   // Baseline security headers on every response. Deliberately not adding a
   // Content-Security-Policy here: Payload's admin UI needs inline
