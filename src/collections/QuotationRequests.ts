@@ -173,6 +173,78 @@ export const QuotationRequests: CollectionConfig = {
         }
         return doc;
       },
+      // Rejecting the request cascades "cancelled" down the whole chain it
+      // spawned -- client quotation, the order it was converted to, and
+      // every supplier PO issued against that order -- instead of leaving
+      // them looking like a live, in-progress job (see the Raymond Saguit
+      // case this was modeled on: request rejected, but the order and PO
+      // were left at "preparing"/"issued" and kept counting toward
+      // revenue in Reports). Nothing is ever deleted, only re-flagged.
+      //
+      // Doesn't touch an order already "delivered" or a PO already
+      // "fulfilled" -- those are completed real-world transactions, and
+      // silently reversing one because a request got rejected afterward
+      // is a human decision, not one this hook should make for them.
+      async ({ doc, previousDoc, operation, req }) => {
+        if (
+          operation !== "update" ||
+          doc.status !== "rejected" ||
+          previousDoc?.status === "rejected"
+        ) {
+          return doc;
+        }
+
+        try {
+          const quotationRes = await req.payload.find({
+            collection: "client-quotations",
+            where: { sourceRequestId: { equals: String(doc.id) } },
+            limit: 1,
+          });
+          const quotation = quotationRes.docs[0] as any;
+          if (!quotation) return doc;
+
+          if (quotation.status !== "cancelled") {
+            await req.payload.update({
+              collection: "client-quotations",
+              id: quotation.id,
+              data: { status: "cancelled" },
+            });
+          }
+
+          const orderRes = await req.payload.find({
+            collection: "orders",
+            where: { sourceQuotationId: { equals: String(quotation.id) } },
+            limit: 1,
+          });
+          const order = orderRes.docs[0] as any;
+          if (!order) return doc;
+
+          if (order.fulfillmentStatus !== "delivered" && order.fulfillmentStatus !== "cancelled") {
+            await req.payload.update({
+              collection: "orders",
+              id: order.id,
+              data: { fulfillmentStatus: "cancelled" },
+            });
+          }
+
+          const posRes = await req.payload.find({
+            collection: "supplier-purchase-orders",
+            where: { sourceOrderId: { equals: String(order.id) } },
+            limit: 50,
+          });
+          for (const po of posRes.docs as any[]) {
+            if (po.status === "fulfilled" || po.status === "cancelled") continue;
+            await req.payload.update({
+              collection: "supplier-purchase-orders",
+              id: po.id,
+              data: { status: "cancelled" },
+            });
+          }
+        } catch (err) {
+          console.error("Failed to cascade-cancel from rejected RFQ:", err);
+        }
+        return doc;
+      },
     ],
   },
   fields: [

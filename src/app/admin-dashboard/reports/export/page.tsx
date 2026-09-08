@@ -91,18 +91,22 @@ export default async function ExportCenterPage({
   const requestById = new Map((requestsRes.docs as any[]).map((r) => [String(r.id), r]))
   const userById = new Map((staffRes.docs as any[]).map((u) => [String(u.id), u]))
 
-  const docsWithResolvedSalesPerson = (docs as any[]).map((o) => {
-    const quotation = o.sourceQuotationId ? quotationById.get(String(o.sourceQuotationId)) : undefined
-    const request = quotation?.sourceRequestId ? requestById.get(String(quotation.sourceRequestId)) : undefined
-    const assignedToId = request?.assignedTo
-      ? String(typeof request.assignedTo === 'object' ? request.assignedTo.id : request.assignedTo)
-      : undefined
-    const user = assignedToId ? userById.get(assignedToId) : undefined
-    return {
-      ...o,
-      resolvedSalesPerson: user?.email ? (user.name || user.email).trim() : undefined,
-    }
-  })
+  const docsWithResolvedSalesPerson = (docs as any[])
+    // A cancelled order was never actually fulfilled -- leave it out of the
+    // financial export entirely, same as the on-page Reports summary.
+    .filter((o) => o.fulfillmentStatus !== 'cancelled')
+    .map((o) => {
+      const quotation = o.sourceQuotationId ? quotationById.get(String(o.sourceQuotationId)) : undefined
+      const request = quotation?.sourceRequestId ? requestById.get(String(quotation.sourceRequestId)) : undefined
+      const assignedToId = request?.assignedTo
+        ? String(typeof request.assignedTo === 'object' ? request.assignedTo.id : request.assignedTo)
+        : undefined
+      const user = assignedToId ? userById.get(assignedToId) : undefined
+      return {
+        ...o,
+        resolvedSalesPerson: user?.email ? (user.name || user.email).trim() : undefined,
+      }
+    })
 
   const periodLabel =
     granularity === 'month' && periodValue

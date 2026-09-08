@@ -215,6 +215,13 @@ export default async function ReportsPage({
   const requests = (requestsRes.docs as any[]).filter((r) => inPeriod(r.createdAt))
   const quotations = (quotationsRes.docs as any[]).filter((q) => inPeriod(q.quotationDate || q.createdAt))
   const orders = (ordersRes.docs as any[]).filter((o) => inPeriod(o.orderDate || o.createdAt))
+  // A cancelled order was never actually fulfilled, so it shouldn't count as
+  // real revenue/profit -- used for the Accounting Summary and Performance
+  // by Sales Person below. `orders` (the full set, cancelled included) stays
+  // as-is for the Funnel and the Orders by Fulfillment breakdown, which is
+  // specifically meant to show the status distribution, cancellations
+  // included.
+  const activeOrders = orders.filter((o) => o.fulfillmentStatus !== 'cancelled')
 
   // ===== Funnel =====
   const requestCount = requests.length
@@ -228,16 +235,16 @@ export default async function ReportsPage({
   const quotationToOrderRate = quotationCount > 0 ? Math.round((orderCount / quotationCount) * 100) : 0
   const orderToPaidRate = orderCount > 0 ? Math.round((payingOrdersCount / orderCount) * 100) : 0
 
-  // ===== ACCOUNTING SUMMARY (Accrual Basis - All Confirmed Orders) =====
-  const totalGrossRevenue = orders.reduce((sum, o) => sum + docTotal(o), 0)
-  const totalAmountPaid = orders.reduce((sum, o) => sum + docAmountPaid(o), 0)
-  const totalReceivables = orders.reduce((sum, o) => sum + docReceivable(o), 0)
-  const totalVat = orders.reduce((sum, o) => sum + docVat(o), 0)
-  const totalCosts = orders.reduce((sum, o) => sum + docTotalCosts(o), 0)
-  const totalNetProfit = orders.reduce((sum, o) => sum + docTrueNetProfit(o), 0) 
+  // ===== ACCOUNTING SUMMARY (Accrual Basis - All Confirmed, non-Cancelled Orders) =====
+  const totalGrossRevenue = activeOrders.reduce((sum, o) => sum + docTotal(o), 0)
+  const totalAmountPaid = activeOrders.reduce((sum, o) => sum + docAmountPaid(o), 0)
+  const totalReceivables = activeOrders.reduce((sum, o) => sum + docReceivable(o), 0)
+  const totalVat = activeOrders.reduce((sum, o) => sum + docVat(o), 0)
+  const totalCosts = activeOrders.reduce((sum, o) => sum + docTotalCosts(o), 0)
+  const totalNetProfit = activeOrders.reduce((sum, o) => sum + docTrueNetProfit(o), 0)
 
   const actualMarkupPercent = totalCosts > 0 ? (totalNetProfit / totalCosts) * 100 : 0
-  const receivablesCount = orders.filter(o => docReceivable(o) > 0).length
+  const receivablesCount = activeOrders.filter(o => docReceivable(o) > 0).length
 
   // ===== Quotation pipeline by status =====
   const quotationPipeline: Record<string, { count: number; value: number }> = {
@@ -283,7 +290,7 @@ export default async function ReportsPage({
     .slice(0, 8)
   const maxMaterialQty = topMaterials.length > 0 ? topMaterials[0][1] : 0
 
-  // ===== Performance by Sales Person (Accrual Basis on ALL orders in period) =====
+  // ===== Performance by Sales Person (Accrual Basis on non-Cancelled orders in period) =====
   // orders.salesPerson is free text, typed once (auto-filled from whoever was
   // logged in) at quotation-creation time and never revisited -- so a staff
   // member who later renames their account splits their own history across
@@ -318,7 +325,7 @@ export default async function ReportsPage({
   }
 
   const bySalesPerson: Record<string, { label: string; count: number; gross: number; paid: number; ar: number; profit: number }> = {}
-  for (const o of orders) {
+  for (const o of activeOrders) {
     const { key, label } = resolveSalesPerson(o)
     if (!bySalesPerson[key]) bySalesPerson[key] = { label, count: 0, gross: 0, paid: 0, ar: 0, profit: 0 }
     bySalesPerson[key].count += 1
