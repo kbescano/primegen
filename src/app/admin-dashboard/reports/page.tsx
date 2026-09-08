@@ -184,10 +184,18 @@ export default async function ReportsPage({
 
   const payload = await getPayloadClient()
 
-  const [requestsRes, quotationsRes, ordersRes] = await Promise.all([
+  const [requestsRes, quotationsRes, ordersRes, staffRes] = await Promise.all([
     payload.find({ collection: 'quotation-requests', limit: 1000, depth: 0, sort: '-createdAt' }),
     payload.find({ collection: 'client-quotations', limit: 1000, depth: 0, sort: '-createdAt' }),
     payload.find({ collection: 'orders', limit: 1000, depth: 0, sort: '-createdAt' }),
+    // For resolving each order's actual salesperson identity below --
+    // same "role=user OR nica@primegen.admin" set every other staff
+    // lookup in this app uses.
+    payload.find({
+      collection: 'users',
+      where: { or: [{ role: { equals: 'user' } }, { email: { equals: 'nica@primegen.admin' } }] },
+      limit: 200,
+    }),
   ])
 
   // Filtering Logic
@@ -276,15 +284,48 @@ export default async function ReportsPage({
   const maxMaterialQty = topMaterials.length > 0 ? topMaterials[0][1] : 0
 
   // ===== Performance by Sales Person (Accrual Basis on ALL orders in period) =====
-  const bySalesPerson: Record<string, { count: number; gross: number; paid: number; ar: number; profit: number }> = {}
+  // orders.salesPerson is free text, typed once (auto-filled from whoever was
+  // logged in) at quotation-creation time and never revisited -- so a staff
+  // member who later renames their account splits their own history across
+  // two separate rows here. Resolve back to the actual assigned user via the
+  // real relationship chain instead (order -> quotation -> request ->
+  // assignedTo), which survives a rename since it's an id, not a name, and
+  // group/display by that. Falls back to the raw salesPerson text only when
+  // that chain can't be resolved (e.g. a manually-started quotation with no
+  // source request) -- same as the prior behavior for those.
+  //
+  // Built from the full, unfiltered doc sets (not the period-filtered
+  // `quotations`/`requests` arrays above) since an order's period is driven
+  // by its own date, not its source request's -- the chain has to resolve
+  // regardless of which period the originating request happened to fall in.
+  const quotationById = new Map((quotationsRes.docs as any[]).map((q) => [String(q.id), q]))
+  const requestById = new Map((requestsRes.docs as any[]).map((r) => [String(r.id), r]))
+  const userById = new Map((staffRes.docs as any[]).map((u) => [String(u.id), u]))
+
+  function resolveSalesPerson(o: any): { key: string; label: string } {
+    const quotation = o.sourceQuotationId ? quotationById.get(String(o.sourceQuotationId)) : undefined
+    const request = quotation?.sourceRequestId ? requestById.get(String(quotation.sourceRequestId)) : undefined
+    const assignedToId = request?.assignedTo
+      ? String(typeof request.assignedTo === 'object' ? request.assignedTo.id : request.assignedTo)
+      : undefined
+    const user = assignedToId ? userById.get(assignedToId) : undefined
+
+    if (user?.email) {
+      return { key: `user:${user.email}`, label: (user.name || user.email).trim() }
+    }
+    const fallback = o.salesPerson?.trim() || 'Unassigned'
+    return { key: `text:${fallback}`, label: fallback }
+  }
+
+  const bySalesPerson: Record<string, { label: string; count: number; gross: number; paid: number; ar: number; profit: number }> = {}
   for (const o of orders) {
-    const sp = o.salesPerson?.trim() || 'Unassigned'
-    if (!bySalesPerson[sp]) bySalesPerson[sp] = { count: 0, gross: 0, paid: 0, ar: 0, profit: 0 }
-    bySalesPerson[sp].count += 1
-    bySalesPerson[sp].gross += docTotal(o)
-    bySalesPerson[sp].paid += docAmountPaid(o)
-    bySalesPerson[sp].ar += docReceivable(o)
-    bySalesPerson[sp].profit += docTrueNetProfit(o)
+    const { key, label } = resolveSalesPerson(o)
+    if (!bySalesPerson[key]) bySalesPerson[key] = { label, count: 0, gross: 0, paid: 0, ar: 0, profit: 0 }
+    bySalesPerson[key].count += 1
+    bySalesPerson[key].gross += docTotal(o)
+    bySalesPerson[key].paid += docAmountPaid(o)
+    bySalesPerson[key].ar += docReceivable(o)
+    bySalesPerson[key].profit += docTrueNetProfit(o)
   }
   const salesPersonRows = Object.entries(bySalesPerson).sort(
     (a, b) => b[1].profit - a[1].profit
@@ -529,14 +570,14 @@ export default async function ReportsPage({
               No orders in this period yet.
             </p>
           ) : (
-            salesPersonRows.map(([name, v]) => (
+            salesPersonRows.map(([key, v]) => (
               <div
-                key={name}
+                key={key}
                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 py-4 border-b border-gray-50 last:border-0 w-full overflow-hidden"
               >
                 <div className="flex-1 min-w-0 w-full">
-                  <p className={`text-[13px] font-semibold truncate w-full ${name === 'Unassigned' ? 'italic text-gray-400' : 'text-gray-900'}`}>
-                    {name}
+                  <p className={`text-[13px] font-semibold truncate w-full ${v.label === 'Unassigned' ? 'italic text-gray-400' : 'text-gray-900'}`}>
+                    {v.label}
                   </p>
                   <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                     <span className="text-[10px] font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded truncate">{v.count} orders</span>

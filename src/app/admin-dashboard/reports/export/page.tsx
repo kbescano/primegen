@@ -59,12 +59,49 @@ export default async function ExportCenterPage({
     conditions.push({ orderDate: { less_than: end.toISOString() } })
   }
 
-  const { docs } = await payload.find({
-    collection: 'orders',
-    where: conditions.length > 0 ? { and: conditions } : undefined,
-    limit: 1000,
-    sort: '-orderDate',
-    depth: 0,
+  const [{ docs }, quotationsRes, requestsRes, staffRes] = await Promise.all([
+    payload.find({
+      collection: 'orders',
+      where: conditions.length > 0 ? { and: conditions } : undefined,
+      limit: 1000,
+      sort: '-orderDate',
+      depth: 0,
+    }),
+    payload.find({ collection: 'client-quotations', limit: 1000, depth: 0 }),
+    payload.find({ collection: 'quotation-requests', limit: 1000, depth: 0 }),
+    // Same "role=user OR nica@primegen.admin" set every other staff lookup
+    // in this app uses.
+    payload.find({
+      collection: 'users',
+      where: { or: [{ role: { equals: 'user' } }, { email: { equals: 'nica@primegen.admin' } }] },
+      limit: 200,
+    }),
+  ])
+
+  // orders.salesPerson is free text, typed once at quotation-creation time
+  // and never revisited -- a staff rename would otherwise split their
+  // export rows under two different names. Resolve back to the actual
+  // assigned user via the real relationship chain (order -> quotation ->
+  // request -> assignedTo), which survives a rename since it's an id, not
+  // a name -- same fix as the on-page "Performance by Sales Person"
+  // report (see reports/page.tsx). Stamped onto each order here since
+  // generateExcelSummary.ts runs client-side and has no Payload access of
+  // its own.
+  const quotationById = new Map((quotationsRes.docs as any[]).map((q) => [String(q.id), q]))
+  const requestById = new Map((requestsRes.docs as any[]).map((r) => [String(r.id), r]))
+  const userById = new Map((staffRes.docs as any[]).map((u) => [String(u.id), u]))
+
+  const docsWithResolvedSalesPerson = (docs as any[]).map((o) => {
+    const quotation = o.sourceQuotationId ? quotationById.get(String(o.sourceQuotationId)) : undefined
+    const request = quotation?.sourceRequestId ? requestById.get(String(quotation.sourceRequestId)) : undefined
+    const assignedToId = request?.assignedTo
+      ? String(typeof request.assignedTo === 'object' ? request.assignedTo.id : request.assignedTo)
+      : undefined
+    const user = assignedToId ? userById.get(assignedToId) : undefined
+    return {
+      ...o,
+      resolvedSalesPerson: user?.email ? (user.name || user.email).trim() : undefined,
+    }
   })
 
   const periodLabel =
@@ -81,7 +118,7 @@ export default async function ExportCenterPage({
       <div className="mb-6">
         <DateGranularityFilter granularity={granularity || ''} periodValue={periodValue || ''} />
       </div>
-      <ExportCenterClient orders={docs} periodLabel={periodLabel} />
+      <ExportCenterClient orders={docsWithResolvedSalesPerson} periodLabel={periodLabel} />
     </div>
   )
 }

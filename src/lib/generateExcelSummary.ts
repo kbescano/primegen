@@ -213,7 +213,13 @@ kpiBlock(nextRow, 4, 'RECEIVABLES', [
 
   const bySales: Record<string, { count: number; gross: number; paid: number; ar: number; opex: number; profit: number }> = {}
   processedOrders.forEach((o) => {
-    const sp = o.salesPerson || 'Unassigned'
+    // resolvedSalesPerson is stamped on each order server-side (see
+    // export/page.tsx) by resolving the actual assigned user through
+    // order -> quotation -> request -> assignedTo, which survives a staff
+    // rename since it's an id, not a name -- same fix as the on-page
+    // "Performance by Sales Person" report. Falls back to the raw text
+    // field for orders where that chain doesn't resolve.
+    const sp = o.resolvedSalesPerson || o.salesPerson || 'Unassigned'
     if (!bySales[sp]) bySales[sp] = { count: 0, gross: 0, paid: 0, ar: 0, opex: 0, profit: 0 }
     const c = o.computed
     bySales[sp].count++
@@ -282,7 +288,7 @@ kpiBlock(nextRow, 4, 'RECEIVABLES', [
     const dateStr = o.orderDate ? new Date(o.orderDate).toLocaleDateString('en-PH') : new Date(o.createdAt).toLocaleDateString('en-PH')
     const row = orderSheet.getRow(orow)
     row.values = [
-      o.orderNumber || '--', dateStr, o.customerName || '--', o.salesPerson || 'Unassigned',
+      o.orderNumber || '--', dateStr, o.customerName || '--', o.resolvedSalesPerson || o.salesPerson || 'Unassigned',
       o.fulfillmentStatus || '--', o.paymentStatus || '--',
       c.gross, c.amountPaid, c.receivable, c.cogs, c.liquidatedOpex, c.profit, commission,
     ]
