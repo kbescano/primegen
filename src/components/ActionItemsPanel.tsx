@@ -48,9 +48,10 @@ const STATUS_LABELS: Record<string, string> = {
   solved: 'Solved',
 }
 
-// Admin sees every open item system-wide, which can get long -- staff only
-// ever see their own (naturally few), so the collapse only applies to the
-// admin view.
+// Same collapse-to-5-then-View-All for both roles. This used to be
+// admin-only on the assumption staff only ever see their own, naturally
+// few, action items -- not reliably true in practice, so staff get the
+// same treatment as admin now instead of always seeing the full list.
 const ITEMS_PREVIEW_COUNT = 5
 
 export default function ActionItemsPanel({
@@ -70,7 +71,7 @@ export default function ActionItemsPanel({
   // Nothing pending/solved and nothing to create -> don't take up space.
   if (!isAdmin && items.length === 0) return null
 
-  const isCollapsible = isAdmin && items.length > ITEMS_PREVIEW_COUNT
+  const isCollapsible = items.length > ITEMS_PREVIEW_COUNT
   const visibleItems = isCollapsible && !expanded ? items.slice(0, ITEMS_PREVIEW_COUNT) : items
 
   return (

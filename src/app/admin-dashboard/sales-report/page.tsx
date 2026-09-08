@@ -2,6 +2,7 @@ import { headers as getHeaders } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import { FULFILLMENT_OPTIONS } from '@/lib/pipelineUtils'
+import SalesReportFilters from '@/components/SalesReportFilters'
 
 // Sales-staff version of /admin-dashboard/reports -- same table shape as
 // the "Sales Performance Breakdown" sheet in the Export Center's Excel
@@ -162,10 +163,6 @@ export default async function SalesReportPage({
       }
     })
 
-  const currentYearOptions = new Date().getFullYear()
-  const filterYears = Array.from({ length: currentYearOptions - 2023 + 2 }, (_, i) => String(2023 + i))
-  const filterMonths = monthNames.map((l, i) => ({ v: String(i + 1).padStart(2, '0'), l }))
-
   const cellClass = 'py-2.5 px-2.5 text-[11px] whitespace-nowrap'
   // Tighter than cellClass -- the Order Breakdown table has 12 columns, so
   // it needs to actually fit the page width instead of forcing a scroll.
@@ -190,44 +187,7 @@ export default async function SalesReportPage({
         </p>
       </div>
 
-      {/* Auto-Submitting Filter Form */}
-      <form id="filter-form" method="GET" className="flex flex-wrap items-center gap-3 mb-6">
-        <div className="relative">
-          <select
-            name="month"
-            defaultValue={activeMonth}
-            className="appearance-none bg-white border border-gray-200 rounded-full pl-5 pr-9 py-2 text-[13px] font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200 cursor-pointer shadow-sm"
-          >
-            <option value="all">All Months</option>
-            {filterMonths.map((m) => <option key={m.v} value={m.v}>{m.l}</option>)}
-          </select>
-        </div>
-        <div className="relative">
-          <select
-            name="year"
-            defaultValue={activeYear}
-            className="appearance-none bg-white border border-gray-200 rounded-full pl-5 pr-9 py-2 text-[13px] font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200 cursor-pointer shadow-sm"
-          >
-            <option value="all">All Years</option>
-            {filterYears.map((y) => <option key={y} value={y}>{y}</option>)}
-          </select>
-        </div>
-        <div className="relative">
-          <select
-            name="status"
-            defaultValue={activeStatus}
-            className="appearance-none bg-white border border-gray-200 rounded-full pl-5 pr-9 py-2 text-[13px] font-medium text-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-200 cursor-pointer shadow-sm"
-          >
-            <option value="all">All Statuses</option>
-            {FULFILLMENT_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
-          </select>
-        </div>
-        <script dangerouslySetInnerHTML={{ __html: `
-          document.getElementById('filter-form').addEventListener('change', function() {
-            this.submit();
-          });
-        `}} />
-      </form>
+      <SalesReportFilters activeMonth={activeMonth} activeYear={activeYear} activeStatus={activeStatus} />
 
       {/* Same columns as the Excel export's "Sales Performance Breakdown" sheet.
           Desktop/tablet: the table. Mobile: a stacked key-value card instead
