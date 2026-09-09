@@ -375,6 +375,31 @@ export const ClientQuotations: CollectionConfig = {
       },
     },
     {
+      name: "notes",
+      type: "textarea",
+      label: "Notes",
+      admin: {
+        description:
+          "Freely positioned note block on the printed quotation (drag/resize/font-size in the editor). Empty means no note is shown.",
+      },
+    },
+    {
+      // Where/how big/what size the notes block is on the document --
+      // saved so it stays where the user last dragged/resized it instead
+      // of resetting every time the quotation is reopened. Coordinates are
+      // plain CSS pixels within the document, top-left origin.
+      name: "notesBox",
+      type: "group",
+      admin: { hidden: true },
+      fields: [
+        { name: "x", type: "number", defaultValue: 20 },
+        { name: "y", type: "number", defaultValue: 20 },
+        { name: "width", type: "number", defaultValue: 220 },
+        { name: "height", type: "number", defaultValue: 90 },
+        { name: "fontSize", type: "number", defaultValue: 11 },
+      ],
+    },
+    {
       name: "discountAmount",
       type: "number",
       defaultValue: 0,

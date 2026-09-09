@@ -25,6 +25,8 @@ function mapDocToInitial(q: any): QuotationInitial {
     discountAmount: q.discountAmount,
     deliveryFee: q.deliveryFee,
     sourceRequestId: q.sourceRequestId,
+    notes: q.notes,
+    notesBox: q.notesBox,
     items: Array.isArray(q.items)
       ? q.items.map((i: any) => ({ 
           qty: i.qty, 

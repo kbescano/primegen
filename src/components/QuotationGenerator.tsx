@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import ClientPickerModal from "@/components/ClientPickerModal";
+import QuotationNotesBlock, { type NotesBoxState } from "@/components/QuotationNotesBlock";
 
 type LineItem = {
   qty: number;
@@ -45,6 +46,8 @@ export type QuotationInitial = {
   deliveryFee?: number;
   sourceRequestId?: string;
   status?: string;
+  notes?: string;
+  notesBox?: { x?: number; y?: number; width?: number; height?: number; fontSize?: number };
   items?: Array<{
     qty: number;
     unit: string;
@@ -142,6 +145,15 @@ export default function QuotationGenerator({
     initial?.discountAmount ?? 0,
   );
   const [deliveryFee, setDeliveryFee] = useState(initial?.deliveryFee ?? 0);
+  const [notes, setNotes] = useState(initial?.notes ?? "");
+  const [showNotes, setShowNotes] = useState(Boolean(initial?.notes));
+  const [notesBox, setNotesBox] = useState<NotesBoxState>({
+    x: initial?.notesBox?.x ?? 20,
+    y: initial?.notesBox?.y ?? 20,
+    width: initial?.notesBox?.width ?? 220,
+    height: initial?.notesBox?.height ?? 90,
+    fontSize: initial?.notesBox?.fontSize ?? 11,
+  });
   // Same string-mirror fix as the per-item Supplier Cost/Margin fields --
   // see parseFloatOrZero's comment. Cleared on blur so the box re-derives
   // its display from the clean number.
@@ -374,6 +386,10 @@ export default function QuotationGenerator({
           deliveryFee,
           sourceRequestId,
           status: targetStatus,
+          // Empty when the note was removed (showNotes false) -- clears it
+          // server-side too instead of leaving stale text saved but hidden.
+          notes: showNotes ? notes : "",
+          notesBox,
         }),
       });
       if (!res.ok) {
@@ -760,12 +776,30 @@ export default function QuotationGenerator({
                     placeholder="Unit"
                     disabled={isLocked}
                   />
-                  <input
-                    className={`${inputClass} col-span-2 md:col-span-1`}
+                  <textarea
+                    rows={1}
+                    ref={(el) => {
+                      // Same auto-grow as onChange below, but for content
+                      // that's already multi-line when this mounts (an
+                      // existing quotation being reopened) -- otherwise
+                      // the extra lines would be clipped until the next
+                      // keystroke.
+                      if (el) {
+                        el.style.height = "auto";
+                        el.style.height = `${el.scrollHeight}px`;
+                      }
+                    }}
+                    className={`${inputClass} col-span-2 md:col-span-1 resize-none overflow-hidden leading-normal`}
                     value={item.description}
-                    onChange={(e) =>
-                      updateItem(index, { description: e.target.value })
-                    }
+                    onChange={(e) => {
+                      updateItem(index, { description: e.target.value });
+                      // Auto-grow with the content -- Enter adds a line
+                      // break within this same line item instead of doing
+                      // nothing (a plain <input> can't hold a newline at
+                      // all), so the box needs to grow to show it.
+                      e.target.style.height = "auto";
+                      e.target.style.height = `${e.target.scrollHeight}px`;
+                    }}
                     placeholder="Description"
                     disabled={isLocked}
                   />
@@ -1016,6 +1050,21 @@ export default function QuotationGenerator({
           </div>
         </div>
 
+        {!isLocked && !showNotes && (
+          <button
+            type="button"
+            onClick={() => setShowNotes(true)}
+            className="mb-4 text-sm text-[#3D5F3B] border border-dashed border-gray-300 rounded px-4 py-2.5 hover:border-[#149911] hover:bg-[#149911]/[0.03] transition-all duration-200"
+          >
+            + Add note to quotation
+          </button>
+        )}
+        {showNotes && (
+          <p className="text-xs text-gray-500 mb-4">
+            Note added -- drag it into place on the document preview below, resize from its corner, and adjust its font size from its own toolbar.
+          </p>
+        )}
+
         <div className="flex flex-col sm:flex-row gap-3 mb-4 [&>button]:w-full sm:[&>button]:w-auto">
           {!isLocked ? (
             <>
@@ -1097,7 +1146,20 @@ export default function QuotationGenerator({
 
       {/* ===== FORMAL QUOTATION DOCUMENT ===== */}
       <div className="w-full overflow-x-auto pb-4">
-        <div className="quotation-print-doc bg-white border border-gray-200 rounded p-8 print:border-0 print:p-0 print:rounded-none text-[#01172f] min-w-[794px] shadow-[0_20px_60px_-20px_rgba(1,23,47,0.15)] print:shadow-none">
+        <div className="quotation-print-doc relative bg-white border border-gray-200 rounded p-8 print:border-0 print:p-0 print:rounded-none text-[#01172f] min-w-[794px] shadow-[0_20px_60px_-20px_rgba(1,23,47,0.15)] print:shadow-none">
+          {showNotes && (
+            <QuotationNotesBlock
+              notes={notes}
+              onNotesChange={setNotes}
+              box={notesBox}
+              onBoxChange={setNotesBox}
+              onRemove={() => {
+                setShowNotes(false);
+                setNotes("");
+              }}
+              disabled={isLocked}
+            />
+          )}
           <div className="flex flex-row justify-between items-start gap-3 mb-4">
             <div className="flex gap-1.5 items-center">
               <div className="relative w-44 h-44 flex-shrink-0 overflow-hidden">
@@ -1205,7 +1267,7 @@ export default function QuotationGenerator({
                     <td className="py-1.5 px-2 border-b border-gray-100 align-top">
                       <div className="flex flex-wrap items-start gap-x-3 gap-y-1">
                         <div className="flex flex-wrap items-baseline gap-x-1.5 min-w-0">
-                          <span className="font-bold text-[15px] text-[#01172f] leading-snug break-words">
+                          <span className="font-bold text-[15px] text-[#01172f] leading-snug break-words whitespace-pre-wrap">
                             {item.description || "--"}
                           </span>
                           {item.sizeDescription && (
