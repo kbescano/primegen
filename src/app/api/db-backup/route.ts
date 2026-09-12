@@ -35,13 +35,19 @@ export async function GET() {
       const select = slug === 'orders'
         ? { clientPaymentReceipts: false, supplierPaymentReceipts: false }
         : undefined
+      // Cast the whole options object, not just `collection` -- with a
+      // dynamic, loop-driven slug (not a literal collection name).
+      // Payload can't resolve which collection's specific typed `select`
+      // shape applies, so it falls back to a generic one that only
+      // accepts `true` (include-mode) values and rejects the `false`
+      // (exclude-mode) ones used for orders above.
       const { docs } = await payload.find({
-        collection: slug as any,
+        collection: slug,
         limit: 5000,
         depth: 0,
         overrideAccess: true,
         ...(select ? { select } : {}),
-      })
+      } as any)
       backup[slug] = docs
     } catch (err) {
       console.error(`Backup: failed to export collection "${slug}":`, err)
