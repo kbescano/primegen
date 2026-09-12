@@ -308,6 +308,11 @@ export default async function QuotationInboxPage({
           collection: "orders",
           where: { sourceQuotationId: { in: linkedQuotationIds } },
           limit: FETCH_LIMIT,
+          // This page only needs status/stage fields to compute the
+          // pipeline stage badge, never the receipt images -- excluding
+          // them cuts a large, avoidable amount of Postgres network
+          // transfer on the highest-traffic page in the app.
+          select: { clientPaymentReceipts: false, supplierPaymentReceipts: false },
         })
       : { docs: [] as any[] };
   const orderByQuotationId: Record<string, any> = {};

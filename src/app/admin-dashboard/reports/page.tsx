@@ -187,7 +187,16 @@ export default async function ReportsPage({
   const [requestsRes, quotationsRes, ordersRes, staffRes] = await Promise.all([
     payload.find({ collection: 'quotation-requests', limit: 1000, depth: 0, sort: '-createdAt' }),
     payload.find({ collection: 'client-quotations', limit: 1000, depth: 0, sort: '-createdAt' }),
-    payload.find({ collection: 'orders', limit: 1000, depth: 0, sort: '-createdAt' }),
+    // Financial summary only -- excludes the two receipt-image fields,
+    // which are never used here but are otherwise fetched in full for
+    // every one of up to 1000 orders on every load of this page.
+    payload.find({
+      collection: 'orders',
+      limit: 1000,
+      depth: 0,
+      sort: '-createdAt',
+      select: { clientPaymentReceipts: false, supplierPaymentReceipts: false },
+    }),
     // For resolving each order's actual salesperson identity below --
     // same "role=user OR nica@primegen.admin" set every other staff
     // lookup in this app uses.

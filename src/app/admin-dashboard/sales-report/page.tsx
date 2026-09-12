@@ -122,6 +122,10 @@ export default async function SalesReportPage({
     limit: 1000,
     depth: 0,
     sort: '-createdAt',
+    // Never displays receipt images here, just the financial breakdown --
+    // excluding them avoids pulling every receipt on this staff member's
+    // orders on every page load.
+    select: { clientPaymentReceipts: false, supplierPaymentReceipts: false },
   })
   const orders = (ordersRes.docs as any[]).filter(
     (o) => inPeriod(o.orderDate || o.createdAt) && (activeStatus === 'all' || o.fulfillmentStatus === activeStatus),

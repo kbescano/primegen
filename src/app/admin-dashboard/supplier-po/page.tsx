@@ -81,7 +81,7 @@ export default async function SupplierPOPage({
           // Deep lookup: if requestId not directly on PO, trace up through parent Order -> Quotation Request
           if (!resolvedRequestId && resolvedOrderId) {
             try {
-              const parentOrder: any = await payload.findByID({ collection: 'orders', id: resolvedOrderId })
+              const parentOrder: any = await payload.findByID({ collection: 'orders', id: resolvedOrderId, select: { clientPaymentReceipts: false, supplierPaymentReceipts: false } })
               if (parentOrder) {
                 resolvedRequestId = extractId(parentOrder.sourceRequestId) || extractId(parentOrder.request)
                 if (!resolvedRequestId && parentOrder.quotation) {
@@ -121,7 +121,7 @@ export default async function SupplierPOPage({
     } else if (orderId) {
       try {
         const payload = await getPayloadClient()
-        const o: any = await payload.findByID({ collection: 'orders', id: orderId })
+        const o: any = await payload.findByID({ collection: 'orders', id: orderId, select: { clientPaymentReceipts: false, supplierPaymentReceipts: false } })
         if (o) {
           if (!resolvedRequestId) {
             resolvedRequestId = extractId(o.sourceRequestId) || extractId(o.request)

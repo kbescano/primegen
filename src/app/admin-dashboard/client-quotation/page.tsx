@@ -153,6 +153,9 @@ export default async function ClientQuotationPage({
         collection: 'orders',
         where: { sourceQuotationId: { in: quotationIds } },
         limit: 200,
+        // Only used to build an id lookup for the "View Converted Order"
+        // link -- never shows receipt images.
+        select: { clientPaymentReceipts: false, supplierPaymentReceipts: false },
       })
     : { docs: [] as any[] }
 

@@ -66,6 +66,10 @@ export default async function ExportCenterPage({
       limit: 1000,
       sort: '-orderDate',
       depth: 0,
+      // The Excel export is a financial breakdown, never includes receipt
+      // images -- excluding them avoids pulling every receipt on every
+      // order in the export window.
+      select: { clientPaymentReceipts: false, supplierPaymentReceipts: false },
     }),
     payload.find({ collection: 'client-quotations', limit: 1000, depth: 0 }),
     payload.find({ collection: 'quotation-requests', limit: 1000, depth: 0 }),

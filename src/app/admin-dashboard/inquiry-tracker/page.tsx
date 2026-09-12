@@ -127,7 +127,9 @@ const staffList = staffRes.docs as any[];
   for (const cq of linkedQuotationsRes.docs as any[]) if (cq.sourceRequestId) quotationByRequestId[String(cq.sourceRequestId)] = cq;
 
   const linkedQuotationIds = (linkedQuotationsRes.docs as any[]).map((cq: any) => String(cq.id));
-  const linkedOrdersRes = linkedQuotationIds.length > 0 ? await payload.find({ collection: "orders", where: { sourceQuotationId: { in: linkedQuotationIds } }, limit: 300 }) : { docs: [] as any[] };
+  // Only used to build an id lookup for stage/status display -- never
+  // shows receipt images -- so exclude those two heavy fields.
+  const linkedOrdersRes = linkedQuotationIds.length > 0 ? await payload.find({ collection: "orders", where: { sourceQuotationId: { in: linkedQuotationIds } }, limit: 300, select: { clientPaymentReceipts: false, supplierPaymentReceipts: false } }) : { docs: [] as any[] };
   const orderByQuotationId: Record<string, any> = {};
   for (const o of linkedOrdersRes.docs as any[]) if (o.sourceQuotationId) orderByQuotationId[String(o.sourceQuotationId)] = o;
 

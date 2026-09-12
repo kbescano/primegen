@@ -26,6 +26,15 @@ export default async function OrdersPage({
   // Fetches the whole (capped) batch once -- Status + Search both filter
   // this client-side now (see OrdersListClient), same pattern as the
   // Quotation Inbox, instead of a server round trip per status click.
+  // NOTE: deliberately NOT excluding clientPaymentReceipts/
+  // supplierPaymentReceipts here, unlike the other order-listing pages --
+  // OrdersListClient's OrderCardBody renders a Payment Receipts preview
+  // inline for every order card on this page (not just a deep-linked
+  // detail view), so they're genuinely needed for every row. This page is
+  // consequently the most expensive one for Postgres network transfer;
+  // worth a follow-up (lazy-load receipts per card on demand, paginate
+  // more aggressively, or move receipt storage to Cloudinary like other
+  // media) rather than fixing under time pressure right now.
   const { docs } = await payload.find({
     collection: 'orders',
     sort: '-createdAt',

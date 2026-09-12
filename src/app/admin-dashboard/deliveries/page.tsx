@@ -33,6 +33,9 @@ export default async function DeliveriesPage({
     collection: "orders",
     limit: 100,
     where,
+    // This list tracks delivery status, never shows receipt images --
+    // excluding them avoids pulling every receipt on every order here.
+    select: { clientPaymentReceipts: false, supplierPaymentReceipts: false },
   });
 
   // 3. Sort by Target Delivery Date
