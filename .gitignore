@@ -29,3 +29,7 @@ src/payload-types.ts
 
 # Env template (per request, not tracked)
 .env.example
+
+# Manual local DB backups (scripts/backup-db.sh) -- real business data,
+# never belongs in the repo
+backups/
