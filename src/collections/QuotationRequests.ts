@@ -375,6 +375,7 @@ export const QuotationRequests: CollectionConfig = {
         { label: "Processing", value: "processing" },
         { label: "Quote Sent", value: "quote-sent" },
         { label: "Informal Quote", value: "informal-quote" },
+        { label: "PO", value: "po" },
         { label: "Completed", value: "completed" },
         { label: "Rejected", value: "rejected" },
       ],

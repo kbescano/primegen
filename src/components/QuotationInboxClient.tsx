@@ -19,13 +19,6 @@ import DateGranularityFilter from '@/components/DateGranularityFilter'
 import ActionItemsPanel from '@/components/ActionItemsPanel'
 import CreateRFQModal from '@/components/CreateRFQModal'
 
-// "PO" isn't a real value of the `status` field -- it's a computed filter
-// for "this request's quotation was approved and became a confirmed
-// order" (see `hasOrder` on each request, set server-side in page.tsx).
-// It only exists here, as a filter pill, positioned before Completed to
-// match the real workflow order -- StatusSelect (the actual editable
-// status dropdown on each card) has its own separate option list and
-// never sees "po", so it can't be written back as a literal status value.
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending' },
   { value: 'processing', label: 'Processing' },
@@ -51,30 +44,17 @@ const VALID_STATUSES = new Set(STATUS_OPTIONS.map((s) => s.value))
 // Same statuses as the filter pills, "rejected" just reads as "Cancelled"
 // here to match how staff talk about it. Each gets its own color so the
 // row reads at a glance, same badge language as everywhere else in the app.
+// "PO" sits between Informal and Completed, matching where staff move a
+// request once a purchase order stage is reached.
 const OVERVIEW_ROWS: { value: string; label: string; color: string }[] = [
   { value: 'pending', label: 'Pending', color: 'bg-amber-50 text-amber-700' },
   { value: 'processing', label: 'Processing', color: 'bg-blue-50 text-blue-700' },
   { value: 'informal-quote', label: 'Informal', color: 'bg-purple-50 text-purple-700' },
   { value: 'quote-sent', label: 'Quote Sent', color: 'bg-cyan-50 text-cyan-700' },
+  { value: 'po', label: 'PO', color: 'bg-teal-50 text-teal-700' },
   { value: 'completed', label: 'Completed', color: 'bg-emerald-50 text-emerald-700' },
   { value: 'rejected', label: 'Cancelled', color: 'bg-rose-50 text-rose-700' },
 ]
-
-// "PO" = requests that have progressed into a confirmed order (customer
-// approved the quotation, an Order now exists). Kept out of OVERVIEW_ROWS
-// itself (and out of the Total sum) since it's not mutually exclusive with
-// the other statuses -- a request can be e.g. "Completed" *and* have a
-// confirmed order. Rendered between Quote Sent and Completed, matching
-// where it actually falls in the real workflow.
-const PO_COLOR = 'bg-teal-50 text-teal-700'
-const PO_INSERT_BEFORE = 'completed'
-const OVERVIEW_ROWS_BEFORE_PO = OVERVIEW_ROWS.slice(
-  0,
-  OVERVIEW_ROWS.findIndex((r) => r.value === PO_INSERT_BEFORE),
-)
-const OVERVIEW_ROWS_FROM_PO = OVERVIEW_ROWS.slice(
-  OVERVIEW_ROWS.findIndex((r) => r.value === PO_INSERT_BEFORE),
-)
 
 function OverviewPanel({
   weekOverview,
@@ -89,24 +69,13 @@ function OverviewPanel({
   ]
   return (
     <div className="shrink-0 w-full md:w-auto">
-      {/* Desktop / tablet: the compact table. There's room to lay all 7
+      {/* Desktop / tablet: the compact table. There's room to lay all 8
           columns out flat, so no scrolling is ever needed here either. */}
       <table className="hidden sm:table border-collapse">
         <thead>
           <tr>
             <th className="pb-1.5 pr-3" />
-            {OVERVIEW_ROWS_BEFORE_PO.map((row) => (
-              <th
-                key={row.value}
-                className="pb-1.5 px-1 text-[8.5px] font-semibold uppercase tracking-wide text-gray-400 whitespace-nowrap"
-              >
-                {row.label}
-              </th>
-            ))}
-            <th className="pb-1.5 px-1 text-[8.5px] font-semibold uppercase tracking-wide text-gray-400 whitespace-nowrap">
-              PO
-            </th>
-            {OVERVIEW_ROWS_FROM_PO.map((row) => (
+            {OVERVIEW_ROWS.map((row) => (
               <th
                 key={row.value}
                 className="pb-1.5 px-1 text-[8.5px] font-semibold uppercase tracking-wide text-gray-400 whitespace-nowrap"
@@ -125,23 +94,7 @@ function OverviewPanel({
               <td className="pr-3 py-0.5 text-[9.5px] font-semibold text-gray-500 whitespace-nowrap">
                 {title}
               </td>
-              {OVERVIEW_ROWS_BEFORE_PO.map((row) => (
-                <td key={row.value} className="px-1 py-0.5 text-center">
-                  <span
-                    className={`inline-flex items-center justify-center min-w-[22px] px-1.5 py-0.5 rounded-full text-[10px] font-bold ${row.color}`}
-                  >
-                    {counts[row.value] ?? 0}
-                  </span>
-                </td>
-              ))}
-              <td className="px-1 py-0.5 text-center">
-                <span
-                  className={`inline-flex items-center justify-center min-w-[22px] px-1.5 py-0.5 rounded-full text-[10px] font-bold ${PO_COLOR}`}
-                >
-                  {counts.po ?? 0}
-                </span>
-              </td>
-              {OVERVIEW_ROWS_FROM_PO.map((row) => (
+              {OVERVIEW_ROWS.map((row) => (
                 <td key={row.value} className="px-1 py-0.5 text-center">
                   <span
                     className={`inline-flex items-center justify-center min-w-[22px] px-1.5 py-0.5 rounded-full text-[10px] font-bold ${row.color}`}
@@ -169,22 +122,7 @@ function OverviewPanel({
           return (
             <div key={title} className="flex flex-wrap items-center gap-1.5">
               <span className="text-[9.5px] font-semibold text-gray-500 shrink-0">{title}</span>
-              {OVERVIEW_ROWS_BEFORE_PO.map((row) => (
-                <span
-                  key={row.value}
-                  className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9.5px] font-bold whitespace-nowrap ${row.color}`}
-                >
-                  <span className="font-medium opacity-70">{row.label}</span>
-                  {counts[row.value] ?? 0}
-                </span>
-              ))}
-              <span
-                className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9.5px] font-bold whitespace-nowrap ${PO_COLOR}`}
-              >
-                <span className="font-medium opacity-70">PO</span>
-                {counts.po ?? 0}
-              </span>
-              {OVERVIEW_ROWS_FROM_PO.map((row) => (
+              {OVERVIEW_ROWS.map((row) => (
                 <span
                   key={row.value}
                   className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9.5px] font-bold whitespace-nowrap ${row.color}`}
@@ -293,13 +231,8 @@ function RequestCardBody({
 
       {/* Pipeline Stage Bar */}
       <div className="flex flex-wrap items-center justify-between gap-2 bg-gray-50/70 rounded px-3 py-2 mb-3 text-[10.5px]">
-        <span className="flex items-center gap-1.5 text-gray-500">
+        <span className="text-gray-500">
           Stage: <span className="text-emerald-600 font-medium">{q.stageLabel}</span>
-          {q.hasOrder && (
-            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full bg-teal-50 text-teal-700 text-[9px] font-bold uppercase tracking-wide">
-              PO
-            </span>
-          )}
         </span>
         <Link
           href={`/admin-dashboard/pipeline/${q.id}`}
@@ -502,7 +435,7 @@ export default function QuotationInboxClient({
   const filteredRequests = useMemo(() => {
     const needle = searchQuery.trim().toLowerCase()
     return requests.filter((q) => {
-      const matchesStatus = !activeStatus || (activeStatus === 'po' ? Boolean(q.hasOrder) : q.status === activeStatus)
+      const matchesStatus = !activeStatus || q.status === activeStatus
       const matchesStaff = !activeStaff || assignedToId(q.assignedTo) === activeStaff
       const matchesSearch = !needle || matchesRequestSearch(q, needle)
       return matchesStatus && matchesStaff && matchesSearch

@@ -46,6 +46,7 @@ const OVERVIEW_STATUSES = [
   "processing",
   "informal-quote",
   "quote-sent",
+  "po",
   "completed",
   "rejected",
 ] as const;
@@ -58,24 +59,6 @@ function countByStatus(docs: any[]): Record<string, number> {
     if (d.status in counts) counts[d.status]++;
   }
   return counts;
-}
-
-// "PO" here means the request has progressed into a confirmed order (the
-// customer approved the quotation and it became an Order) -- same
-// milestone as the "confirmation" pipeline step below, tracked separately
-// from `status` since a request can be marked e.g. "Completed" and still
-// need this counted.
-function countConfirmedOrders(
-  docs: any[],
-  quotationIdByRequestId: Record<string, string>,
-  orderByQuotationId: Record<string, any>,
-): number {
-  let count = 0;
-  for (const d of docs) {
-    const quotationId = quotationIdByRequestId[d.id];
-    if (quotationId && orderByQuotationId[quotationId]) count++;
-  }
-  return count;
 }
 
 function getGranularityRange(
@@ -301,17 +284,7 @@ export default async function QuotationInboxPage({
     unit: m.unit || "pcs",
   }));
 
-  // Union of every request id that needs "does this have a confirmed
-  // order yet" resolved -- the main (filtered) list plus the two fixed
-  // week/month overview sets, which can include requests outside the
-  // current date-range filter.
-  const requestIds = Array.from(
-    new Set(
-      [...docs, ...weekOverviewRes.docs, ...monthOverviewRes.docs].map(
-        (d: any) => d.id,
-      ),
-    ),
-  );
+  const requestIds = docs.map((d: any) => d.id);
   const linkedQuotations =
     requestIds.length > 0
       ? await payload.find({
@@ -377,22 +350,11 @@ export default async function QuotationInboxPage({
       posByOrderId,
     );
     const closed = q.status === "completed";
-    const hasOrder = Boolean(linkedQuotationId && orderByQuotationId[linkedQuotationId]);
-    return {
-      ...q,
-      stageLabel: closed ? "Completed" : STEP_LABELS[currentStep],
-      hasOrder,
-    };
+    return { ...q, stageLabel: closed ? "Completed" : STEP_LABELS[currentStep] };
   });
 
-  const weekOverview = {
-    ...countByStatus(weekOverviewRes.docs),
-    po: countConfirmedOrders(weekOverviewRes.docs, quotationIdByRequestId, orderByQuotationId),
-  };
-  const monthOverview = {
-    ...countByStatus(monthOverviewRes.docs),
-    po: countConfirmedOrders(monthOverviewRes.docs, quotationIdByRequestId, orderByQuotationId),
-  };
+  const weekOverview = countByStatus(weekOverviewRes.docs);
+  const monthOverview = countByStatus(monthOverviewRes.docs);
 
   return (
     <QuotationInboxClient

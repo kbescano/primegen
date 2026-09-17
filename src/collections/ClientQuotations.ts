@@ -178,6 +178,33 @@ export const ClientQuotations: CollectionConfig = {
               },
             });
           }
+
+          // Auto-advance the originating request's status to "PO" now that
+          // its order is confirmed -- skip Completed/Rejected, since those
+          // are a deliberate final call staff already made and shouldn't
+          // get silently reverted.
+          if (doc.sourceRequestId) {
+            try {
+              const request = await req.payload.findByID({
+                collection: "quotation-requests",
+                id: doc.sourceRequestId,
+              });
+              if (
+                request &&
+                request.status !== "completed" &&
+                request.status !== "rejected" &&
+                request.status !== "po"
+              ) {
+                await req.payload.update({
+                  collection: "quotation-requests",
+                  id: doc.sourceRequestId,
+                  data: { status: "po" },
+                });
+              }
+            } catch (err) {
+              console.error("Failed to auto-advance request status to PO:", err);
+            }
+          }
         }
         return doc;
       },

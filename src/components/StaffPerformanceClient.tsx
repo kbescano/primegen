@@ -6,10 +6,13 @@ import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import DateGranularityFilter from "@/components/DateGranularityFilter";
 import CreateRFQModal from "@/components/CreateRFQModal";
 
+// "PO" sits between Quote Sent and Completed, matching where staff move a
+// request once it reaches the purchase-order stage.
 const STATUS_KEYS = [
   "pending",
   "processing",
   "quote-sent",
+  "po",
   "completed",
   "rejected",
 ] as const;
@@ -18,41 +21,28 @@ const STATUS_LABELS: Record<string, string> = {
   pending: "Pending",
   processing: "Processing",
   "quote-sent": "Quote Sent",
+  po: "PO",
   completed: "Completed",
   rejected: "Rejected",
-  po: "PO",
 };
 
 const STATUS_SHORT_LABELS: Record<string, string> = {
   pending: "Pend",
   processing: "Proc",
   "quote-sent": "Quote",
+  po: "PO",
   completed: "Done",
   rejected: "Rej",
-  po: "PO",
 };
 
 const STATUS_COLORS: Record<string, string> = {
   pending: "#e4574c",
   processing: "#d18b3d",
   "quote-sent": "#3b6fd1",
+  po: "#0d9488",
   completed: "#2f9e5c",
   rejected: "#8b93a1",
-  po: "#0d9488",
 };
-
-// "PO" (confirmed order) is not a real `status` field value -- it must
-// stay out of STATUS_KEYS itself so it never shows up as a bogus option in
-// the Status filter dropdown -- but the overview table renders it
-// positioned between Quote Sent and Completed, matching where it actually
-// falls in the real workflow. DISPLAY_KEYS is STATUS_KEYS with "po"
-// spliced in at that position, used only for the overview table's own
-// rendering below.
-const DISPLAY_KEYS: string[] = [
-  ...STATUS_KEYS.slice(0, STATUS_KEYS.indexOf("completed")),
-  "po",
-  ...STATUS_KEYS.slice(STATUS_KEYS.indexOf("completed")),
-];
 
 // "Informal Quote" is a real status value on quotation-requests (see
 // StatusSelect.tsx), but this page deliberately doesn't track it as its
@@ -60,19 +50,6 @@ const DISPLAY_KEYS: string[] = [
 // below, since an informal quote still means a quote went out.
 function overviewStatus(status?: string): string | undefined {
   return status === "informal-quote" ? "quote-sent" : status;
-}
-
-// "PO" milestone: the request's quotation was approved and became a
-// confirmed Order. Tracked separately from `status` (a request can be any
-// status and still have -- or not have -- reached this).
-function requestHasOrder(
-  r: any,
-  quotationByRequestId: Record<string, any>,
-  orderByQuotationId: Record<string, any>,
-): boolean {
-  const linkedQuotation = quotationByRequestId[String(r.id)];
-  if (!linkedQuotation) return false;
-  return Boolean(orderByQuotationId[String(linkedQuotation.id)]);
 }
 
 function getRowBgColor(status?: string) {
@@ -256,8 +233,8 @@ function OverviewTable({
                 </div>
               </div>
               <div className="flex flex-wrap gap-x-2 gap-y-0.5">
-                {DISPLAY_KEYS.some((k) => r.counts[k] > 0) ? (
-                  DISPLAY_KEYS.map((k) =>
+                {STATUS_KEYS.some((k) => r.counts[k] > 0) ? (
+                  STATUS_KEYS.map((k) =>
                     r.counts[k] > 0 ? (
                       <span
                         key={k}
@@ -287,7 +264,7 @@ function OverviewTable({
         <thead>
           <tr>
             <th className={`${ovThClass} w-[26%] text-gray-400`}>{nameHeader}</th>
-            {DISPLAY_KEYS.map((k) => (
+            {STATUS_KEYS.map((k) => (
               <th
                 key={k}
                 className={`${ovThClass} w-[9%] text-center`}
@@ -336,7 +313,7 @@ function OverviewTable({
                     </span>
                   )}
                 </td>
-                {DISPLAY_KEYS.map((k) => (
+                {STATUS_KEYS.map((k) => (
                   <td key={k} className={`${ovTdClass} text-center`}>
                     {r.counts[k] > 0 ? (
                       <span
@@ -570,7 +547,7 @@ export default function StaffPerformanceClient({
     for (const s of staffList) {
       byStaff[String(s.id)] = {
         name: s.name || s.email,
-        counts: { ...Object.fromEntries(STATUS_KEYS.map((k) => [k, 0])), po: 0 },
+        counts: Object.fromEntries(STATUS_KEYS.map((k) => [k, 0])),
         total: 0,
       };
     }
@@ -590,8 +567,6 @@ export default function StaffPerformanceClient({
       const status = overviewStatus(r.status);
       if (STATUS_KEYS.includes(status as any))
         byStaff[assignedId].counts[status as string]++;
-      if (requestHasOrder(r, quotationByRequestId, orderByQuotationId))
-        byStaff[assignedId].counts.po++;
     }
 
     const computedStaffRows = Object.entries(byStaff)
@@ -614,15 +589,13 @@ export default function StaffPerformanceClient({
       if (!bySource[src]) {
         bySource[src] = {
           name: src.replace("-", " "),
-          counts: { ...Object.fromEntries(STATUS_KEYS.map((k) => [k, 0])), po: 0 },
+          counts: Object.fromEntries(STATUS_KEYS.map((k) => [k, 0])),
           total: 0,
         };
       }
       bySource[src].total++;
       const status = overviewStatus(r.status);
       if (STATUS_KEYS.includes(status as any)) bySource[src].counts[status as string]++;
-      if (requestHasOrder(r, quotationByRequestId, orderByQuotationId))
-        bySource[src].counts.po++;
     }
 
     const computedSourceRows = Object.entries(bySource)
@@ -636,16 +609,13 @@ export default function StaffPerformanceClient({
       }))
       .sort((a, b) => b.total - a.total);
 
-    const computedOverallCounts: Record<string, number> = {
-      ...Object.fromEntries(STATUS_KEYS.map((k) => [k, 0])),
-      po: 0,
-    };
+    const computedOverallCounts: Record<string, number> = Object.fromEntries(
+      STATUS_KEYS.map((k) => [k, 0]),
+    );
     const computedOverallTotal = filtered.length;
     for (const r of filtered) {
       const status = overviewStatus(r.status);
       if (STATUS_KEYS.includes(status as any)) computedOverallCounts[status as string]++;
-      if (requestHasOrder(r, quotationByRequestId, orderByQuotationId))
-        computedOverallCounts.po++;
     }
     const computedOverallCompletionRate =
       computedOverallTotal > 0
