@@ -19,11 +19,19 @@ import DateGranularityFilter from '@/components/DateGranularityFilter'
 import ActionItemsPanel from '@/components/ActionItemsPanel'
 import CreateRFQModal from '@/components/CreateRFQModal'
 
+// "PO" isn't a real value of the `status` field -- it's a computed filter
+// for "this request's quotation was approved and became a confirmed
+// order" (see `hasOrder` on each request, set server-side in page.tsx).
+// It only exists here, as a filter pill, positioned before Completed to
+// match the real workflow order -- StatusSelect (the actual editable
+// status dropdown on each card) has its own separate option list and
+// never sees "po", so it can't be written back as a literal status value.
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending' },
   { value: 'processing', label: 'Processing' },
   { value: 'quote-sent', label: 'Quote Sent' },
   { value: 'informal-quote', label: 'Informal Quote' },
+  { value: 'po', label: 'PO' },
   { value: 'completed', label: 'Completed' },
   { value: 'rejected', label: 'Rejected' },
 ]
@@ -32,6 +40,7 @@ const STATUS_LABELS: Record<string, string> = {
   processing: 'Processing',
   'quote-sent': 'Quote Sent',
   'informal-quote': 'Informal Quote',
+  po: 'PO',
   completed: 'Completed',
   rejected: 'Rejected',
 }
@@ -493,7 +502,7 @@ export default function QuotationInboxClient({
   const filteredRequests = useMemo(() => {
     const needle = searchQuery.trim().toLowerCase()
     return requests.filter((q) => {
-      const matchesStatus = !activeStatus || q.status === activeStatus
+      const matchesStatus = !activeStatus || (activeStatus === 'po' ? Boolean(q.hasOrder) : q.status === activeStatus)
       const matchesStaff = !activeStaff || assignedToId(q.assignedTo) === activeStaff
       const matchesSearch = !needle || matchesRequestSearch(q, needle)
       return matchesStatus && matchesStaff && matchesSearch
