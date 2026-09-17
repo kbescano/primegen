@@ -12,10 +12,12 @@ export async function POST(req: NextRequest) {
   const reqHeaders = await getHeaders()
   const { user } = await payload.auth({ headers: reqHeaders })
 
-  if (!user) {
+  // payload.auth()'s generic User type marks email optional (it also
+  // covers username-only auth setups), even though this app's Users
+  // collection always requires it -- narrow it explicitly for TS.
+  if (!user || !user.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
-
   let password: string
   try {
     const body = await req.json()

@@ -17,7 +17,9 @@ export async function POST() {
   const reqHeaders = await getHeaders()
   const { user } = await payload.auth({ headers: reqHeaders })
 
-  if (!user) {
+  // payload.auth()'s generic User type marks email optional, even though
+  // this app's Users collection always requires it -- narrow for TS.
+  if (!user || !user.email) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
