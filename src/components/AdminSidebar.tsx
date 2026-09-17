@@ -122,12 +122,24 @@ export default function AdminLayout({
                 </span>
               )}
             </span>
-            <button
-              onClick={handleLogout}
-              className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#01172f]/40 hover:text-red-600 transition-colors flex-shrink-0"
-            >
-              Logout
-            </button>
+            <span className="flex items-center gap-4 flex-shrink-0">
+              <Link
+                href="/admin-dashboard/account"
+                className={`text-[11px] font-bold uppercase tracking-[0.1em] transition-colors ${
+                  pathname === '/admin-dashboard/account'
+                    ? 'text-[#149911]'
+                    : 'text-[#01172f]/40 hover:text-[#149911]'
+                }`}
+              >
+                Account
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="text-[11px] font-bold uppercase tracking-[0.1em] text-[#01172f]/40 hover:text-red-600 transition-colors"
+              >
+                Logout
+              </button>
+            </span>
           </div>
         </div>
       )}
@@ -162,6 +174,17 @@ export default function AdminLayout({
                 </Link>
               )
             })}
+            {user && (
+              <Link
+                href="/admin-dashboard/account"
+                onClick={() => setOpen(false)}
+                className={`py-3.5 text-[20px] font-black uppercase tracking-tight border-b border-[#01172f]/10 ${
+                  pathname === '/admin-dashboard/account' ? 'text-[#149911]' : 'text-[#01172f]'
+                }`}
+              >
+                Account
+              </Link>
+            )}
             <Link
               href="/"
               onClick={() => setOpen(false)}
