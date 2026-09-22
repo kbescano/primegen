@@ -113,6 +113,23 @@ export const ClientQuotations: CollectionConfig = {
                 },
               });
             }
+
+            // Whoever approved this wasn't an admin -- meaning they used
+            // the Auto-Approve Mode self-service controls (or, in theory,
+            // hit the API directly). Either way, flag it for admin to
+            // review, so nothing self-approved slips by unnoticed.
+            if (req.user && req.user.role !== "admin") {
+              const approver = req.user.name || req.user.email || "A sales rep";
+              await req.payload.create({
+                collection: "notifications" as any,
+                data: {
+                  message: `${approver} self-approved quotation ${doc.quotationNumber || ""} (Auto-Approve Mode) -- worth a review.`,
+                  link: `/admin-dashboard/client-quotation?id=${doc.id}`,
+                  audienceRoles: ["admin"],
+                  read: false,
+                },
+              });
+            }
           } catch (err) {
             console.error("Failed to notify on quotation approval:", err);
           }

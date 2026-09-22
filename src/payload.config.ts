@@ -21,6 +21,7 @@ import { Orders } from './collections/Orders'
 import { ClientQuotations } from './collections/ClientQuotations'
 import { SupplierPurchaseOrders } from './collections/SupplierPurchaseOrders'
 import { AboutPage } from './globals/AboutPage'
+import { ApprovalSettings } from './globals/ApprovalSettings'
 import { Notifications } from './collections/Notifications'
 import { DeliveryItineraries } from './collections/DeliveryItineraries'
 import { CustomerStories } from './collections/CustomerStories'
@@ -87,7 +88,7 @@ export default buildConfig({
     CustomerStories,
     ActionItems
   ],
-  globals: [AboutPage],
+  globals: [AboutPage, ApprovalSettings],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {

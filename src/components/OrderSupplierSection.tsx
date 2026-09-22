@@ -85,6 +85,9 @@ export default function OrderSupplierSection({
   // Safely extract all IDs so Set matching works perfectly
   const assignedPOIds = new Set(items.map((i) => extractId(i.assignedPOId)).filter(Boolean))
   const activePOs = linkedPOs.filter((po) => assignedPOIds.has(String(po.id)))
+  // A cancelled PO (e.g. a duplicate cancelled in favor of the real one)
+  // shouldn't still count in the header -- it's dead, not outstanding.
+  const nonCancelledPOs = linkedPOs.filter((po) => po.status !== 'cancelled')
 
   // If there is only 1 ACTIVE PO overall, we only show the PO controls on the 1st row.
   const isSinglePO = activePOs.length <= 1
@@ -107,7 +110,7 @@ export default function OrderSupplierSection({
     <div className="w-full">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3.5">
         <h3 className="text-[9px] font-medium text-gray-400 uppercase tracking-wide">
-          Supplier Purchase Orders ({linkedPOs.length})
+          Supplier Purchase Orders ({nonCancelledPOs.length})
         </h3>
 
         {/* Hide manage/merge buttons entirely in Step 4 (when allowStatusChange is true) */}

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { headers as getHeaders } from 'next/headers'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import PipelineStepper from '@/components/PipelineStepper'
 import { StepKey } from '@/lib/pipelineUtils'
@@ -14,6 +15,15 @@ export const dynamic = 'force-dynamic'
 export default async function PipelinePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const payload = await getPayloadClient()
+
+  const reqHeaders = await getHeaders()
+  const { user: currentUser } = await payload.auth({ headers: reqHeaders })
+  const isAdmin = currentUser?.role === 'admin'
+
+  const approvalSettings: any = await payload
+    .findGlobal({ slug: 'approval-settings' })
+    .catch(() => ({ autoApproveMode: false }))
+  const autoApproveMode = Boolean(approvalSettings?.autoApproveMode)
 
   let request: any
   try {
@@ -82,8 +92,13 @@ export default async function PipelinePage({ params }: { params: Promise<{ id: s
       )
   )
 
+  // A cancelled PO isn't something still being waited on -- it's dead and
+  // shouldn't count against "every PO fulfilled" (a duplicate PO that gets
+  // cancelled in favor of the real one must not permanently block this
+  // gate just because it can never become "fulfilled" itself).
+  const activePOs = linkedPOs.filter((po: any) => po.status !== 'cancelled')
   const allPOsFulfilled = Boolean(
-    linkedPOs.length > 0 && linkedPOs.every((po: any) => po.status === 'fulfilled')
+    activePOs.length > 0 && activePOs.every((po: any) => po.status === 'fulfilled')
   )
 
   const isDeliveredAndPaid = Boolean(
@@ -177,6 +192,8 @@ export default async function PipelinePage({ params }: { params: Promise<{ id: s
             linkedPOs={displayPOs}
             completedSteps={completedSteps}
             currentStep={currentStep}
+            isAdmin={isAdmin}
+            autoApproveMode={autoApproveMode}
           />
         </div>
       </div>

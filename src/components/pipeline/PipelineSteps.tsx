@@ -36,9 +36,38 @@ export function StepQuotation({ quotation, localOrder, request }: any) {
   );
 }
 
-export function StepConfirmation({ quotation, isQuotationApprovedOrBeyond, handleTabChange, request }: any) {
+export function StepConfirmation({
+  quotation,
+  isQuotationApprovedOrBeyond,
+  handleTabChange,
+  request,
+  canManageApproval,
+  showAutoApproveHint,
+}: any) {
   const [confirmSendOpen, setConfirmSendOpen] = useState(false);
   const [sendingQuote, setSendingQuote] = useState(false);
+  const [changingApproval, setChangingApproval] = useState(false);
+
+  // Normally only admin ever calls this (via the Client Quotation list's
+  // status dropdown) -- this lets sales do the same thing themselves, but
+  // only when canManageApproval says so (admin always, or anyone while
+  // Auto-Approve Mode is on). The server hook that fires on this same
+  // transition already logs a review notification whenever the actor
+  // isn't admin, regardless of how they got here.
+  async function changeApprovalStatus(newStatus: "quotation_approved" | "draft") {
+    setChangingApproval(true);
+    try {
+      await fetch(`/api/client-quotations/${quotation.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+      window.location.reload();
+    } catch (e) {
+      console.error("Failed to update quotation approval status:", e);
+      setChangingApproval(false);
+    }
+  }
 
   async function confirmQuoteSentAndProceed() {
     setSendingQuote(true);
@@ -97,6 +126,13 @@ export function StepConfirmation({ quotation, isQuotationApprovedOrBeyond, handl
         <EmptyStep text="Waiting on Step 1: create a quotation first." />
       ) : (
         <div className="flex flex-col h-full gap-1.5">
+          {showAutoApproveHint && (
+            <div className="mb-2 px-3.5 py-2.5 rounded-xl bg-teal-50 border border-teal-200 text-[11.5px] text-teal-800 leading-relaxed">
+              <strong>Auto-Approve Mode is on.</strong> The admin is away, so you can approve this
+              quotation yourself (or send it back to Draft) below. This gets logged for the admin
+              to review when they&apos;re back.
+            </div>
+          )}
           <SummaryRow label="Quotation Status" value={quotation.status.replace("_", " ")} />
           <SummaryRow label="Total Value" value={peso(quotationTotal(quotation))} mono />
           <div className={`mt-3 mb-3 p-4 rounded-2xl border transition-colors duration-300 ${isQuotationApprovedOrBeyond ? "border-green-200 bg-[#f0fdf4]" : "border-gray-200 bg-gray-50/50"}`}>
@@ -105,12 +141,23 @@ export function StepConfirmation({ quotation, isQuotationApprovedOrBeyond, handl
                 <p className="text-[12px] font-medium text-gray-900 leading-relaxed">
                   <strong className="text-[#149911] mr-1">Approved!</strong> The admin has accepted this quotation. You can now print the formal document and proceed to confirm the internal order.
                 </p>
-                <Link
-                  href={`/admin-dashboard/client-quotation?id=${quotation.id}&pipelineId=${request.id}`}
-                  className="inline-flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-all text-[10px] font-medium w-full sm:w-auto mt-1 shadow-sm"
-                >
-                  Open Quotation to Print &rarr;
-                </Link>
+                <div className="flex flex-wrap gap-2">
+                  <Link
+                    href={`/admin-dashboard/client-quotation?id=${quotation.id}&pipelineId=${request.id}`}
+                    className="inline-flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-all text-[10px] font-medium shadow-sm"
+                  >
+                    Open Quotation to Print &rarr;
+                  </Link>
+                  {canManageApproval && quotation.status === "quotation_approved" && (
+                    <button
+                      onClick={() => changeApprovalStatus("draft")}
+                      disabled={changingApproval}
+                      className="inline-flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-red-200 text-red-600 hover:bg-red-50 transition-all text-[10px] font-medium shadow-sm disabled:opacity-50"
+                    >
+                      {changingApproval ? "Sending back..." : "Send Back to Draft"}
+                    </button>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="flex flex-col items-start gap-3.5">
@@ -128,6 +175,24 @@ export function StepConfirmation({ quotation, isQuotationApprovedOrBeyond, handl
                   >
                     Send for Internal Approval &rarr;
                   </Link>
+                )}
+                {quotation.status === "pending_approval" && canManageApproval && (
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => changeApprovalStatus("quotation_approved")}
+                      disabled={changingApproval}
+                      className="inline-flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-full bg-[#149911] text-white hover:bg-[#103900] transition-all text-[10px] font-medium shadow-sm disabled:opacity-50"
+                    >
+                      {changingApproval ? "Approving..." : "Approve Quotation"}
+                    </button>
+                    <button
+                      onClick={() => changeApprovalStatus("draft")}
+                      disabled={changingApproval}
+                      className="inline-flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-full bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-all text-[10px] font-medium shadow-sm disabled:opacity-50"
+                    >
+                      {changingApproval ? "..." : "Send Back to Draft"}
+                    </button>
+                  </div>
                 )}
               </div>
             )}
@@ -429,6 +494,12 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
     )
   );
 
+  // A cancelled PO (e.g. a duplicate that got cancelled in favor of the
+  // real one) can never become "fulfilled" -- it must not permanently
+  // block this step just by existing, so it's excluded from the check.
+  const activePOs = (linkedPOs || []).filter((po: any) => po.status !== "cancelled");
+  const allActivePOsFulfilled = activePOs.length > 0 && activePOs.every((po: any) => po.status === "fulfilled");
+
   const clientReceipts = localOrder?.clientPaymentReceipts || [];
   const supplierReceipts = localOrder?.supplierPaymentReceipts || [];
   const hasClientReceipt = clientReceipts.length > 0;
@@ -676,7 +747,7 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
           </div>
         </div>
 
-        {linkedPOs.length > 0 && linkedPOs.every((po: any) => po.status === "fulfilled") && (
+        {allActivePOsFulfilled && (
           <div className="flex justify-start pt-3 mt-1 border-t border-gray-100">
             {isUpdating ? (
               <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-gray-50 text-gray-500 text-[12px] font-medium border border-gray-100">
@@ -708,7 +779,7 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
   );
 }
 
-export function StepDelivery({ localOrder, linkedPOs, handleUpdateOrderField, handleTabChange, isUpdating }: any) {
+export function StepDelivery({ localOrder, linkedPOs, handleUpdateOrderField, handleTabChange, isUpdating, allowApproveOpex, showAutoApproveHint }: any) {
   const [tempAmount, setTempAmount] = useState<string | number>(localOrder?.amountPaid || '');
 
   useEffect(() => {
@@ -722,7 +793,10 @@ export function StepDelivery({ localOrder, linkedPOs, handleUpdateOrderField, ha
     )
   );
 
-  const allPOsFulfilled = linkedPOs && linkedPOs.length > 0 && linkedPOs.every((po: any) => po.status === "fulfilled");
+  // A cancelled PO can never become "fulfilled" -- exclude it rather than
+  // let it permanently block this step (see StepFulfilled for the same fix).
+  const activePOs = (linkedPOs || []).filter((po: any) => po.status !== "cancelled");
+  const allPOsFulfilled = activePOs.length > 0 && activePOs.every((po: any) => po.status === "fulfilled");
 
   if (!localOrder || !isFullyAssigned || !allPOsFulfilled) {
     return (
@@ -778,10 +852,18 @@ export function StepDelivery({ localOrder, linkedPOs, handleUpdateOrderField, ha
 
 
         <div className="mt-1 mb-1">
+          {showAutoApproveHint && (
+            <div className="mb-3 px-3.5 py-2.5 rounded-xl bg-teal-50 border border-teal-200 text-[11.5px] text-teal-800 leading-relaxed">
+              <strong>Auto-Approve Mode is on.</strong> You can approve or reject your own OPEX
+              requests below while the admin is away -- logged for their review when they&apos;re
+              back.
+            </div>
+          )}
           <OrderOpexSection
             opex={localOrder.opex || []}
             onUpdate={(newOpex) => handleUpdateOrderField("opex", newOpex)}
             allowAdd={true}
+            allowApprove={Boolean(allowApproveOpex)}
           />
         </div>
 

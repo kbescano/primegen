@@ -3,6 +3,7 @@ import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import QuotationGenerator, { type QuotationInitial } from '@/components/QuotationGenerator'
 import ClientQuotationsListClient from '@/components/ClientQuotationsListClient'
+import AutoApproveToggle from '@/components/AutoApproveToggle'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 
 // Belt-and-suspenders alongside this page's own headers() call below --
@@ -164,9 +165,13 @@ export default async function ClientQuotationPage({
     if (o.sourceQuotationId) orderIdByQuotationId[o.sourceQuotationId] = o.id
   }
 
+  const approvalSettings: any = await payload
+    .findGlobal({ slug: 'approval-settings' })
+    .catch(() => ({ autoApproveMode: false }))
+
   return (
     <div className="max-w-[1000px] mx-auto py-6">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-8">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4">
         <div>
           <h1 className="text-2xl font-black uppercase tracking-tight text-[#01172f] mb-1">
             Client Quotations
@@ -189,6 +194,10 @@ export default async function ClientQuotationPage({
             + Create New
           </Link>
         </div>
+      </div>
+
+      <div className="mb-6">
+        <AutoApproveToggle initialEnabled={Boolean(approvalSettings?.autoApproveMode)} />
       </div>
 
       <ClientQuotationsListClient quotations={docs} orderIdByQuotationId={orderIdByQuotationId} />

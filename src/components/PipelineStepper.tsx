@@ -19,6 +19,8 @@ export default function PipelineStepper({
   linkedPOs,
   completedSteps,
   currentStep,
+  isAdmin,
+  autoApproveMode,
 }: {
   request: any;
   quotation: any | null;
@@ -26,6 +28,8 @@ export default function PipelineStepper({
   linkedPOs: any[];
   completedSteps: Record<StepKey, boolean>;
   currentStep: StepKey;
+  isAdmin: boolean;
+  autoApproveMode: boolean;
 }) {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<StepKey>(currentStep);
@@ -214,6 +218,8 @@ export default function PipelineStepper({
               isQuotationApprovedOrBeyond={isQuotationApprovedOrBeyond}
               handleTabChange={handleTabChange}
               request={request}
+              canManageApproval={isAdmin || autoApproveMode}
+              showAutoApproveHint={!isAdmin && autoApproveMode}
             />
           )}
           {activeTab === "supplierPO" && (
@@ -244,6 +250,8 @@ export default function PipelineStepper({
               handleUpdateOrderField={handleUpdateOrderField}
               handleTabChange={handleTabChange}
               isUpdating={isUpdating}
+              allowApproveOpex={isAdmin || autoApproveMode}
+              showAutoApproveHint={!isAdmin && autoApproveMode}
             />
           )}
           {activeTab === "closed" && (

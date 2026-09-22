@@ -341,6 +341,24 @@ export const Orders: CollectionConfig = {
                   }
                 }
               }
+
+              // Whoever approved this wasn't an admin -- they used the
+              // Auto-Approve Mode self-service controls (or hit the API
+              // directly). Flag it for admin to review either way.
+              if (req.user && req.user.role !== "admin") {
+                const approver = req.user.name || req.user.email || "A sales rep";
+                for (const exp of newlyLiquidated) {
+                  await req.payload.create({
+                    collection: "notifications" as any,
+                    data: {
+                      message: `${approver} self-approved OPEX: ₱${exp.amount} for ${exp.description} (Order ${doc.orderNumber || ""}, Auto-Approve Mode) -- worth a review.`,
+                      link: `/admin-dashboard/orders?id=${doc.id}`,
+                      audienceRoles: ["admin"],
+                      read: false,
+                    },
+                  });
+                }
+              }
             } catch (err) {
               console.error("Failed to send OPEX approval notification:", err);
             }
