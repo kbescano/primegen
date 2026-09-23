@@ -155,26 +155,41 @@ export default function ProductsCatalog({
               {activeCategoryDocs.map((cat) => {
                 const isActive = activeCats.includes(cat.slug);
                 return (
-                  <button
-                    key={cat.slug}
-                    onClick={() => toggleCategory(cat.slug)}
-                    className="flex items-center gap-3 group outline-none w-full text-left"
-                  >
-                    <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center transition-all duration-300 flex-shrink-0
-                      ${isActive ? 'bg-[#149911] border-[#149911]' : 'border-[#fdfffc]/20 group-hover:border-[#fdfffc]/40 bg-transparent'}
-                    `}>
-                      {isActive && (
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fdfffc" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="20 6 9 17 4 12"></polyline>
-                        </svg>
-                      )}
-                    </div>
-                    <span className={`text-[14px] transition-colors duration-300
-                      ${isActive ? 'text-[#fdfffc]' : 'text-[#fdfffc]/60 group-hover:text-[#fdfffc]'}
-                    `}>
-                      {cat.label || cat.slug}
-                    </span>
-                  </button>
+                  <div key={cat.slug} className="flex items-center gap-2 w-full">
+                    <button
+                      onClick={() => toggleCategory(cat.slug)}
+                      className="flex items-center gap-3 group outline-none flex-1 min-w-0 text-left"
+                    >
+                      <div className={`w-4 h-4 rounded-[4px] border flex items-center justify-center transition-all duration-300 flex-shrink-0
+                        ${isActive ? 'bg-[#149911] border-[#149911]' : 'border-[#fdfffc]/20 group-hover:border-[#fdfffc]/40 bg-transparent'}
+                      `}>
+                        {isActive && (
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fdfffc" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12"></polyline>
+                          </svg>
+                        )}
+                      </div>
+                      <span className={`text-[14px] transition-colors duration-300 truncate
+                        ${isActive ? 'text-[#fdfffc]' : 'text-[#fdfffc]/60 group-hover:text-[#fdfffc]'}
+                      `}>
+                        {cat.label || cat.slug}
+                      </span>
+                    </button>
+                    {/* A real navigable link to the category's own page (as
+                        opposed to the checkbox above, which is just a
+                        client-side filter toggle) -- gives search engines
+                        (and anyone browsing) an actual path to discover it. */}
+                    <Link
+                      href={`/products/category/${cat.slug}`}
+                      className="shrink-0 text-[#fdfffc]/30 hover:text-[#149911] transition-colors"
+                      aria-label={`View ${cat.label || cat.slug} category page`}
+                      title={`View ${cat.label || cat.slug} category page`}
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M5 12h14M12 5l7 7-7 7" />
+                      </svg>
+                    </Link>
+                  </div>
                 );
               })}
             </div>

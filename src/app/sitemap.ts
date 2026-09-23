@@ -8,7 +8,10 @@ const siteUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const payload = await getPayloadClient()
 
-  const productsRes = await payload.find({ collection: 'products', limit: 1000, depth: 0 })
+  const [productsRes, categoriesRes] = await Promise.all([
+    payload.find({ collection: 'products', limit: 1000, depth: 0 }),
+    payload.find({ collection: 'categories', limit: 100, depth: 0 }),
+  ])
 
   const staticPages: MetadataRoute.Sitemap = [
     { url: siteUrl, changeFrequency: 'weekly', priority: 1 },
@@ -29,11 +32,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.6,
   }))
 
-  // Categories were previously listed as `/products#slug` anchor entries,
-  // but a URL fragment isn't a separate crawlable resource -- every one of
-  // those "pages" is byte-for-byte the same /products response, so they
-  // were duplicate entries rather than real additional coverage. Categories
-  // don't have their own route to list here until that changes.
+  // Categories used to be listed as `/products#slug` (later `?cat=slug`)
+  // entries, but neither is a separate crawlable resource -- both render
+  // byte-for-byte the same /products response server-side, so they were
+  // duplicate entries rather than real additional coverage. Categories now
+  // have their own server-rendered route (/products/category/[slug]),
+  // which is what's listed here instead.
+  const categoryPages: MetadataRoute.Sitemap = categoriesRes.docs.map((c: any) => ({
+    url: `${siteUrl}/products/category/${c.slug}`,
+    changeFrequency: 'weekly',
+    priority: 0.7,
+  }))
 
-  return [...staticPages, ...productPages]
+  return [...staticPages, ...categoryPages, ...productPages]
 }

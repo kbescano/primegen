@@ -48,7 +48,18 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
     const categoryName = material.categoryRef?.label || material.category || ''
     const title = categoryName ? `${material.name} -- ${categoryName}` : material.name
-    const description = `${material.name} available from Primegen Trading Corporation -- trusted steel and construction materials supplier based in Imus, Cavite, delivering nationwide across the Philippines. Request a quote today.`
+    // Prefer the product's own description (real, specific content -- good
+    // for search) over the generic boilerplate, which now only serves as a
+    // fallback for products that haven't had one filled in yet. Meta
+    // descriptions get truncated by Google past ~155-160 chars anyway, so
+    // long ones are trimmed here rather than left for Google to cut off
+    // mid-sentence.
+    const genericDescription = `${material.name} available from Primegen Trading Corporation -- trusted steel and construction materials supplier based in Imus, Cavite, delivering nationwide across the Philippines. Request a quote today.`
+    const description = material.description
+      ? material.description.length > 155
+        ? `${material.description.slice(0, 152).trim()}...`
+        : material.description
+      : genericDescription
     // Same canonical target the page body redirects legacy /products/<id>
     // URLs to -- declared here too so the <head> is correct even on the
     // request that's about to 301, and for any client that reads metadata

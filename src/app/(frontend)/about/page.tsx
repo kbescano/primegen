@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { getPayloadClient } from '@/lib/getPayloadClient'
+import { safeJsonLdStringify } from '@/lib/safeJsonLd'
 import ScrollReveal from '@/components/ScrollReveal'
 import TypewriterText from '@/components/TypewriterReveal'
 
@@ -46,8 +47,30 @@ export default async function AboutPage() {
   const email = info?.email
   const mapEmbedUrl = info?.mapEmbedUrl
 
+  // Real, already-published FAQ content (see FAQS above) -- wrapping it as
+  // FAQPage structured data is what makes Google eligible to show these
+  // Q&As as an expandable rich snippet directly in search results, instead
+  // of just as plain page text.
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: FAQS.map((faq) => ({
+      '@type': 'Question',
+      name: faq.q,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: faq.a,
+      },
+    })),
+  }
+
   return (
    <section className="min-h-screen bg-[#05100d] pt-24 md:pt-32 pb-16 md:pb-24 font-sans selection:bg-[#149911]/30 relative overflow-x-hidden">
+
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: safeJsonLdStringify(faqJsonLd) }}
+      />
 
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[600px] bg-[#149911]/10 blur-[120px] rounded-full pointer-events-none" />
 
