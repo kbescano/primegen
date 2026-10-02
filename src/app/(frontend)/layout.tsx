@@ -20,32 +20,29 @@ const siteUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  // ✨ Was 70 chars ("...Steel & Construction Materials Supplier") --
-  // trimmed under Google's ~60-char SERP cutoff while keeping the exact
-  // "Construction Materials" phrase (the core target keyword) and the
-  // full legal name intact.
+  // ✨ Swapped "Construction Materials" for "Steel & Building Materials" --
+  // matches the page's own most-frequent content keywords (steel, building)
+  // per RankMath's SEO analyzer, still 57 chars (under the ~60-char cutoff).
   title: {
-    default: 'Primegen Trading Corporation | Construction Materials',
+    default: 'Primegen Trading Corporation | Steel & Building Materials',
     template: '%s | Primegen Trading Corporation',
   },
   icons: {
     icon: '/branding/primegen_trading_logo.png',
   },
-  // ✨ Was 137 chars (under the 150-220 recommended range) and didn't name
-  // any real product categories. Expanded with the actual catalog
-  // (confirmed against the live category list) instead of padding with
-  // filler, plus a CTA.
+  // ✨ Trimmed from 208 to 155 chars -- RankMath flags anything over 160 as
+  // likely truncated in SERPs; still names the core product categories.
   description:
-    'Primegen Trading Corporation supplies steel bars, pipes, fittings, roofing, fencing, PPE, and other construction materials to contractors and builders across Cavite and the Philippines. Request a quote today.',
+    'Primegen Trading Corporation supplies steel bars, pipes, roofing, fencing, and PPE to contractors across Cavite and the Philippines. Request a quote today.',
   alternates: { canonical: '/' },
   openGraph: {
     type: 'website',
     locale: 'en_PH',
     url: siteUrl,
     siteName: 'Primegen Trading Corporation',
-    title: 'Primegen Trading Corporation | Construction Materials',
+    title: 'Primegen Trading Corporation | Steel & Building Materials',
     description:
-      'Primegen Trading Corporation supplies steel bars, pipes, fittings, roofing, fencing, PPE, and other construction materials to contractors and builders across Cavite and the Philippines. Request a quote today.',
+      'Primegen Trading Corporation supplies steel bars, pipes, roofing, fencing, and PPE to contractors across Cavite and the Philippines. Request a quote today.',
     images: [
       {
         // ✨ was '/branding/primegen-logo.png' (hyphen) -- standardized to
@@ -60,9 +57,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Primegen Trading Corporation | Construction Materials',
+    title: 'Primegen Trading Corporation | Steel & Building Materials',
     description:
-      'Primegen Trading Corporation supplies steel bars, pipes, fittings, roofing, fencing, PPE, and other construction materials to contractors and builders across Cavite and the Philippines. Request a quote today.',
+      'Primegen Trading Corporation supplies steel bars, pipes, roofing, fencing, and PPE to contractors across Cavite and the Philippines. Request a quote today.',
     images: ['/branding/primegen_trading_logo.png'],
   },
 }
