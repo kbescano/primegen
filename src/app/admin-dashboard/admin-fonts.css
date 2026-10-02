@@ -1,0 +1,6 @@
+/* The public (frontend) layout self-hosts Inter via next/font/google
+   instead, to eliminate a render-blocking external font request on pages
+   search engines actually crawl -- admin/admin-login aren't indexed and
+   don't factor into SEO scoring, so they keep loading it this simpler way
+   rather than also being wired into next/font. */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 // @ts-ignore: allow importing global CSS without module declarations in this nested layout
 import '../(frontend)/globals.css'
+import '../admin-dashboard/admin-fonts.css'
 
 export default function AdminLoginLayout({ children }: { children: ReactNode }) {
   return (

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import ScrollReveal from "@/components/ScrollReveal";
 import SearchBar from "@/components/SearchBar";
+import { cloudinaryOptimized } from "@/lib/cloudinaryUrl";
 
 type Category = any;
 type Product = any;
@@ -220,7 +221,7 @@ export default function ProductsCatalog({
             {/* Product Cards Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
               {filteredProducts.map((product, i) => {
-                const imgUrl = product.photo?.url || null;
+                const imgUrl = cloudinaryOptimized(product.photo?.url) || null;
                 const catData = activeCategoryDocs.find((c) => c.slug === (product.categoryRef?.slug || product.category));
                 const categoryLabel = catData?.label || product.category || "GENERAL";
                 

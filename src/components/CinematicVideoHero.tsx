@@ -137,7 +137,16 @@ export default function CinematicVideoHero({ slides: rawSlides }: { slides: Hero
             ref={(el) => {
               videoRefs.current[index] = el
             }}
-            autoPlay
+            // No `autoPlay`: playback is already fully controlled by the
+            // useEffect above (it calls .play() on whichever slide is
+            // current). With autoPlay present, every slide's video -- not
+            // just the visible one -- told the browser to start eagerly
+            // fetching immediately on mount, before that effect ever got a
+            // chance to pause the hidden ones. Each of these is a raw ~13MB
+            // stock download, so that was 4x the bandwidth actually needed
+            // for ANY single page load. preload="none" on the hidden slides
+            // keeps them from being fetched at all until they're selected.
+            preload={index === current ? 'auto' : 'none'}
             loop
             muted
             playsInline
@@ -158,33 +167,42 @@ export default function CinematicVideoHero({ slides: rawSlides }: { slides: Hero
           
           {/* Left Column: Dynamic Typography & CTAs */}
           <div className="relative w-full max-w-xl h-[320px] sm:h-[340px] flex items-center">
-            {slides.map((slide, index) => (
-              <div 
-                key={`content-${slide.id}`} 
+            {slides.map((slide, index) => {
+              // All slides render simultaneously (for the crossfade), but
+              // only the active one should be a real <h1> -- otherwise
+              // every slide in the carousel adds another <h1> to the DOM,
+              // which search engines and screen readers see regardless of
+              // the opacity-0 hiding it visually.
+              const isActive = current === index
+              const HeadingTag = isActive ? 'h1' : 'p'
+              return (
+              <div
+                key={`content-${slide.id}`}
+                aria-hidden={!isActive}
                 className={`absolute inset-0 flex flex-col justify-center transition-all duration-[800ms] ease-out
-                  ${current === index ? 'opacity-100 translate-y-0 pointer-events-auto z-10' : 'opacity-0 translate-y-4 pointer-events-none z-0'}
+                  ${isActive ? 'opacity-100 translate-y-0 pointer-events-auto z-10' : 'opacity-0 translate-y-4 pointer-events-none z-0'}
                 `}
               >
                 <p className="text-[10px] sm:text-[12px] md:text-[14px] font-bold uppercase tracking-[0.2em] text-[#149911] mb-2 sm:mb-3 md:mb-5">
                   {slide.label}
                 </p>
-                
-                <h1 className="text-[32px] sm:text-[44px] md:text-[56px] lg:text-[64px] font-black text-[#fdfffc] leading-[1.05] tracking-tight mb-3 sm:mb-6">
+
+                <HeadingTag className="text-[32px] sm:text-[44px] md:text-[56px] lg:text-[64px] font-black text-[#fdfffc] leading-[1.05] tracking-tight mb-3 sm:mb-6">
                   {slide.title}
-                </h1>
-                
+                </HeadingTag>
+
                 <p className="text-[13px] sm:text-[15px] md:text-[17px] text-[#fdfffc]/80 font-medium leading-relaxed mb-6 sm:mb-8 md:mb-10 max-w-[480px]">
                   Generate project-specific quotes and guarantee site delivery with unprecedented speed and reliability for large-scale developments.
                 </p>
-                
+
                 <div className="flex flex-row w-full sm:w-auto items-center gap-2 sm:gap-4">
-                  <Link 
-                    href="/contact"
+                  <Link
+                    href="/about"
                     className="flex-1 sm:flex-none text-center px-2 sm:px-8 py-3.5 bg-[#149911] text-white text-[11px] sm:text-[12px] md:text-[14px] font-bold tracking-wide rounded-lg hover:bg-[#10750e] transition-colors duration-300 shadow-[0_0_20px_rgba(20,153,17,0.3)] whitespace-nowrap"
                   >
                     Contact us
                   </Link>
-                  <Link 
+                  <Link
                     href={slide.href || '#'}
                     className="flex-1 sm:flex-none text-center px-2 sm:px-8 py-3.5 bg-transparent border border-[#fdfffc]/30 text-[#fdfffc] text-[11px] sm:text-[12px] md:text-[14px] font-bold tracking-wide rounded-lg hover:bg-[#fdfffc]/10 transition-colors duration-300 whitespace-nowrap"
                   >
@@ -192,7 +210,8 @@ export default function CinematicVideoHero({ slides: rawSlides }: { slides: Hero
                   </Link>
                 </div>
               </div>
-            ))}
+              )
+            })}
           </div>
 
           {/* Right Column: Abstract Skewed Process Graphic */}

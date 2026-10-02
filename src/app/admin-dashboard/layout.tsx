@@ -5,6 +5,7 @@ import { getPayloadClient } from '@/lib/getPayloadClient'
 import AdminSidebar from '@/components/AdminSidebar'
 // @ts-ignore: allow importing global CSS without module declarations in this nested layout
 import '../(frontend)/globals.css';
+import './admin-fonts.css';
 
 export default async function AdminDashboardLayout({ children }: { children: ReactNode }) {
   const payload = await getPayloadClient()

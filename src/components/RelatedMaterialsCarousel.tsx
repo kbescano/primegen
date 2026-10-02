@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import Image from 'next/image'
+import { cloudinaryOptimized } from '@/lib/cloudinaryUrl'
 
 type Material = {
   id: string | number
@@ -22,7 +23,7 @@ export default function RelatedMaterialsGrid({ products }: { products: Material[
           <div className="relative w-full aspect-[4/3] bg-[#f8f9f7] overflow-hidden">
             {m.photo?.url ? (
               <Image
-                src={m.photo.url}
+                src={cloudinaryOptimized(m.photo.url)!}
                 alt={m.photo.alt || m.name}
                 fill
                 className="object-cover transition-transform duration-[1.5s] ease-[cubic-bezier(0.25,1,0.5,1)] group-hover:scale-105"

@@ -3,6 +3,7 @@ import Image from 'next/image'
 import { notFound, redirect } from 'next/navigation'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import { safeJsonLdStringify } from '@/lib/safeJsonLd'
+import { cloudinaryOptimized } from '@/lib/cloudinaryUrl'
 import WeightCalculatorForm, { type CalcProduct } from '@/components/WeightCalculatorForm'
 import RelatedMaterialsGrid from '@/components/RelatedMaterialsCarousel'
 import ScrollReveal from '@/components/ScrollReveal'
@@ -73,7 +74,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       openGraph: {
         title,
         description,
-        images: material.photo?.url ? [{ url: material.photo.url }] : undefined,
+        images: material.photo?.url ? [{ url: cloudinaryOptimized(material.photo.url)! }] : undefined,
       },
     }
   } catch {
@@ -145,7 +146,9 @@ export default async function MaterialDetailPage({ params }: { params: Promise<{
     (p) => materialNameLower === p.name.toLowerCase() || materialNameLower.includes(p.name.toLowerCase())
   ) || null
 
-  const images = [material.photo, material.hoverPhoto].filter((p: any) => p?.url)
+  const images = [material.photo, material.hoverPhoto]
+    .filter((p: any) => p?.url)
+    .map((p: any) => ({ ...p, url: cloudinaryOptimized(p.url) }))
 
   const productJsonLd = {
     '@context': 'https://schema.org',

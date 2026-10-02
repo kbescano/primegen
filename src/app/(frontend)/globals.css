@@ -2,7 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+/* Inter is self-hosted via next/font/google in layout.tsx instead of a CSS
+   @import -- that eliminated a render-blocking request to
+   fonts.googleapis.com on every public page load. (admin-dashboard and
+   admin-login, which import this file too but aren't wrapped by that
+   layout, load Inter via their own admin-fonts.css instead.) */
 
 @layer base {
   html,

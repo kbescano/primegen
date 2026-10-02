@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import { safeJsonLdStringify } from '@/lib/safeJsonLd'
+import { cloudinaryOptimized } from '@/lib/cloudinaryUrl'
 
 export const revalidate = 60
 
@@ -52,7 +53,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       openGraph: {
         title,
         description,
-        images: category.image?.url ? [{ url: category.image.url }] : undefined,
+        images: category.image?.url ? [{ url: cloudinaryOptimized(category.image.url)! }] : undefined,
       },
     }
   } catch {
@@ -136,7 +137,7 @@ export default async function CategoryPage({ params }: { params: Promise<{ slug:
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
             {products.map((product) => {
-              const imgUrl = product.photo?.url || null
+              const imgUrl = cloudinaryOptimized(product.photo?.url) || null
               return (
                 <div
                   key={product.id}
