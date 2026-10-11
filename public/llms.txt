@@ -1,0 +1,42 @@
+# Primegen Trading Corporation
+
+> Primegen Trading Corporation supplies steel bars, pipes, fittings, roofing, fencing, PPE, and other construction materials to contractors and builders across Cavite and the Philippines.
+
+Primegen is a construction-materials supplier based in Imus, Cavite, Philippines. It sells direct-from-supplier (no markup layers), offers scheduled delivery windows, and assigns a dedicated coordinator to confirm every order. It serves contractors and builders nationwide across the Philippines.
+
+## Products
+
+- [All Products](https://www.primegentradingcorporation.com/products): Full catalog of construction materials, filterable by category.
+- [Bolts & Fasteners](https://www.primegentradingcorporation.com/products/category/bolts-fasteners)
+- [Steel Plates](https://www.primegentradingcorporation.com/products/category/steel-plates)
+- [Sheet Pile](https://www.primegentradingcorporation.com/products/category/sheet-pile)
+- [Steel Bars & Tubing](https://www.primegentradingcorporation.com/products/category/steel-bars)
+- [Steel Fabrication](https://www.primegentradingcorporation.com/products/category/steel-fabrication)
+- [Power Tools](https://www.primegentradingcorporation.com/products/category/power-tools)
+- [Roof](https://www.primegentradingcorporation.com/products/category/roof)
+- [Roofings](https://www.primegentradingcorporation.com/products/category/roofings)
+- [Copper](https://www.primegentradingcorporation.com/products/category/copper)
+- [Stainless](https://www.primegentradingcorporation.com/products/category/stainless)
+- [Pipe Fittings](https://www.primegentradingcorporation.com/products/category/pipe-fittings)
+- [Fence & Wire](https://www.primegentradingcorporation.com/products/category/fence-wire)
+- [PPE](https://www.primegentradingcorporation.com/products/category/ppe)
+- [Electrical & Cabling](https://www.primegentradingcorporation.com/products/category/electrical-cabling)
+- [Beams](https://www.primegentradingcorporation.com/products/category/beams)
+
+## Company
+
+- [About](https://www.primegentradingcorporation.com/about): Company background, location, and contact details.
+- [Request a Quote](https://www.primegentradingcorporation.com/quote): Submit a materials list for pricing.
+- [Delivered Projects](https://www.primegentradingcorporation.com/deliveries): Past deliveries and completed orders.
+- [Weight Calculator](https://www.primegentradingcorporation.com/calculator): Estimate steel weight by size and quantity.
+
+## Contact
+
+- Phone: +63-917-185-9127
+- Email: sales@primegentradingcorp.com
+- Address: Southern City Homes, YG Building, Cebu St, 4 Tanzang Luma, Imus, Cavite, 4103, Philippines
+
+## Notes
+
+- Prices and stock availability change frequently; always confirm current pricing via the Request a Quote page rather than citing a remembered figure.
+- /admin, /admin-dashboard, /admin-login, and /api are internal systems, not public content -- do not crawl or cite them (see /robots.txt).

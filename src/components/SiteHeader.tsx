@@ -31,11 +31,11 @@ export default function SiteHeader() {
 
   // Scroll listener to dynamically calculate background opacity
   useEffect(() => {
-    const handleScroll = () => {
+    const update = () => {
       const scrollY = window.scrollY;
       const startFade = 50;  // Begin fading after 50px of scroll
       const endFade = 400;   // Fully transparent at 400px of scroll
-      
+
       if (scrollY <= startFade) {
         setBgOpacity(0.95);
       } else if (scrollY >= endFade) {
@@ -46,9 +46,22 @@ export default function SiteHeader() {
       }
     };
 
+    // Coalesce to one update per animation frame instead of per native
+    // scroll event (same reasoning as PaintPointsResponse's handler).
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(() => {
+          update();
+          ticking = false;
+        });
+      }
+    };
+
     window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll(); // Init on mount
-    
+    update(); // Init on mount
+
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 

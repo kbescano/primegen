@@ -30,7 +30,7 @@ export default function PainPointsResponse() {
   const [textProgress, setTextProgress] = useState(0);
 
   useEffect(() => {
-    const handleScroll = () => {
+    const update = () => {
       const wh = window.innerHeight;
 
       // Track Header (Pain Points)
@@ -45,7 +45,7 @@ export default function PainPointsResponse() {
         const rect = cardsRef.current.getBoundingClientRect();
         // CHANGED: Animation now begins exactly when the top of the cards crosses the 50% center mark of the screen
         // It reaches full size after scrolling another 30% of the viewport height.
-        let p = ((wh * 0.5) - rect.top) / (wh * 0.3); 
+        let p = ((wh * 0.5) - rect.top) / (wh * 0.3);
         setCardsProgress(Math.max(0, Math.min(1, p)));
       }
 
@@ -57,9 +57,24 @@ export default function PainPointsResponse() {
       }
     };
 
+    // Coalesce rapid-fire scroll events (momentum/trackpad scrolling can fire
+    // many per frame) into one update per animation frame, so the 3 forced
+    // layout reads + setState calls above don't compete with user
+    // interactions for the main thread (this was inflating real-user INP).
+    let ticking = false;
+    const handleScroll = () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(() => {
+          update();
+          ticking = false;
+        });
+      }
+    };
+
     window.addEventListener("scroll", handleScroll, { passive: true });
-    handleScroll(); 
-    
+    update();
+
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
