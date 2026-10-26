@@ -2,20 +2,13 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useClientSearch, type ClientOption } from "@/lib/useClientSearch";
 
 type Product = { id: string; name: string; unit: string };
 type LineItem = {
   materialId: string;
   quantity: number;
   sizeDescription?: string;
-};
-type ClientOption = {
-  id: string | number;
-  name: string;
-  company?: string;
-  address?: string;
-  phone?: string;
-  email?: string;
 };
 
 const fieldClass =
@@ -51,8 +44,14 @@ export default function CreateRFQModal({
   >("idle");
   const [errorMsg, setErrorMsg] = useState("");
 
-  const [clients, setClients] = useState<ClientOption[]>([]);
-  const [loadingClients, setLoadingClients] = useState(true);
+  const {
+    query: clientQuery,
+    setQuery: setClientQuery,
+    clients,
+    total: totalClients,
+    loading: loadingClients,
+    pageSize: clientPageSize,
+  } = useClientSearch(isOpen && view === "picker");
 
   const [formData, setFormData] = useState({
     customerName: "",
@@ -74,19 +73,10 @@ export default function CreateRFQModal({
     },
   ]);
 
-  function fetchClients() {
-    setLoadingClients(true);
-    fetch("/api/clients?limit=200&sort=name", { credentials: "include" })
-      .then((res) => res.json())
-      .then((data) => setClients(data.docs || []))
-      .catch(() => setClients([]))
-      .finally(() => setLoadingClients(false));
-  }
-
   function openModal() {
     setIsOpen(true);
     setView("picker");
-    fetchClients();
+    setClientQuery("");
   }
 
   function handleSelectClient(client: ClientOption) {
@@ -258,6 +248,20 @@ export default function CreateRFQModal({
                   </p>
                 </div>
 
+                <input
+                  type="search"
+                  value={clientQuery}
+                  onChange={(e) => setClientQuery(e.target.value)}
+                  placeholder="Search by name, company, phone, or email"
+                  autoFocus
+                  className={`${fieldClass} mb-2 shrink-0`}
+                />
+                {!loadingClients && totalClients > clients.length && (
+                  <p className="text-[11px] text-gray-400 mb-3 shrink-0">
+                    Showing first {clientPageSize} of {totalClients} clients. Type to narrow the list.
+                  </p>
+                )}
+
                 <div className="flex flex-col border border-gray-200 rounded-xl overflow-hidden mb-6 shrink-0">
                   {loadingClients ? (
                     <div className="p-10 text-center text-[13px] font-medium text-gray-400">
@@ -265,7 +269,9 @@ export default function CreateRFQModal({
                     </div>
                   ) : clients.length === 0 ? (
                     <div className="p-10 text-center text-[13px] font-medium text-gray-400">
-                      No clients saved in the database yet.
+                      {clientQuery.trim()
+                        ? `No clients match "${clientQuery.trim()}".`
+                        : "No clients saved in the database yet."}
                     </div>
                   ) : (
                     <div className="max-h-[350px] overflow-y-auto custom-scrollbar">

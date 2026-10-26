@@ -1,14 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-
-type ClientOption = {
-  id: string | number
-  name: string
-  company?: string
-  address?: string
-  phone?: string
-}
+import { useClientSearch, type ClientOption } from '@/lib/useClientSearch'
 
 export default function ClientPickerModal({
   onSelect,
@@ -17,16 +9,7 @@ export default function ClientPickerModal({
   onSelect: (client: ClientOption) => void
   onSkip: () => void
 }) {
-  const [clients, setClients] = useState<ClientOption[]>([])
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    fetch('/api/clients?limit=200&sort=name', { credentials: 'include' })
-      .then((res) => res.json())
-      .then((data) => setClients(data.docs || []))
-      .catch(() => setClients([]))
-      .finally(() => setLoading(false))
-  }, [])
+  const { query, setQuery, clients, total, loading, pageSize } = useClientSearch()
 
   return (
     <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
@@ -41,11 +24,29 @@ export default function ClientPickerModal({
           </p>
         </div>
 
+        <div className="px-6 py-3 border-b border-[#01172f]/10">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search by name, company, phone, or email"
+            autoFocus
+            className="w-full px-4 py-2.5 border border-[#01172f]/15 text-sm text-[#01172f] placeholder:text-[#01172f]/35 focus:outline-none focus:border-[#149911]"
+          />
+          {!loading && total > clients.length && (
+            <p className="text-xs text-gray-400 mt-2">
+              Showing first {pageSize} of {total} clients. Type to narrow the list.
+            </p>
+          )}
+        </div>
+
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <p className="text-sm text-gray-400 p-6">Loading clients...</p>
           ) : clients.length === 0 ? (
-            <p className="text-sm text-gray-400 p-6">No clients saved yet.</p>
+            <p className="text-sm text-gray-400 p-6">
+              {query.trim() ? `No clients match "${query.trim()}".` : 'No clients saved yet.'}
+            </p>
           ) : (
             clients.map((c) => (
               <button

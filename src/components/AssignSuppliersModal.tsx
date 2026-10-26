@@ -35,6 +35,7 @@ export default function AssignSuppliersModal({
   const [step, setStep] = useState<'select-items' | 'select-supplier'>('select-items')
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([])
   const [loadingSuppliers, setLoadingSuppliers] = useState(false)
+  const [supplierSearch, setSupplierSearch] = useState('')
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState('')
   const [addingNew, setAddingNew] = useState(false)
@@ -48,6 +49,14 @@ export default function AssignSuppliersModal({
   const [localItems, setLocalItems] = useState<OrderItem[]>(items)
   const [localPOs, setLocalPOs] = useState<any[]>(linkedPOs)
   const [lastAssigned, setLastAssigned] = useState<string | null>(null)
+
+  const filteredSuppliers = useMemo(() => {
+    const term = supplierSearch.trim().toLowerCase()
+    if (!term) return suppliers
+    return suppliers.filter((s) =>
+      [s.name, s.company, s.phone].some((v) => v && v.toLowerCase().includes(term)),
+    )
+  }, [suppliers, supplierSearch])
 
   const poById = useMemo(() => {
     const map: Record<string, any> = {}
@@ -392,8 +401,20 @@ export default function AssignSuppliersModal({
                   ) : (
                     <div className="flex flex-col gap-2 mt-2">
                       <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400 px-1 mb-1">Or pick existing supplier</p>
+                      <input
+                        type="search"
+                        value={supplierSearch}
+                        onChange={(e) => setSupplierSearch(e.target.value)}
+                        placeholder="Search by name, company, or phone"
+                        className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[13px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:border-[#149911] focus:ring-1 focus:ring-[#149911]/25 transition-all"
+                      />
                       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm">
-                        {suppliers.map((s) => (
+                        {filteredSuppliers.length === 0 && (
+                          <p className="py-6 text-center text-[13px] text-gray-500 font-medium">
+                            No suppliers match &quot;{supplierSearch.trim()}&quot;.
+                          </p>
+                        )}
+                        {filteredSuppliers.map((s) => (
                           <button
                             key={s.id}
                             disabled={creating}
