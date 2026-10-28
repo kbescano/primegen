@@ -1,4 +1,4 @@
-import { getPayloadClient } from '@/lib/getPayloadClient'
+import { getPublicDeliveries } from '@/lib/cachedQueries'
 import { safeJsonLdStringify } from '@/lib/safeJsonLd'
 import ScrollReveal from '@/components/ScrollReveal'
 import Image from 'next/image'
@@ -105,14 +105,7 @@ export default async function DeliveriesPage({
   searchParams: Promise<{ location?: string }>
 }) {
   const { location } = await searchParams
-  const payload = await getPayloadClient()
-  const { docs } = await payload.find({
-    collection: 'deliveries',
-    where: { visible: { equals: true } },
-    sort: '-deliveryDate',
-    limit: 100,
-    depth: 2,
-  })
+  const docs = await getPublicDeliveries()
 
   // Unique locations actually present in your data, for the filter pills
   const locations = Array.from(

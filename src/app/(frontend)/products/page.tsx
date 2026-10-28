@@ -1,4 +1,4 @@
-import { getPayloadClient } from "@/lib/getPayloadClient";
+import { getCatalogData } from "@/lib/cachedQueries";
 import ProductsCatalog from "@/components/ProductCatalog";
 
 export const dynamic = "force-dynamic";
@@ -19,7 +19,6 @@ type Props = {
 };
 
 export default async function ProductsPage({ searchParams }: Props) {
-  const payload = await getPayloadClient();
   const resolvedParams = await searchParams;
 
   // Parse search query -- this one still needs a server refetch since it's
@@ -30,26 +29,16 @@ export default async function ProductsPage({ searchParams }: Props) {
   // Category filtering now happens entirely client-side in ProductsCatalog
   // (useMemo over the already-fetched product list), so we only fetch once
   // here on initial page load / search, not on every checkbox toggle.
-  const [categoriesRes, materialsRes] = await Promise.all([
-    payload.find({
-      collection: "categories",
-      sort: "order",
-      limit: 100,
-      depth: 2,
-    }),
-    payload.find({
-      collection: "products",
-      limit: 500,
-      depth: 2,
-      ...(q ? { where: { name: { contains: q } } } : {}),
-    }),
-  ]);
+  // Query results are cached for 60s (see cachedQueries.ts), the same
+  // freshness as the other public pages, instead of re-running the full
+  // depth-2 queries on every visit and crawl.
+  const { categories, products } = await getCatalogData(q);
 
   return (
     <ProductsCatalog
       initialQuery={q}
-      categories={categoriesRes.docs as any[]}
-      products={materialsRes.docs as any[]}
+      categories={categories}
+      products={products}
     />
   );
 }

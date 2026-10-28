@@ -18,6 +18,7 @@ import AddUpdateNote from '@/components/AddUpdateNotes'
 import DateGranularityFilter from '@/components/DateGranularityFilter'
 import ActionItemsPanel from '@/components/ActionItemsPanel'
 import CreateRFQModal from '@/components/CreateRFQModal'
+import { isWithinPhBusinessHours } from '@/lib/phBusinessHours'
 
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending' },
@@ -346,9 +347,30 @@ export default function QuotationInboxClient({
   // that check runs server-side on every page load instead, so this just
   // re-triggers a load periodically for anyone who leaves the inbox open
   // rather than making them manually refresh to notice anything.
+  // Auto-refresh only while the tab is open and visible, and only during
+  // business hours (Mon-Fri 8am-5pm Manila, same window the stale alerts use)
+  // -- a backgrounded or forgotten tab, or one left open overnight or over
+  // the weekend, used to re-run this whole page every 5 minutes. Coming back
+  // to a tab that's gone stale during working hours refreshes it right away.
   useEffect(() => {
-    const id = setInterval(() => router.refresh(), 5 * 60 * 1000)
-    return () => clearInterval(id)
+    const INTERVAL = 5 * 60 * 1000
+    let lastRefresh = Date.now()
+    const canRefresh = () => document.visibilityState === 'visible' && isWithinPhBusinessHours()
+    const refresh = () => {
+      lastRefresh = Date.now()
+      router.refresh()
+    }
+    const id = setInterval(() => {
+      if (canRefresh()) refresh()
+    }, INTERVAL)
+    const onVisible = () => {
+      if (canRefresh() && Date.now() - lastRefresh >= INTERVAL) refresh()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [router])
 
   const [activeStatus, setActiveStatus] = useState<string | undefined>(normalizeStatus(initialStatus))

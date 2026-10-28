@@ -1,17 +1,12 @@
 import type { MetadataRoute } from 'next'
-import { getPayloadClient } from '@/lib/getPayloadClient'
+import { getSitemapData } from '@/lib/cachedQueries'
 
 export const dynamic = 'force-dynamic' // must run per-request, not at build time -- the DB isn't reachable during Vercel's build step
 
 const siteUrl = process.env.NEXT_PUBLIC_SERVER_URL || 'http://localhost:3000'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const payload = await getPayloadClient()
-
-  const [productsRes, categoriesRes] = await Promise.all([
-    payload.find({ collection: 'products', limit: 1000, depth: 0 }),
-    payload.find({ collection: 'categories', limit: 100, depth: 0 }),
-  ])
+  const { products, categories } = await getSitemapData()
 
   const staticPages: MetadataRoute.Sitemap = [
     { url: siteUrl, changeFrequency: 'weekly', priority: 1 },
@@ -25,7 +20,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Use the canonical slug URL (same one generateMetadata/the page's own
   // redirect treat as canonical), not the numeric id -- listing the id URL
   // here was submitting a non-canonical, soon-to-redirect URL to Google.
-  const productPages: MetadataRoute.Sitemap = productsRes.docs.map((m: any) => ({
+  const productPages: MetadataRoute.Sitemap = products.map((m: any) => ({
     url: `${siteUrl}/products/${m.slug || m.id}`,
     lastModified: m.updatedAt ? new Date(m.updatedAt) : undefined,
     changeFrequency: 'weekly',
@@ -38,7 +33,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // duplicate entries rather than real additional coverage. Categories now
   // have their own server-rendered route (/products/category/[slug]),
   // which is what's listed here instead.
-  const categoryPages: MetadataRoute.Sitemap = categoriesRes.docs.map((c: any) => ({
+  const categoryPages: MetadataRoute.Sitemap = categories.map((c: any) => ({
     url: `${siteUrl}/products/category/${c.slug}`,
     changeFrequency: 'weekly',
     priority: 0.7,

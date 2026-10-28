@@ -1,25 +1,11 @@
 import type { Payload } from 'payload'
+import { isWithinPhBusinessHours } from '@/lib/phBusinessHours'
 
-// Business hours only: Mon-Fri, 8am-5pm Philippine time (Asia/Manila is a
-// fixed UTC+8, no DST, so this is stable year-round). Outside that window
-// nobody's expected to be following up within 5 minutes anyway, so no new
-// alerts get raised -- this only gates *creating* new ones; an alert
-// that's already open still auto-resolves the moment status moves to
-// Processing, any time of day.
-function isWithinPhBusinessHours(): boolean {
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Manila',
-    weekday: 'short',
-    hour: 'numeric',
-    hourCycle: 'h23',
-  }).formatToParts(new Date())
-
-  const weekday = parts.find((p) => p.type === 'weekday')?.value
-  const hour = Number(parts.find((p) => p.type === 'hour')?.value)
-
-  const isWeekday = weekday !== 'Sat' && weekday !== 'Sun'
-  return isWeekday && hour >= 8 && hour < 17
-}
+// Only raises new alerts during business hours (Mon-Fri, 8am-5pm Philippine
+// time, see phBusinessHours.ts). Outside that window nobody's expected to be
+// following up within 5 minutes anyway -- this only gates *creating* new
+// ones; an alert that's already open still auto-resolves the moment status
+// moves to Processing, any time of day.
 
 // Arbitrary, just needs to be unique to this job -- nothing else in the app
 // takes a Postgres advisory lock.
