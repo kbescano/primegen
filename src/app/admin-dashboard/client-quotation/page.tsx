@@ -12,6 +12,9 @@ import { getPayloadClient } from '@/lib/getPayloadClient'
 // always re-read items fresh instead of risking a cached pre-edit render.
 export const dynamic = 'force-dynamic'
 
+const PAGE_SIZE = 15
+const VALID_STATUSES = ['draft', 'pending_approval', 'quotation_approved', 'order_confirmed', 'cancelled']
+
 function mapDocToInitial(q: any): QuotationInitial {
   return {
     id: q.id,
@@ -45,9 +48,18 @@ function mapDocToInitial(q: any): QuotationInitial {
 export default async function ClientQuotationPage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; id?: string; new?: string; status?: string; pipelineId?: string }>
+  searchParams: Promise<{
+    from?: string
+    id?: string
+    new?: string
+    status?: string
+    pipelineId?: string
+    q?: string
+    page?: string
+    view?: string
+  }>
 }) {
-  const { from, id, new: isNew, pipelineId } = await searchParams
+  const { from, id, new: isNew, pipelineId, status, q, page, view } = await searchParams
 
   const payload = await getPayloadClient()
 
@@ -138,17 +150,44 @@ export default async function ClientQuotationPage({
   }
 
   // ===== LIST MODE (ADMIN ONLY) =====
-  // Fetches the whole (capped) batch once -- Status + Search both filter
-  // this client-side now (see ClientQuotationsListClient), same pattern as
-  // the Quotation Inbox, instead of a server round trip per status click.
-  const { docs } = await payload.find({
+  // Status, search and paging all run on the server: the table has far more
+  // quotations than a single fetch should carry, and filtering a capped
+  // batch in the browser hid every older quotation from search.
+  const currentPage = Math.max(1, Number(page) || 1)
+  const activeStatus = status && VALID_STATUSES.includes(status) ? status : undefined
+  const term = (q || '').trim()
+
+  const conditions: any[] = []
+  if (activeStatus) conditions.push({ status: { equals: activeStatus } })
+  if (term) {
+    conditions.push({
+      or: [
+        { quotationNumber: { contains: term } },
+        { customerName: { contains: term } },
+        { company: { contains: term } },
+        { salesPerson: { contains: term } },
+        { 'items.description': { contains: term } },
+      ],
+    })
+  }
+
+  const { docs, totalDocs, totalPages } = await payload.find({
     collection: 'client-quotations',
     sort: '-createdAt',
-    limit: 100,
+    limit: PAGE_SIZE,
+    page: currentPage,
+    where: conditions.length ? { and: conditions } : undefined,
   })
 
+  // `?view=` deep links open a card as a modal; the quotation may sit on a
+  // different page than the one being shown, so fetch it directly.
+  let viewQuotation: any = docs.find((d: any) => String(d.id) === view)
+  if (view && !viewQuotation) {
+    viewQuotation = await payload.findByID({ collection: 'client-quotations', id: view }).catch(() => undefined)
+  }
+
   // Data Mapping for Orders
-  const quotationIds = docs.map((d: any) => String(d.id))
+  const quotationIds = [...docs, ...(viewQuotation ? [viewQuotation] : [])].map((d: any) => String(d.id))
   const ordersRes = quotationIds.length > 0
     ? await payload.find({
         collection: 'orders',
@@ -200,7 +239,16 @@ export default async function ClientQuotationPage({
         <AutoApproveToggle initialEnabled={Boolean(approvalSettings?.autoApproveMode)} />
       </div>
 
-      <ClientQuotationsListClient quotations={docs} orderIdByQuotationId={orderIdByQuotationId} />
+      <ClientQuotationsListClient
+        quotations={docs}
+        viewQuotation={viewQuotation}
+        orderIdByQuotationId={orderIdByQuotationId}
+        totalDocs={totalDocs}
+        totalPages={totalPages}
+        currentPage={currentPage}
+        initialStatus={activeStatus}
+        initialQuery={q || ''}
+      />
     </div>
   )
 }

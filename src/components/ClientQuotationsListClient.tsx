@@ -1,14 +1,13 @@
 'use client'
 
-// Same "fetch once, filter client-side" pattern as QuotationInboxClient /
-// ProductCatalog: the server component fetches the full (capped) batch of
-// quotations one time, and Status + Search both filter that already-fetched
-// list in memory -- no server round trip, no full page reload per click,
-// unlike the old Link-based status pills this replaces.
+// Status, Search and paging are applied by the server (see page.tsx): each
+// change updates the URL and the server re-renders just the requested page.
+// The quotation table is far larger than one fetch should carry, so filtering
+// a pre-fetched batch in the browser used to hide every older quotation.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import CollectionStatusSelect from '@/components/CollectionStatusSelect'
 
 const STATUS_OPTIONS = [
@@ -36,14 +35,6 @@ const peso = (n: number) =>
 
 function normalizeStatus(value: string | null | undefined): string | undefined {
   return value && VALID_STATUSES.has(value) ? value : undefined
-}
-
-function matchesSearch(q: any, needle: string): boolean {
-  const parts: string[] = [q.quotationNumber, q.customerName, q.company, q.salesPerson]
-  if (Array.isArray(q.items)) {
-    for (const item of q.items) parts.push(item?.description)
-  }
-  return parts.filter(Boolean).some((p) => String(p).toLowerCase().includes(needle))
 }
 
 // Shared between the list row and the detail modal, so the two never drift
@@ -218,18 +209,29 @@ function QuotationCardBody({
 
 export default function ClientQuotationsListClient({
   quotations,
+  viewQuotation,
   orderIdByQuotationId,
+  totalDocs,
+  totalPages,
+  currentPage,
+  initialStatus,
+  initialQuery,
 }: {
   quotations: any[]
+  viewQuotation?: any
   orderIdByQuotationId: Record<string, string>
+  totalDocs: number
+  totalPages: number
+  currentPage: number
+  initialStatus?: string
+  initialQuery: string
 }) {
+  const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  const [activeStatus, setActiveStatus] = useState<string | undefined>(
-    normalizeStatus(searchParams.get('status')),
-  )
-  const [searchQuery, setSearchQuery] = useState<string>(searchParams.get('q') || '')
+  const activeStatus = normalizeStatus(initialStatus)
+  const [searchQuery, setSearchQuery] = useState<string>(initialQuery)
   // Deliberately a different param from `id` -- on this page `?id=` already
   // means "open the full QuotationGenerator editor" (see page.tsx), a
   // completely different navigation. `view` is just "show this card's
@@ -237,62 +239,56 @@ export default function ClientQuotationsListClient({
   const [openViewId, setOpenViewId] = useState<string | undefined>(searchParams.get('view') || undefined)
 
   useEffect(() => {
-    setActiveStatus(normalizeStatus(searchParams.get('status')))
-    setSearchQuery(searchParams.get('q') || '')
     setOpenViewId(searchParams.get('view') || undefined)
   }, [searchParams])
 
-  function syncUrl(next: { status?: string; q?: string; view?: string }) {
-    const params = new URLSearchParams(searchParams.toString())
+  function buildHref(next: { status?: string; q?: string; page?: number }) {
+    const params = new URLSearchParams()
     const nextStatus = 'status' in next ? next.status : activeStatus
-    const nextQuery = 'q' in next ? next.q : searchQuery
-    const nextView = 'view' in next ? next.view : openViewId
+    const nextQuery = 'q' in next ? next.q : searchQuery.trim()
     if (nextStatus) params.set('status', nextStatus)
-    else params.delete('status')
     if (nextQuery) params.set('q', nextQuery)
-    else params.delete('q')
-    if (nextView) params.set('view', nextView)
-    else params.delete('view')
+    if (next.page && next.page > 1) params.set('page', String(next.page))
     const qs = params.toString()
-    window.history.replaceState(null, '', qs ? `${pathname}?${qs}` : pathname)
+    return qs ? `${pathname}?${qs}` : pathname
   }
 
   useEffect(() => {
-    const timer = setTimeout(() => syncUrl({ q: searchQuery || undefined }), 400)
+    const term = searchQuery.trim()
+    if (term === initialQuery.trim()) return
+    const timer = setTimeout(() => router.replace(buildHref({ q: term || undefined })), 400)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery])
 
   function handleStatusClick(value: string) {
-    const next = value || undefined
-    setActiveStatus(next)
-    syncUrl({ status: next })
+    router.push(buildHref({ status: value || undefined }))
+  }
+
+  function setViewParam(next: string | undefined) {
+    const params = new URLSearchParams(searchParams.toString())
+    if (next) params.set('view', next)
+    else params.delete('view')
+    const qs = params.toString()
+    window.history.replaceState(null, '', qs ? `${pathname}?${qs}` : pathname)
   }
 
   function openView(id: string | number) {
     const next = String(id)
     setOpenViewId(next)
-    syncUrl({ view: next })
+    setViewParam(next)
   }
 
   function closeView() {
     setOpenViewId(undefined)
-    syncUrl({ view: undefined })
+    setViewParam(undefined)
   }
 
-  const filtered = useMemo(() => {
-    const needle = searchQuery.trim().toLowerCase()
-    return quotations.filter((q) => {
-      const matchesStatus = !activeStatus || q.status === activeStatus
-      const matchesQ = !needle || matchesSearch(q, needle)
-      return matchesStatus && matchesQ
-    })
-  }, [quotations, activeStatus, searchQuery])
-
-  // Matched against the full `quotations` list, not `filtered` -- a deep
-  // link should open the card even if the current Status/Search filters
-  // would otherwise hide it.
-  const openQuotation = openViewId ? quotations.find((q) => String(q.id) === openViewId) : undefined
+  const filtered = quotations
+  const openQuotation = openViewId
+    ? quotations.find((q) => String(q.id) === openViewId) ??
+      (viewQuotation && String(viewQuotation.id) === openViewId ? viewQuotation : undefined)
+    : undefined
 
   return (
     <>
@@ -349,12 +345,18 @@ export default function ClientQuotationsListClient({
         })}
       </div>
 
+      <p className="text-[11px] text-gray-400 font-medium mb-4">
+        {totalDocs} quotation{totalDocs === 1 ? '' : 's'}
+        {activeStatus ? ` with status "${STATUS_LABELS[activeStatus]}"` : ''}
+        {initialQuery.trim() ? ` matching "${initialQuery.trim()}"` : ''}
+      </p>
+
       {filtered.length === 0 ? (
         <div className="border border-dashed border-gray-200 py-12 text-center rounded">
           <p className="text-xs text-gray-400 font-medium">
             No quotations
             {activeStatus ? ` with status "${STATUS_LABELS[activeStatus]}"` : ''}
-            {searchQuery ? ` matching "${searchQuery}"` : ''} found.
+            {initialQuery.trim() ? ` matching "${initialQuery.trim()}"` : ''} found.
           </p>
         </div>
       ) : (
@@ -368,6 +370,38 @@ export default function ClientQuotationsListClient({
               <QuotationCardBody q={q} existingOrderId={orderIdByQuotationId[String(q.id)]} />
             </div>
           ))}
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex flex-wrap items-center justify-center gap-2 mt-6">
+          {currentPage > 1 ? (
+            <Link
+              href={buildHref({ page: currentPage - 1 })}
+              className="text-[10px] font-bold uppercase tracking-wider px-4 py-2 rounded border bg-white border-gray-200 text-gray-600 hover:border-[#01172f] hover:text-[#01172f] transition-all"
+            >
+              &larr; Prev
+            </Link>
+          ) : (
+            <span className="text-[10px] font-bold uppercase tracking-wider px-4 py-2 rounded border bg-gray-50 border-gray-100 text-gray-300">
+              &larr; Prev
+            </span>
+          )}
+          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-3">
+            Page {currentPage} of {totalPages}
+          </span>
+          {currentPage < totalPages ? (
+            <Link
+              href={buildHref({ page: currentPage + 1 })}
+              className="text-[10px] font-bold uppercase tracking-wider px-4 py-2 rounded border bg-white border-gray-200 text-gray-600 hover:border-[#01172f] hover:text-[#01172f] transition-all"
+            >
+              Next &rarr;
+            </Link>
+          ) : (
+            <span className="text-[10px] font-bold uppercase tracking-wider px-4 py-2 rounded border bg-gray-50 border-gray-100 text-gray-300">
+              Next &rarr;
+            </span>
+          )}
         </div>
       )}
 
