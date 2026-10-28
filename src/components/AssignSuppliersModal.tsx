@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
+import { fetchAllPages } from '@/lib/fetchAllPages'
 
 type OrderItem = {
   description: string
@@ -68,11 +69,10 @@ export default function AssignSuppliersModal({
   useEffect(() => {
     if (step === 'select-supplier' && suppliers.length === 0) {
       setLoadingSuppliers(true)
-      fetch('/api/suppliers?limit=200&sort=name', { credentials: 'include' })
-        .then((res) => res.json())
-        .then((data) => {
-          setSuppliers(data.docs || [])
-          if (!data.docs || data.docs.length === 0) setAddingNew(true)
+      fetchAllPages('/api/suppliers?sort=name')
+        .then((docs) => {
+          setSuppliers(docs)
+          if (docs.length === 0) setAddingNew(true)
         })
         .catch(() => setSuppliers([]))
         .finally(() => setLoadingSuppliers(false))

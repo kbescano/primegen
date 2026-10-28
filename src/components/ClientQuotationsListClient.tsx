@@ -1,14 +1,16 @@
 'use client'
 
-// Status, Search and paging are applied by the server (see page.tsx): each
-// change updates the URL and the server re-renders just the requested page.
-// The quotation table is far larger than one fetch should carry, so filtering
-// a pre-fetched batch in the browser used to hide every older quotation.
+// Status and Search are applied by the server (see page.tsx): each change
+// updates the URL and the server re-renders the newest page. Older
+// quotations are loaded on demand as the list is scrolled (or via the
+// button), so every quotation stays reachable without loading all of them.
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import CollectionStatusSelect from '@/components/CollectionStatusSelect'
+import InfiniteScrollSentinel from '@/components/InfiniteScrollSentinel'
+import { loadMoreQuotations } from '@/app/admin-dashboard/client-quotation/actions'
 
 const STATUS_OPTIONS = [
   { value: 'draft', label: 'Draft' },
@@ -212,8 +214,7 @@ export default function ClientQuotationsListClient({
   viewQuotation,
   orderIdByQuotationId,
   totalDocs,
-  totalPages,
-  currentPage,
+  hasNextPage,
   initialStatus,
   initialQuery,
 }: {
@@ -221,8 +222,7 @@ export default function ClientQuotationsListClient({
   viewQuotation?: any
   orderIdByQuotationId: Record<string, string>
   totalDocs: number
-  totalPages: number
-  currentPage: number
+  hasNextPage: boolean
   initialStatus?: string
   initialQuery: string
 }) {
@@ -232,6 +232,64 @@ export default function ClientQuotationsListClient({
 
   const activeStatus = normalizeStatus(initialStatus)
   const [searchQuery, setSearchQuery] = useState<string>(initialQuery)
+
+  // Newest page comes from the server; older pages are appended here.
+  const [items, setItems] = useState<any[]>(quotations)
+  const [orderMap, setOrderMap] = useState<Record<string, string>>(orderIdByQuotationId)
+  const [nextPage, setNextPage] = useState(2)
+  const [hasMore, setHasMore] = useState(hasNextPage)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [loadError, setLoadError] = useState('')
+  const firstPageIds = useRef(new Set(quotations.map((q) => q.id)))
+  const filterKey = `${initialStatus || ''}|${initialQuery.trim()}`
+  const lastFilterKey = useRef(filterKey)
+
+  // The server re-sends the newest page whenever the filter changes or
+  // router.refresh() runs (e.g. after a status change). A new filter starts
+  // the list over; a plain refresh updates those rows in place and keeps
+  // whatever older pages are already loaded.
+  useEffect(() => {
+    if (lastFilterKey.current !== filterKey) {
+      lastFilterKey.current = filterKey
+      setItems(quotations)
+      setOrderMap(orderIdByQuotationId)
+      setNextPage(2)
+      setHasMore(hasNextPage)
+      setLoadError('')
+    } else {
+      const fresh = new Map(quotations.map((q) => [q.id, q]))
+      setItems((prev) => {
+        const kept = prev
+          .filter((p) => !(firstPageIds.current.has(p.id) && !fresh.has(p.id)))
+          .map((p) => fresh.get(p.id) ?? p)
+        const have = new Set(kept.map((p) => p.id))
+        return [...quotations.filter((q) => !have.has(q.id)), ...kept]
+      })
+      setOrderMap((prev) => ({ ...prev, ...orderIdByQuotationId }))
+    }
+    firstPageIds.current = new Set(quotations.map((q) => q.id))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [quotations, orderIdByQuotationId])
+
+  async function loadMore() {
+    if (loadingMore || !hasMore) return
+    setLoadingMore(true)
+    setLoadError('')
+    try {
+      const res = await loadMoreQuotations({ status: activeStatus, q: initialQuery, page: nextPage })
+      setItems((prev) => {
+        const have = new Set(prev.map((p) => p.id))
+        return [...prev, ...res.docs.filter((d: any) => !have.has(d.id))]
+      })
+      setOrderMap((prev) => ({ ...prev, ...res.orderIdByQuotationId }))
+      setNextPage((n) => n + 1)
+      setHasMore(res.hasNextPage)
+    } catch {
+      setLoadError('Could not load older quotations. Try again.')
+    } finally {
+      setLoadingMore(false)
+    }
+  }
   // Deliberately a different param from `id` -- on this page `?id=` already
   // means "open the full QuotationGenerator editor" (see page.tsx), a
   // completely different navigation. `view` is just "show this card's
@@ -242,13 +300,12 @@ export default function ClientQuotationsListClient({
     setOpenViewId(searchParams.get('view') || undefined)
   }, [searchParams])
 
-  function buildHref(next: { status?: string; q?: string; page?: number }) {
+  function buildHref(next: { status?: string; q?: string }) {
     const params = new URLSearchParams()
     const nextStatus = 'status' in next ? next.status : activeStatus
     const nextQuery = 'q' in next ? next.q : searchQuery.trim()
     if (nextStatus) params.set('status', nextStatus)
     if (nextQuery) params.set('q', nextQuery)
-    if (next.page && next.page > 1) params.set('page', String(next.page))
     const qs = params.toString()
     return qs ? `${pathname}?${qs}` : pathname
   }
@@ -284,9 +341,8 @@ export default function ClientQuotationsListClient({
     setViewParam(undefined)
   }
 
-  const filtered = quotations
   const openQuotation = openViewId
-    ? quotations.find((q) => String(q.id) === openViewId) ??
+    ? items.find((q) => String(q.id) === openViewId) ??
       (viewQuotation && String(viewQuotation.id) === openViewId ? viewQuotation : undefined)
     : undefined
 
@@ -351,7 +407,7 @@ export default function ClientQuotationsListClient({
         {initialQuery.trim() ? ` matching "${initialQuery.trim()}"` : ''}
       </p>
 
-      {filtered.length === 0 ? (
+      {items.length === 0 ? (
         <div className="border border-dashed border-gray-200 py-12 text-center rounded">
           <p className="text-xs text-gray-400 font-medium">
             No quotations
@@ -361,49 +417,27 @@ export default function ClientQuotationsListClient({
         </div>
       ) : (
         <div className="flex flex-col gap-5">
-          {filtered.map((q: any) => (
+          {items.map((q: any) => (
             <div
               key={q.id}
               onClick={() => openView(q.id)}
               className="bg-white border border-gray-200 rounded p-4 sm:p-5 transition-all hover:border-gray-300 hover:shadow-sm cursor-pointer"
             >
-              <QuotationCardBody q={q} existingOrderId={orderIdByQuotationId[String(q.id)]} />
+              <QuotationCardBody q={q} existingOrderId={orderMap[String(q.id)]} />
             </div>
           ))}
         </div>
       )}
 
-      {totalPages > 1 && (
-        <div className="flex flex-wrap items-center justify-center gap-2 mt-6">
-          {currentPage > 1 ? (
-            <Link
-              href={buildHref({ page: currentPage - 1 })}
-              className="text-[10px] font-bold uppercase tracking-wider px-4 py-2 rounded border bg-white border-gray-200 text-gray-600 hover:border-[#01172f] hover:text-[#01172f] transition-all"
-            >
-              &larr; Prev
-            </Link>
-          ) : (
-            <span className="text-[10px] font-bold uppercase tracking-wider px-4 py-2 rounded border bg-gray-50 border-gray-100 text-gray-300">
-              &larr; Prev
-            </span>
-          )}
-          <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 px-3">
-            Page {currentPage} of {totalPages}
-          </span>
-          {currentPage < totalPages ? (
-            <Link
-              href={buildHref({ page: currentPage + 1 })}
-              className="text-[10px] font-bold uppercase tracking-wider px-4 py-2 rounded border bg-white border-gray-200 text-gray-600 hover:border-[#01172f] hover:text-[#01172f] transition-all"
-            >
-              Next &rarr;
-            </Link>
-          ) : (
-            <span className="text-[10px] font-bold uppercase tracking-wider px-4 py-2 rounded border bg-gray-50 border-gray-100 text-gray-300">
-              Next &rarr;
-            </span>
-          )}
-        </div>
-      )}
+      <InfiniteScrollSentinel
+        hasMore={hasMore}
+        loading={loadingMore}
+        error={loadError}
+        onLoadMore={loadMore}
+        loadedCount={items.length}
+        totalCount={totalDocs}
+        noun="quotations"
+      />
 
       {openQuotation && (
         <div
@@ -424,7 +458,7 @@ export default function ClientQuotationsListClient({
                 ✕
               </button>
             </div>
-            <QuotationCardBody q={openQuotation} existingOrderId={orderIdByQuotationId[String(openQuotation.id)]} />
+            <QuotationCardBody q={openQuotation} existingOrderId={orderMap[String(openQuotation.id)]} />
           </div>
         </div>
       )}

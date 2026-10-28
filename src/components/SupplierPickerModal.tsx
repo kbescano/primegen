@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useMemo } from 'react'
+import { fetchAllPages } from '@/lib/fetchAllPages'
 
 type SupplierOption = {
   id: string | number
@@ -33,9 +34,8 @@ export default function SupplierPickerModal({
   const [isSaving, setIsSaving] = useState(false)
 
   useEffect(() => {
-    fetch('/api/suppliers?limit=200&sort=name', { credentials: 'include' })
-      .then((res) => res.json())
-      .then((data) => setSuppliers(data.docs || []))
+    fetchAllPages('/api/suppliers?sort=name')
+      .then((docs) => setSuppliers(docs))
       .catch(() => setSuppliers([]))
       .finally(() => setLoading(false))
   }, [])
@@ -45,7 +45,8 @@ export default function SupplierPickerModal({
     const lower = search.toLowerCase()
     return suppliers.filter((s) => 
       s.name.toLowerCase().includes(lower) || 
-      (s.company && s.company.toLowerCase().includes(lower))
+      (s.company && s.company.toLowerCase().includes(lower)) ||
+      (s.phone && s.phone.toLowerCase().includes(lower))
     )
   }, [suppliers, search])
 

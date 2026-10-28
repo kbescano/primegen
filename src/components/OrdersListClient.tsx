@@ -1,16 +1,17 @@
 'use client'
 
-// Same "fetch once, filter client-side" pattern as QuotationInboxClient /
-// ClientQuotationsListClient: the server fetches the full (capped) batch of
-// orders one time, and Status + Search both filter that already-fetched
-// list in memory instead of a server round trip / full page reload per
-// status click.
+// Status and Search are applied by the server (see page.tsx): each change
+// updates the URL and the server re-renders the newest page. Older orders are
+// loaded on demand as the list is scrolled (or via the button), so every
+// order stays reachable without loading all of them at once.
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import OrderOpexSection from '@/components/OrderOpexSection'
 import ReceiptsPreview from '@/components/ReceiptsPreview'
+import InfiniteScrollSentinel from '@/components/InfiniteScrollSentinel'
+import { loadMoreOrders } from '@/app/admin-dashboard/orders/actions'
 
 const FULFILLMENT_STAGES = ['preparing', 'shipped', 'delivered'] as const
 
@@ -45,18 +46,6 @@ const VALID_STATUSES = new Set(FULFILLMENT_OPTIONS.map((s) => s.value))
 
 function normalizeStatus(value: string | null | undefined): string | undefined {
   return value && VALID_STATUSES.has(value) ? value : undefined
-}
-
-function matchesSearch(o: any, orderPOs: any[], needle: string): boolean {
-  const parts: string[] = [o.orderNumber, o.customerName, o.company, o.salesPerson, o.contactNumber]
-  if (Array.isArray(o.items)) {
-    for (const item of o.items) parts.push(item?.description)
-  }
-  for (const po of orderPOs) {
-    parts.push(po?.poNumber)
-    parts.push(po?.supplierName)
-  }
-  return parts.filter(Boolean).some((p) => String(p).toLowerCase().includes(needle))
 }
 
 function PaymentMethodIcon({ method }: { method: string }) {
@@ -442,83 +431,148 @@ function OrderCardBody({ o, orderPOs }: { o: any; orderPOs: any[] }) {
 
 export default function OrdersListClient({
   orders,
+  viewOrder,
   posByOrderId,
   highlightId,
+  totalDocs,
+  hasNextPage,
+  initialStatus,
+  initialQuery,
 }: {
   orders: any[]
+  viewOrder?: any
   posByOrderId: Record<string, any[]>
   highlightId?: string
+  totalDocs: number
+  hasNextPage: boolean
+  initialStatus?: string
+  initialQuery: string
 }) {
+  const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  const [activeStatus, setActiveStatus] = useState<string | undefined>(
-    normalizeStatus(searchParams.get('status')),
-  )
-  const [searchQuery, setSearchQuery] = useState<string>(searchParams.get('q') || '')
+  const activeStatus = normalizeStatus(initialStatus)
+  const [searchQuery, setSearchQuery] = useState<string>(initialQuery)
   // Same `id` param the page already used for the highlight border --
   // extended to also open that order as a modal, same deep-link pattern as
   // the Quotation Inbox. This is what "View Converted Order" on the Client
   // Quotations page links to.
   const [openId, setOpenId] = useState<string | undefined>(searchParams.get('id') || highlightId || undefined)
 
+  // Newest page comes from the server; older pages are appended here.
+  const [items, setItems] = useState<any[]>(orders)
+  const [posMap, setPosMap] = useState<Record<string, any[]>>(posByOrderId)
+  const [nextPage, setNextPage] = useState(2)
+  const [hasMore, setHasMore] = useState(hasNextPage)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [loadError, setLoadError] = useState('')
+  const firstPageIds = useRef(new Set(orders.map((o) => o.id)))
+  const filterKey = `${initialStatus || ''}|${initialQuery.trim()}`
+  const lastFilterKey = useRef(filterKey)
+
+  // The server re-sends the newest page whenever the filter changes or
+  // router.refresh() runs (e.g. after a payment/OPEX edit). A new filter
+  // starts the list over; a plain refresh updates those rows in place and
+  // keeps whatever older pages are already loaded.
   useEffect(() => {
-    setActiveStatus(normalizeStatus(searchParams.get('status')))
-    setSearchQuery(searchParams.get('q') || '')
+    if (lastFilterKey.current !== filterKey) {
+      lastFilterKey.current = filterKey
+      setItems(orders)
+      setPosMap(posByOrderId)
+      setNextPage(2)
+      setHasMore(hasNextPage)
+      setLoadError('')
+    } else {
+      const fresh = new Map(orders.map((o) => [o.id, o]))
+      setItems((prev) => {
+        const kept = prev
+          .filter((p) => !(firstPageIds.current.has(p.id) && !fresh.has(p.id)))
+          .map((p) => fresh.get(p.id) ?? p)
+        const have = new Set(kept.map((p) => p.id))
+        return [...orders.filter((o) => !have.has(o.id)), ...kept]
+      })
+      setPosMap((prev) => ({ ...prev, ...posByOrderId }))
+    }
+    firstPageIds.current = new Set(orders.map((o) => o.id))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orders, posByOrderId])
+
+  useEffect(() => {
     setOpenId(searchParams.get('id') || undefined)
   }, [searchParams])
 
-  function syncUrl(next: { status?: string; q?: string; id?: string }) {
+  async function loadMore() {
+    if (loadingMore || !hasMore) return
+    setLoadingMore(true)
+    setLoadError('')
+    try {
+      const res = await loadMoreOrders({ status: activeStatus, q: initialQuery, page: nextPage })
+      setItems((prev) => {
+        const have = new Set(prev.map((p) => p.id))
+        return [...prev, ...res.docs.filter((d: any) => !have.has(d.id))]
+      })
+      setPosMap((prev) => ({ ...prev, ...res.posByOrderId }))
+      setNextPage((n) => n + 1)
+      setHasMore(res.hasNextPage)
+    } catch {
+      setLoadError('Could not load older orders. Try again.')
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
+  function buildHref(next: { status?: string; q?: string }) {
     const params = new URLSearchParams(searchParams.toString())
     const nextStatus = 'status' in next ? next.status : activeStatus
-    const nextQuery = 'q' in next ? next.q : searchQuery
-    const nextId = 'id' in next ? next.id : openId
+    const nextQuery = 'q' in next ? next.q : searchQuery.trim()
     if (nextStatus) params.set('status', nextStatus)
     else params.delete('status')
     if (nextQuery) params.set('q', nextQuery)
     else params.delete('q')
-    if (nextId) params.set('id', nextId)
-    else params.delete('id')
     const qs = params.toString()
-    window.history.replaceState(null, '', qs ? `${pathname}?${qs}` : pathname)
+    return qs ? `${pathname}?${qs}` : pathname
   }
 
   useEffect(() => {
-    const timer = setTimeout(() => syncUrl({ q: searchQuery || undefined }), 400)
+    const term = searchQuery.trim()
+    if (term === initialQuery.trim()) return
+    const timer = setTimeout(() => router.replace(buildHref({ q: term || undefined })), 400)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery])
 
   function handleStatusClick(value: string) {
-    const next = value || undefined
-    setActiveStatus(next)
-    syncUrl({ status: next })
+    router.push(buildHref({ status: value || undefined }))
+  }
+
+  function setIdParam(next: string | undefined) {
+    const params = new URLSearchParams(searchParams.toString())
+    if (next) params.set('id', next)
+    else params.delete('id')
+    const qs = params.toString()
+    window.history.replaceState(null, '', qs ? `${pathname}?${qs}` : pathname)
   }
 
   function openOrder(id: string | number) {
     const next = String(id)
     setOpenId(next)
-    syncUrl({ id: next })
+    setIdParam(next)
   }
 
   function closeOrder() {
     setOpenId(undefined)
-    syncUrl({ id: undefined })
+    setIdParam(undefined)
   }
 
-  const filtered = useMemo(() => {
-    const needle = searchQuery.trim().toLowerCase()
-    return orders.filter((o) => {
-      const matchesStatus = !activeStatus || o.fulfillmentStatus === activeStatus
-      const matchesQ = !needle || matchesSearch(o, posByOrderId[String(o.id)] || [], needle)
-      return matchesStatus && matchesQ
-    })
-  }, [orders, posByOrderId, activeStatus, searchQuery])
-
-  // Matched against the full `orders` list, not `filtered` -- a deep link
-  // (e.g. from Client Quotations' "View Converted Order") should open the
-  // card even if the current Status/Search filters would otherwise hide it.
-  const openOrderDoc = openId ? orders.find((o) => String(o.id) === openId) : undefined
+  // Matched against everything loaded plus the directly-fetched deep-link
+  // order -- a deep link (e.g. from Client Quotations' "View Converted
+  // Order") should open the card even if it's older than what's loaded or
+  // the current Status/Search filters would hide it.
+  const openOrderDoc = openId
+    ? items.find((o) => String(o.id) === openId) ??
+      (viewOrder && String(viewOrder.id) === openId ? viewOrder : undefined)
+    : undefined
 
   return (
     <>
@@ -575,17 +629,17 @@ export default function OrdersListClient({
         })}
       </div>
 
-      {filtered.length === 0 ? (
+      {items.length === 0 ? (
         <div className="border border-dashed border-gray-200 py-12 text-center rounded-xl">
           <p className="text-xs text-gray-400 font-medium">
             No orders
             {activeStatus ? ` with status "${FULFILLMENT_LABELS[activeStatus]}"` : ''}
-            {searchQuery ? ` matching "${searchQuery}"` : ''} found.
+            {initialQuery.trim() ? ` matching "${initialQuery.trim()}"` : ''} found.
           </p>
         </div>
       ) : (
         <div className="flex flex-col gap-5">
-          {filtered.map((o: any) => {
+          {items.map((o: any) => {
             const isHighlighted = openId && String(o.id) === openId
             return (
               <div
@@ -595,12 +649,22 @@ export default function OrdersListClient({
                   isHighlighted ? 'border-[#149911] shadow-[0_8px_30px_-12px_rgba(20,153,17,0.25)]' : 'border-gray-200 hover:border-gray-300 hover:shadow-sm'
                 }`}
               >
-                <OrderCardBody o={o} orderPOs={posByOrderId[String(o.id)] || []} />
+                <OrderCardBody o={o} orderPOs={posMap[String(o.id)] || []} />
               </div>
             )
           })}
         </div>
       )}
+
+      <InfiniteScrollSentinel
+        hasMore={hasMore}
+        loading={loadingMore}
+        error={loadError}
+        onLoadMore={loadMore}
+        loadedCount={items.length}
+        totalCount={totalDocs}
+        noun="orders"
+      />
 
       {openOrderDoc && (
         <div
@@ -621,7 +685,7 @@ export default function OrdersListClient({
                 ✕
               </button>
             </div>
-            <OrderCardBody o={openOrderDoc} orderPOs={posByOrderId[String(openOrderDoc.id)] || []} />
+            <OrderCardBody o={openOrderDoc} orderPOs={posMap[String(openOrderDoc.id)] || []} />
           </div>
         </div>
       )}

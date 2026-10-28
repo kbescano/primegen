@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getPayloadClient } from "@/lib/getPayloadClient";
+import { findAll } from "@/lib/findAll";
 import StaffPerformanceClient from "@/components/StaffPerformanceClient";
 
 export const dynamic = "force-dynamic"; 
@@ -112,24 +113,26 @@ const staffList = staffRes.docs as any[];
     conditions.push({ createdAt: { less_than: end.toISOString() } });
   }
 
-  const { docs: requests } = await payload.find({
+  const { docs: requests } = await findAll(payload, {
     collection: "quotation-requests",
     where: conditions.length > 0 ? { and: conditions } : undefined,
-    limit: 1000,
-    depth: 2,
+    // One hop is all that's read (assignedTo user, items.material name) --
+    // depth 2 also resolved each product's own relationships for every item
+    // of every request in the window.
+    depth: 1,
     sort: "-createdAt",
   });
 
   const requestIds = requests.map((r: any) => String(r.id));
 
-  const linkedQuotationsRes = requestIds.length > 0 ? await payload.find({ collection: "client-quotations", where: { sourceRequestId: { in: requestIds } }, limit: 300 }) : { docs: [] as any[] };
+  const linkedQuotationsRes = requestIds.length > 0 ? await findAll(payload, { collection: "client-quotations", where: { sourceRequestId: { in: requestIds } } }) : { docs: [] as any[] };
   const quotationByRequestId: Record<string, any> = {};
   for (const cq of linkedQuotationsRes.docs as any[]) if (cq.sourceRequestId) quotationByRequestId[String(cq.sourceRequestId)] = cq;
 
   const linkedQuotationIds = (linkedQuotationsRes.docs as any[]).map((cq: any) => String(cq.id));
   // Only used to build an id lookup for stage/status display -- never
   // shows receipt images -- so exclude those two heavy fields.
-  const linkedOrdersRes = linkedQuotationIds.length > 0 ? await payload.find({ collection: "orders", where: { sourceQuotationId: { in: linkedQuotationIds } }, limit: 300, select: { clientPaymentReceipts: false, supplierPaymentReceipts: false } }) : { docs: [] as any[] };
+  const linkedOrdersRes = linkedQuotationIds.length > 0 ? await findAll(payload, { collection: "orders", where: { sourceQuotationId: { in: linkedQuotationIds } }, select: { clientPaymentReceipts: false, supplierPaymentReceipts: false } }) : { docs: [] as any[] };
   const orderByQuotationId: Record<string, any> = {};
   for (const o of linkedOrdersRes.docs as any[]) if (o.sourceQuotationId) orderByQuotationId[String(o.sourceQuotationId)] = o;
 
@@ -137,7 +140,7 @@ const staffList = staffRes.docs as any[];
   let allLinkedPOs: any[] = [];
   if (orderIds.length > 0) {
     try {
-      const posRes = await payload.find({ collection: "supplier-purchase-orders", where: { sourceOrderId: { in: orderIds } }, limit: 300 });
+      const posRes = await findAll(payload, { collection: "supplier-purchase-orders", where: { sourceOrderId: { in: orderIds } } });
       allLinkedPOs = posRes.docs;
     } catch (e1) {
       console.error("Error fetching POs:", e1);

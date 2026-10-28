@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { headers as getHeaders } from 'next/headers'
 import { getPayloadClient } from '@/lib/getPayloadClient'
+import { findAll } from '@/lib/findAll'
 
 export const dynamic = 'force-dynamic'
 
@@ -41,13 +42,18 @@ export async function GET() {
       // shape applies, so it falls back to a generic one that only
       // accepts `true` (include-mode) values and rejects the `false`
       // (exclude-mode) ones used for orders above.
-      const { docs } = await payload.find({
-        collection: slug,
-        limit: 5000,
-        depth: 0,
-        overrideAccess: true,
-        ...(select ? { select } : {}),
-      } as any)
+      // Every page, not a fixed limit -- a flat cap silently left the rest
+      // of a large collection (e.g. notifications) out of the backup.
+      const { docs } = await findAll(
+        payload,
+        {
+          collection: slug,
+          depth: 0,
+          overrideAccess: true,
+          ...(select ? { select } : {}),
+        },
+        1000,
+      )
       backup[slug] = docs
     } catch (err) {
       console.error(`Backup: failed to export collection "${slug}":`, err)

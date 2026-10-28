@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { fetchAllPages } from '@/lib/fetchAllPages'
 
 export default function AddSupplierForm() {
   const router = useRouter()
@@ -61,10 +62,7 @@ export default function AddSupplierForm() {
 
     try {
       // 1. Fetch existing suppliers for duplicate validation
-      const checkRes = await fetch('/api/suppliers?limit=1000', { credentials: 'include' })
-      if (!checkRes.ok) throw new Error('Failed to verify duplicates')
-      const checkData = await checkRes.json()
-      const existingSuppliers = checkData.docs || []
+      const existingSuppliers = await fetchAllPages('/api/suppliers')
 
       const trimmedCompany = form.company.trim().toLowerCase()
 

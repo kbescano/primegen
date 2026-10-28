@@ -5,15 +5,13 @@ import QuotationGenerator, { type QuotationInitial } from '@/components/Quotatio
 import ClientQuotationsListClient from '@/components/ClientQuotationsListClient'
 import AutoApproveToggle from '@/components/AutoApproveToggle'
 import { getPayloadClient } from '@/lib/getPayloadClient'
+import { fetchQuotationsPage, normalizeQuotationStatus } from '@/lib/quotationList'
 
 // Belt-and-suspenders alongside this page's own headers() call below --
 // same explicit marker as deliveries/inquiry-tracker/reports/sales-report,
 // so the list and the editor (both server-rendered here, driven by ?id=)
 // always re-read items fresh instead of risking a cached pre-edit render.
 export const dynamic = 'force-dynamic'
-
-const PAGE_SIZE = 15
-const VALID_STATUSES = ['draft', 'pending_approval', 'quotation_approved', 'order_confirmed', 'cancelled']
 
 function mapDocToInitial(q: any): QuotationInitial {
   return {
@@ -55,11 +53,10 @@ export default async function ClientQuotationPage({
     status?: string
     pipelineId?: string
     q?: string
-    page?: string
     view?: string
   }>
 }) {
-  const { from, id, new: isNew, pipelineId, status, q, page, view } = await searchParams
+  const { from, id, new: isNew, pipelineId, status, q, view } = await searchParams
 
   const payload = await getPayloadClient()
 
@@ -150,58 +147,34 @@ export default async function ClientQuotationPage({
   }
 
   // ===== LIST MODE (ADMIN ONLY) =====
-  // Status, search and paging all run on the server: the table has far more
-  // quotations than a single fetch should carry, and filtering a capped
-  // batch in the browser hid every older quotation from search.
-  const currentPage = Math.max(1, Number(page) || 1)
-  const activeStatus = status && VALID_STATUSES.includes(status) ? status : undefined
+  // Only the newest page is rendered here; older quotations are loaded on
+  // demand as the list is scrolled (see ClientQuotationsListClient). Status
+  // and search run on the server so they reach every quotation, not just
+  // the ones already loaded.
+  const activeStatus = normalizeQuotationStatus(status)
   const term = (q || '').trim()
 
-  const conditions: any[] = []
-  if (activeStatus) conditions.push({ status: { equals: activeStatus } })
-  if (term) {
-    conditions.push({
-      or: [
-        { quotationNumber: { contains: term } },
-        { customerName: { contains: term } },
-        { company: { contains: term } },
-        { salesPerson: { contains: term } },
-        { 'items.description': { contains: term } },
-      ],
-    })
-  }
-
-  const { docs, totalDocs, totalPages } = await payload.find({
-    collection: 'client-quotations',
-    sort: '-createdAt',
-    limit: PAGE_SIZE,
-    page: currentPage,
-    where: conditions.length ? { and: conditions } : undefined,
+  const { docs, totalDocs, hasNextPage, orderIdByQuotationId } = await fetchQuotationsPage(payload, {
+    status: activeStatus,
+    term,
+    page: 1,
   })
 
-  // `?view=` deep links open a card as a modal; the quotation may sit on a
-  // different page than the one being shown, so fetch it directly.
+  // `?view=` deep links open a card as a modal; the quotation may be older
+  // than the page being shown, so fetch it directly.
   let viewQuotation: any = docs.find((d: any) => String(d.id) === view)
   if (view && !viewQuotation) {
     viewQuotation = await payload.findByID({ collection: 'client-quotations', id: view }).catch(() => undefined)
-  }
-
-  // Data Mapping for Orders
-  const quotationIds = [...docs, ...(viewQuotation ? [viewQuotation] : [])].map((d: any) => String(d.id))
-  const ordersRes = quotationIds.length > 0
-    ? await payload.find({
+    if (viewQuotation) {
+      const viewOrders = await payload.find({
         collection: 'orders',
-        where: { sourceQuotationId: { in: quotationIds } },
-        limit: 200,
-        // Only used to build an id lookup for the "View Converted Order"
-        // link -- never shows receipt images.
+        where: { sourceQuotationId: { equals: String(viewQuotation.id) } },
+        limit: 1,
         select: { clientPaymentReceipts: false, supplierPaymentReceipts: false },
       })
-    : { docs: [] as any[] }
-
-  const orderIdByQuotationId: Record<string, string> = {}
-  for (const o of ordersRes.docs as any[]) {
-    if (o.sourceQuotationId) orderIdByQuotationId[o.sourceQuotationId] = o.id
+      const o: any = viewOrders.docs[0]
+      if (o?.sourceQuotationId) orderIdByQuotationId[o.sourceQuotationId] = o.id
+    }
   }
 
   const approvalSettings: any = await payload
@@ -244,8 +217,7 @@ export default async function ClientQuotationPage({
         viewQuotation={viewQuotation}
         orderIdByQuotationId={orderIdByQuotationId}
         totalDocs={totalDocs}
-        totalPages={totalPages}
-        currentPage={currentPage}
+        hasNextPage={hasNextPage}
         initialStatus={activeStatus}
         initialQuery={q || ''}
       />

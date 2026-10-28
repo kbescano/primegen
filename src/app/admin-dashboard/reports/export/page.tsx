@@ -1,6 +1,7 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getPayloadClient } from '@/lib/getPayloadClient'
+import { findAll } from '@/lib/findAll'
 import DateGranularityFilter from '@/components/DateGranularityFilter'
 import ExportCenterClient from './ExportCenterClient'
 
@@ -60,10 +61,9 @@ export default async function ExportCenterPage({
   }
 
   const [{ docs }, quotationsRes, requestsRes, staffRes] = await Promise.all([
-    payload.find({
+    findAll(payload, {
       collection: 'orders',
       where: conditions.length > 0 ? { and: conditions } : undefined,
-      limit: 1000,
       sort: '-orderDate',
       depth: 0,
       // The Excel export is a financial breakdown, never includes receipt
@@ -71,8 +71,9 @@ export default async function ExportCenterPage({
       // order in the export window.
       select: { clientPaymentReceipts: false, supplierPaymentReceipts: false },
     }),
-    payload.find({ collection: 'client-quotations', limit: 1000, depth: 0 }),
-    payload.find({ collection: 'quotation-requests', limit: 1000, depth: 0 }),
+    findAll(payload, { collection: 'client-quotations', depth: 0 }),
+    // Only assignedTo is read (sales-person lookup).
+    findAll(payload, { collection: 'quotation-requests', depth: 0, select: { assignedTo: true } }),
     // Same "role=user OR nica@primegen.admin" set every other staff lookup
     // in this app uses.
     payload.find({

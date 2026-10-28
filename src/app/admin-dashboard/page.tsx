@@ -3,6 +3,7 @@ import { checkStaleRequestAlerts } from "@/lib/staleRequestAlerts";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import QuotationInboxClient from "@/components/QuotationInboxClient";
+import { findAll } from "@/lib/findAll";
 
 // Generous cap on how many requests can exist within one date window --
 // mirrors /products fetching its whole catalog (up to 500) in one query
@@ -142,12 +143,13 @@ export default async function QuotationInboxPage({
     staff?: string;
     granularity?: string;
     periodValue?: string;
+    q?: string;
   }>;
 }) {
   // status/staff are only used to seed the client component's initial
   // filter state (for a shared/bookmarked URL) -- they no longer affect
   // the server query, since filtering on them now happens client-side.
-  const { status, staff } = await searchParams;
+  const { status, staff, q } = await searchParams;
   let { granularity, periodValue } = await searchParams;
 
   if (!granularity) {
@@ -173,8 +175,23 @@ export default async function QuotationInboxPage({
 
   const isAdmin = currentUser?.role === "admin";
 
+  // A search term looks through every request regardless of the selected
+  // period (the period only scopes the unfiltered list), so an older
+  // inquiry can always be found.
+  const searchTerm = (q || "").trim();
   const conditions: any[] = [];
-  if (start && end) {
+  if (searchTerm) {
+    conditions.push({
+      or: [
+        { customerName: { contains: searchTerm } },
+        { phone: { contains: searchTerm } },
+        { email: { contains: searchTerm } },
+        { message: { contains: searchTerm } },
+        { "items.sizeDescription": { contains: searchTerm } },
+        { "items.material.name": { contains: searchTerm } },
+      ],
+    });
+  } else if (start && end) {
     conditions.push({ createdAt: { greater_than_equal: start.toISOString() } });
     conditions.push({ createdAt: { less_than: end.toISOString() } });
   }
@@ -193,7 +210,7 @@ export default async function QuotationInboxPage({
   // the two small "this week" / "this month" overview counts don't depend
   // on the main quotation-requests query or each other -- run everything
   // together instead of one after the other.
-  const [staffRes, productsRes, { docs }, actionItemsRes, weekOverviewRes, monthOverviewRes] = await Promise.all([
+  const [staffRes, productsRes, requestsRes, actionItemsRes, weekOverviewRes, monthOverviewRes] = await Promise.all([
     isAdmin
       ? payload.find({
           collection: "users",
@@ -214,27 +231,32 @@ export default async function QuotationInboxPage({
       sort: "name",
       select: { name: true, unit: true },
     }),
-    payload.find({
-      collection: "quotation-requests",
-      sort: "-createdAt",
-      limit: FETCH_LIMIT,
-      where: conditions.length > 0 ? { and: conditions } : undefined,
-      // Only need one hop: assignedTo as a user object (for the id/email
-      // shown in AssignStaffSelect) and items.material as a product
-      // object (for name/unit). depth: 2 was also resolving each
-      // material's OWN relationships (category, photos, weight-calc
-      // link) for every item on every row -- unused here.
-      depth: 1,
-      overrideAccess: false,
-      user: currentUser,
-    }),
+    (() => {
+      const args = {
+        collection: "quotation-requests",
+        sort: "-createdAt",
+        where: conditions.length > 0 ? { and: conditions } : undefined,
+        // Only need one hop: assignedTo as a user object (for the id/email
+        // shown in AssignStaffSelect) and items.material as a product
+        // object (for name/unit). depth: 2 was also resolving each
+        // material's OWN relationships (category, photos, weight-calc
+        // link) for every item on every row -- unused here.
+        depth: 1,
+        overrideAccess: false,
+        user: currentUser,
+      };
+      // Search results are capped (a one-letter search would match nearly
+      // everything); the plain period list is loaded in full.
+      return searchTerm
+        ? payload.find({ ...args, limit: FETCH_LIMIT } as any)
+        : findAll(payload, args);
+    })(),
     // overrideAccess: false + user here is what scopes this to "all" for
     // Admin vs "only mine" for Staff -- same as the main query, driven
     // entirely by ActionItems.ts's own read access, not a where clause.
-    payload.find({
+    findAll(payload, {
       collection: "action-items",
       sort: "-createdAt",
-      limit: 100,
       where: { status: { not_equals: "closed" } },
       depth: 1,
       overrideAccess: false,
@@ -244,7 +266,7 @@ export default async function QuotationInboxPage({
     // staff user (their own read access already scopes to assignedTo ===
     // themselves) vs. the combined total for Admin/Marketing -- same as
     // the main query above, no extra where clause needed for that part.
-    payload.find({
+    findAll(payload, {
       collection: "quotation-requests",
       where: {
         and: [
@@ -252,12 +274,12 @@ export default async function QuotationInboxPage({
           { createdAt: { less_than: weekRange.end.toISOString() } },
         ],
       },
-      limit: FETCH_LIMIT,
       depth: 0,
+      select: { status: true },
       overrideAccess: false,
       user: currentUser,
     }),
-    payload.find({
+    findAll(payload, {
       collection: "quotation-requests",
       where: {
         and: [
@@ -265,8 +287,8 @@ export default async function QuotationInboxPage({
           { createdAt: { less_than: monthRange.end.toISOString() } },
         ],
       },
-      limit: FETCH_LIMIT,
       depth: 0,
+      select: { status: true },
       overrideAccess: false,
       user: currentUser,
     }),
@@ -284,13 +306,14 @@ export default async function QuotationInboxPage({
     unit: m.unit || "pcs",
   }));
 
+  const docs = requestsRes.docs as any[];
+  const searchCapped = Boolean(searchTerm) && requestsRes.totalDocs > docs.length;
   const requestIds = docs.map((d: any) => d.id);
   const linkedQuotations =
     requestIds.length > 0
-      ? await payload.find({
+      ? await findAll(payload, {
           collection: "client-quotations",
           where: { sourceRequestId: { in: requestIds } },
-          limit: FETCH_LIMIT,
         })
       : { docs: [] as any[] };
 
@@ -302,10 +325,9 @@ export default async function QuotationInboxPage({
   const linkedQuotationIds = Object.values(quotationIdByRequestId);
   const linkedOrders =
     linkedQuotationIds.length > 0
-      ? await payload.find({
+      ? await findAll(payload, {
           collection: "orders",
           where: { sourceQuotationId: { in: linkedQuotationIds } },
-          limit: FETCH_LIMIT,
           // This page only needs status/stage fields to compute the
           // pipeline stage badge, never the receipt images -- excluding
           // them cuts a large, avoidable amount of Postgres network
@@ -323,10 +345,9 @@ export default async function QuotationInboxPage({
   const orderIds = (linkedOrders.docs as any[]).map((o: any) => String(o.id));
   const linkedPOsRes =
     orderIds.length > 0
-      ? await payload.find({
+      ? await findAll(payload, {
           collection: "supplier-purchase-orders",
           where: { sourceOrderId: { in: orderIds } },
-          limit: FETCH_LIMIT,
         })
       : { docs: [] as any[] };
   const posByOrderId: Record<string, any[]> = {};
@@ -339,11 +360,12 @@ export default async function QuotationInboxPage({
   // Precompute each row's pipeline stage server-side, since it needs the
   // linked-quotations/orders/POs lookups above -- the client component
   // just renders `.stageLabel`, it doesn't need any of this wiring.
+  const linkedQuotationById = new Map(
+    (linkedQuotations.docs as any[]).map((cq: any) => [String(cq.id), cq]),
+  );
   const requestsWithStage = docs.map((q: any) => {
     const linkedQuotationId = quotationIdByRequestId[q.id];
-    const linkedQuotation = linkedQuotations.docs.find(
-      (cq: any) => String(cq.id) === String(linkedQuotationId),
-    );
+    const linkedQuotation = linkedQuotationById.get(String(linkedQuotationId));
     const { currentStep } = computeStepState(
       linkedQuotation,
       orderByQuotationId,
@@ -359,6 +381,9 @@ export default async function QuotationInboxPage({
   return (
     <QuotationInboxClient
       requests={requestsWithStage}
+      searchQuery={q || ""}
+      searchCapped={searchCapped}
+      searchTotal={requestsRes.totalDocs}
       staffOptions={staffOptions}
       isAdmin={isAdmin}
       currentUserName={currentUser?.name || currentUser?.email || "Staff"}

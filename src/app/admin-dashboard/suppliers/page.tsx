@@ -22,7 +22,13 @@ export default async function SuppliersPage({
     page: currentPage,
     where: q
       ? {
-          or: [{ name: { contains: q } }, { company: { contains: q } }],
+          or: [
+            { name: { contains: q } },
+            { company: { contains: q } },
+            { phone: { contains: q } },
+            { email: { contains: q } },
+            { address: { contains: q } },
+          ],
         }
       : undefined,
   })

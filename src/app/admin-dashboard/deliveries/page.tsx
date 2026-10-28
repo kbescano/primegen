@@ -1,4 +1,5 @@
 import { getPayloadClient } from "@/lib/getPayloadClient";
+import { findAll } from "@/lib/findAll";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import DeliveriesClient from "./DeliveriesClient";
@@ -29,9 +30,8 @@ export default async function DeliveriesPage({
   }
 
   // 2. Fetch Orders
-  const { docs: orders } = await payload.find({
+  const { docs: orders } = await findAll(payload, {
     collection: "orders",
-    limit: 100,
     where,
     // This list tracks delivery status, never shows receipt images --
     // excluding them avoids pulling every receipt on every order here.
@@ -53,17 +53,15 @@ export default async function DeliveriesPage({
 
   const [itinerariesRes, posRes] = await Promise.all([
     orderIds.length > 0
-      ? payload.find({
-          collection: "delivery-itineraries" as any,
+      ? findAll(payload, {
+          collection: "delivery-itineraries",
           where: { sourceOrderId: { in: orderIds } },
-          limit: 200,
         })
       : Promise.resolve({ docs: [] }),
     orderIds.length > 0
-      ? payload.find({
+      ? findAll(payload, {
           collection: "supplier-purchase-orders",
           where: { sourceOrderId: { in: orderIds } },
-          limit: 500,
         })
       : Promise.resolve({ docs: [] }),
   ]);

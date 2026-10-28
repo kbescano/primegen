@@ -9,7 +9,7 @@
 // window does (see DateGranularityFilter), because that's what actually
 // changes which rows need to be fetched in the first place.
 
-import { useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import StatusSelect from '@/components/StatusSelect'
@@ -156,20 +156,6 @@ function assignedToId(assignedTo: any): string | undefined {
 // lowercased and trimmed by the caller. Covers what sales would actually
 // search by: customer, contact info, the requested items, and the note
 // they left themselves.
-function matchesRequestSearch(q: any, needle: string): boolean {
-  const parts: string[] = [q.customerName, q.phone, q.email, q.message]
-  if (Array.isArray(q.items)) {
-    for (const item of q.items) {
-      const material = item?.material
-      parts.push(typeof material === 'object' ? material?.name : undefined)
-      parts.push(item?.sizeDescription)
-    }
-  }
-  return parts
-    .filter(Boolean)
-    .some((p) => String(p).toLowerCase().includes(needle))
-}
-
 type StaffOption = { id: string; name: string; email: string }
 
 // The full content of one request -- shared between the inbox list (where
@@ -321,6 +307,9 @@ function RequestCardBody({
 
 export default function QuotationInboxClient({
   requests,
+  searchQuery: serverSearchQuery,
+  searchCapped,
+  searchTotal,
   staffOptions,
   isAdmin,
   currentUserName,
@@ -334,6 +323,9 @@ export default function QuotationInboxClient({
   products,
 }: {
   requests: any[] // each pre-annotated server-side with `.stageLabel`
+  searchQuery: string // the term the server already searched with (all dates)
+  searchCapped: boolean
+  searchTotal: number
   staffOptions: StaffOption[]
   isAdmin: boolean
   currentUserName: string
@@ -365,14 +357,19 @@ export default function QuotationInboxClient({
   // Action Item's link, or any other shared URL, open straight to one
   // specific request (see the stale-request cron, which links here).
   const [openId, setOpenId] = useState<string | undefined>(searchParams.get('id') || undefined)
-  const [searchQuery, setSearchQuery] = useState<string>(searchParams.get('q') || '')
+  const [searchQuery, setSearchQuery] = useState<string>(serverSearchQuery)
+  const lastPushedQ = useRef(serverSearchQuery.trim())
 
   // Sync state if the user uses the browser Back/Forward buttons
   useEffect(() => {
     setActiveStatus(normalizeStatus(searchParams.get('status')))
     setActiveStaff(searchParams.get('staff') || undefined)
     setOpenId(searchParams.get('id') || undefined)
-    setSearchQuery(searchParams.get('q') || '')
+    const urlQ = (searchParams.get('q') || '').trim()
+    if (urlQ !== lastPushedQ.current) {
+      lastPushedQ.current = urlQ
+      setSearchQuery(urlQ)
+    }
   }, [searchParams])
 
   // Silently update the URL so links remain shareable, without triggering a
@@ -396,10 +393,19 @@ export default function QuotationInboxClient({
     window.history.replaceState(null, '', qs ? `${pathname}?${qs}` : pathname)
   }
 
-  // Filtering itself is instant (in-memory), same as Status/Staff -- only
-  // the URL write is debounced, so typing doesn't spam replaceState.
+  // Search runs on the server (across every request, not just the loaded
+  // period), so a debounced change navigates and the server re-renders.
   useEffect(() => {
-    const timer = setTimeout(() => syncUrl({ q: searchQuery || undefined }), 400)
+    const term = searchQuery.trim()
+    if (term === lastPushedQ.current) return
+    const timer = setTimeout(() => {
+      lastPushedQ.current = term
+      const params = new URLSearchParams(searchParams.toString())
+      if (term) params.set('q', term)
+      else params.delete('q')
+      const qs = params.toString()
+      router.replace(qs ? `${pathname}?${qs}` : pathname)
+    }, 400)
     return () => clearTimeout(timer)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery])
@@ -433,14 +439,12 @@ export default function QuotationInboxClient({
   const openRequestDoc = openId ? requests.find((r) => String(r.id) === openId) : undefined
 
   const filteredRequests = useMemo(() => {
-    const needle = searchQuery.trim().toLowerCase()
     return requests.filter((q) => {
       const matchesStatus = !activeStatus || q.status === activeStatus
       const matchesStaff = !activeStaff || assignedToId(q.assignedTo) === activeStaff
-      const matchesSearch = !needle || matchesRequestSearch(q, needle)
-      return matchesStatus && matchesStaff && matchesSearch
+      return matchesStatus && matchesStaff
     })
-  }, [requests, activeStatus, activeStaff, searchQuery])
+  }, [requests, activeStatus, activeStaff])
 
   return (
     <div className="w-full max-w-[900px] mx-auto py-6 overflow-x-hidden text-gray-700">
@@ -507,6 +511,12 @@ export default function QuotationInboxClient({
           </button>
         )}
       </div>
+      {serverSearchQuery.trim() && (
+        <p className="text-[10.5px] text-gray-400 mb-3 -mt-2">
+          Searching all dates for &quot;{serverSearchQuery.trim()}&quot;
+          {searchCapped ? ` -- showing the newest ${requests.length} of ${searchTotal} matches; narrow your search to see the rest.` : '.'}
+        </p>
+      )}
 
       {/* Filter Section */}
       <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-3 pb-4 border-b border-gray-100">

@@ -111,35 +111,41 @@ async function flagStale(
     },
     depth: 0,
     limit: 100,
+    // Only these are read below.
+    select: { customerName: true, assignedTo: true },
     overrideAccess: true,
   })
 
   if (staleRequests.docs.length === 0) return
+
+  // One lookup for every candidate instead of one query per request: don't
+  // re-flag a request that already has an open auto-alert (belt-and-suspenders
+  // on top of the advisory lock, e.g. from an earlier run that hasn't
+  // resolved yet).
+  const candidateIds = (staleRequests.docs as any[]).map((d) => String(d.id))
+  const openAlerts = await payload.find({
+    collection: 'action-items' as any,
+    where: {
+      and: [
+        { sourceRequestId: { in: candidateIds } },
+        { status: { not_equals: 'closed' } },
+      ],
+    },
+    select: { sourceRequestId: true },
+    limit: candidateIds.length * 5,
+    depth: 0,
+    overrideAccess: true,
+  })
+  const alreadyFlagged = new Set((openAlerts.docs as any[]).map((a) => String(a.sourceRequestId)))
 
   for (const reqDoc of staleRequests.docs as any[]) {
     const requestId = String(reqDoc.id)
     const staffId =
       typeof reqDoc.assignedTo === 'object' ? reqDoc.assignedTo?.id : reqDoc.assignedTo
     if (!staffId) continue
+    if (alreadyFlagged.has(requestId)) continue
 
     try {
-      // Belt-and-suspenders on top of the advisory lock: also don't
-      // re-flag one that's already got an open auto-alert (e.g. from an
-      // earlier run today that hasn't resolved yet).
-      const existing = await payload.find({
-        collection: 'action-items' as any,
-        where: {
-          and: [
-            { sourceRequestId: { equals: requestId } },
-            { status: { not_equals: 'closed' } },
-          ],
-        },
-        limit: 1,
-        depth: 0,
-        overrideAccess: true,
-      })
-      if (existing.docs.length > 0) continue
-
       await payload.create({
         collection: 'action-items' as any,
         data: {

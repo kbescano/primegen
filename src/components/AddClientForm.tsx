@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { fetchAllPages } from '@/lib/fetchAllPages'
 
 export default function AddClientForm() {
   const router = useRouter()
@@ -61,10 +62,7 @@ export default function AddClientForm() {
 
     try {
       // 1. Fetch existing clients for duplicate validation
-      const checkRes = await fetch('/api/clients?limit=1000', { credentials: 'include' })
-      if (!checkRes.ok) throw new Error('Failed to verify duplicates')
-      const checkData = await checkRes.json()
-      const existingClients = checkData.docs || []
+      const existingClients = await fetchAllPages('/api/clients')
 
       const trimmedName = form.name.trim().toLowerCase()
       const trimmedCompany = form.company.trim().toLowerCase()

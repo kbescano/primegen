@@ -1,30 +1,17 @@
 import Link from 'next/link'
 import SupplierPOGenerator, { type SupplierPOInitial } from '@/components/SupplierPOGenerator'
-import CollectionStatusSelect from '@/components/CollectionStatusSelect'
+import SupplierPOListClient from '@/components/SupplierPOListClient'
+import { fetchPOsPage } from '@/lib/supplierPOList'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 
 const STATUSES = ['draft', 'issued', 'fulfilled', 'cancelled'] as const
-const STATUS_OPTIONS = [
-  { value: 'draft', label: 'Draft' },
-  { value: 'issued', label: 'Issued' },
-  { value: 'fulfilled', label: 'Fulfilled' },
-  { value: 'cancelled', label: 'Cancelled' },
-]
 const STATUS_LABELS: Record<string, string> = {
   draft: 'Draft',
   issued: 'Issued',
   fulfilled: 'Fulfilled',
   cancelled: 'Cancelled',
 }
-const STATUS_COLORS: Record<string, string> = {
-  draft: 'bg-gray-100 text-gray-600',
-  issued: 'bg-blue-50 text-blue-600',
-  fulfilled: 'bg-[#149911] text-white',
-  cancelled: 'bg-red-50 text-red-600',
-}
 
-const peso = (n: number) =>
-  n.toLocaleString('en-PH', { style: 'currency', currency: 'PHP', minimumFractionDigits: 2 })
 
 function extractId(val: any): string | undefined {
   if (!val) return undefined
@@ -216,11 +203,11 @@ export default async function SupplierPOPage({
   if (listSupplier) where.supplierName = { equals: listSupplier }
 
   const payload = await getPayloadClient()
-  const { docs } = await payload.find({
-    collection: 'supplier-purchase-orders',
-    sort: '-createdAt',
-    limit: 100,
-    where: Object.keys(where).length > 0 ? where : undefined,
+  const { docs, totalDocs, hasNextPage } = await fetchPOsPage(payload, {
+    status: activeStatus,
+    listOrder,
+    listSupplier,
+    page: 1,
   })
 
   function buildHref(s?: string) {
@@ -272,60 +259,14 @@ export default async function SupplierPOPage({
         )}
       </div>
 
-      <div className="flex flex-col gap-4">
-        {docs.map((po: any) => {
-          const total = (po.items || []).reduce((sum: number, i: any) => sum + i.qty * i.unitPrice, 0)
-
-          return (
-            <div
-              key={po.id}
-              className="bg-white border border-gray-100 rounded-3xl p-5 md:p-6 transition-all duration-300 hover:border-gray-200 hover:shadow-sm"
-            >
-              <div className="flex flex-col sm:flex-row justify-between sm:items-start gap-4 flex-wrap">
-                <div>
-                  <p className="text-[11px] font-semibold tracking-wider uppercase text-gray-400 mb-1.5">{po.poNumber || 'DRAFT'}</p>
-                  <h3 className="text-[18px] font-semibold text-gray-900 tracking-tight leading-none">{po.supplierName || 'Untitled'}</h3>
-                </div>
-                <CollectionStatusSelect
-                  collection="supplier-purchase-orders"
-                  id={po.id}
-                  status={po.status}
-                  options={STATUS_OPTIONS}
-                  colorClassMap={STATUS_COLORS}
-                />
-              </div>
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between mt-5 pt-5 border-t border-gray-50 gap-4">
-                <p className="text-[13px] text-gray-500 font-medium">
-                  {po.poDate
-                    ? new Date(po.poDate).toLocaleDateString('en-PH', {
-                        year: 'numeric',
-                        month: 'short',
-                        day: 'numeric',
-                      })
-                    : ''}
-                </p>
-                <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto">
-                  <p className="text-[16px] font-semibold text-gray-900 font-mono tracking-tight">{peso(total)}</p>
-                  <Link
-                    href={`/admin-dashboard/supplier-po?id=${po.id}`}
-                    className="text-[12px] font-medium text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-full"
-                  >
-                    View / Edit &rarr;
-                  </Link>
-                </div>
-              </div>
-            </div>
-          )
-        })}
-
-        {docs.length === 0 && (
-          <div className="border border-dashed border-gray-200 py-16 text-center rounded-3xl bg-gray-50/50">
-            <p className="text-[14px] text-gray-400 font-medium">
-              No purchase orders found{activeStatus ? ` with status "${STATUS_LABELS[activeStatus]}"` : ''}.
-            </p>
-          </div>
-        )}
-      </div>
+      <SupplierPOListClient
+        pos={docs}
+        totalDocs={totalDocs}
+        hasNextPage={hasNextPage}
+        activeStatus={activeStatus}
+        listOrder={listOrder}
+        listSupplier={listSupplier}
+      />
     </div>
   )
 }

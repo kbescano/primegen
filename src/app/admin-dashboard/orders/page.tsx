@@ -2,13 +2,14 @@ import { getPayloadClient } from '@/lib/getPayloadClient'
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import OrdersListClient from '@/components/OrdersListClient'
+import { fetchOrdersPage, fetchPOsByOrderId, normalizeOrderStatus } from '@/lib/orderList'
 
 export default async function OrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; id?: string; pipelineId?: string }>
+  searchParams: Promise<{ status?: string; id?: string; pipelineId?: string; q?: string }>
 }) {
-  const { id: highlightId, pipelineId } = await searchParams
+  const { id: highlightId, pipelineId, status, q } = await searchParams
   const payload = await getPayloadClient()
 
   const reqHeaders = await headers()
@@ -23,38 +24,27 @@ export default async function OrdersPage({
     }
   }
 
-  // Fetches the whole (capped) batch once -- Status + Search both filter
-  // this client-side now (see OrdersListClient), same pattern as the
-  // Quotation Inbox, instead of a server round trip per status click.
+  // Only the newest page is rendered here; older orders are loaded on demand
+  // as the list is scrolled (see OrdersListClient), and Status + Search run
+  // on the server so they reach every order.
   // NOTE: deliberately NOT excluding clientPaymentReceipts/
-  // supplierPaymentReceipts here, unlike the other order-listing pages --
-  // OrdersListClient's OrderCardBody renders a Payment Receipts preview
-  // inline for every order card on this page (not just a deep-linked
-  // detail view), so they're genuinely needed for every row. This page is
-  // consequently the most expensive one for Postgres network transfer;
-  // worth a follow-up (lazy-load receipts per card on demand, paginate
-  // more aggressively, or move receipt storage to Cloudinary like other
-  // media) rather than fixing under time pressure right now.
-  const { docs } = await payload.find({
-    collection: 'orders',
-    sort: '-createdAt',
-    limit: 100,
-  })
+  // supplierPaymentReceipts -- OrdersListClient's OrderCardBody renders a
+  // Payment Receipts preview inline for every card. Receipts are base64, so
+  // loading in small pages is also what keeps this page's payload bounded.
+  const activeStatus = normalizeOrderStatus(status)
+  const term = (q || '').trim()
+  const isAdmin = user?.role === 'admin'
 
-  const orderIds = docs.map((d: any) => String(d.id))
-  const linkedPOsRes =
-    orderIds.length > 0
-      ? await payload.find({
-          collection: 'supplier-purchase-orders',
-          where: { sourceOrderId: { in: orderIds } },
-          limit: 300,
-        })
-      : { docs: [] as any[] }
-  const posByOrderId: Record<string, any[]> = {}
-  for (const po of linkedPOsRes.docs as any[]) {
-    if (!po.sourceOrderId) continue
-    if (!posByOrderId[po.sourceOrderId]) posByOrderId[po.sourceOrderId] = []
-    posByOrderId[po.sourceOrderId].push(po)
+  const page = await fetchOrdersPage(payload, { status: activeStatus, term, page: 1 })
+  const docs = page.docs
+  const posByOrderId = page.posByOrderId
+
+  // `?id=` deep links open an order as a modal; it may be older than the
+  // page being shown, so fetch it directly.
+  let viewOrder: any = docs.find((d: any) => String(d.id) === highlightId)
+  if (highlightId && !viewOrder) {
+    viewOrder = await payload.findByID({ collection: 'orders', id: highlightId }).catch(() => undefined)
+    if (viewOrder) Object.assign(posByOrderId, await fetchPOsByOrderId(payload, [viewOrder]))
   }
 
   return (
@@ -68,7 +58,16 @@ export default async function OrdersPage({
         </p>
       </div>
 
-      <OrdersListClient orders={docs} posByOrderId={posByOrderId} highlightId={highlightId} />
+      <OrdersListClient
+        orders={docs}
+        viewOrder={viewOrder}
+        posByOrderId={posByOrderId}
+        highlightId={highlightId}
+        totalDocs={page.totalDocs}
+        hasNextPage={isAdmin && page.hasNextPage}
+        initialStatus={activeStatus}
+        initialQuery={q || ''}
+      />
     </div>
   )
 }

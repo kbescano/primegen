@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { getPayloadClient } from '@/lib/getPayloadClient'
+import { findAll } from '@/lib/findAll'
 
 export const dynamic = 'force-dynamic'
 
@@ -185,14 +186,14 @@ export default async function ReportsPage({
   const payload = await getPayloadClient()
 
   const [requestsRes, quotationsRes, ordersRes, staffRes] = await Promise.all([
-    payload.find({ collection: 'quotation-requests', limit: 1000, depth: 0, sort: '-createdAt' }),
-    payload.find({ collection: 'client-quotations', limit: 1000, depth: 0, sort: '-createdAt' }),
+    // Only the date (period count) and assignedTo (sales-person lookup) are read.
+    findAll(payload, { collection: 'quotation-requests', depth: 0, sort: '-createdAt', select: { createdAt: true, assignedTo: true } }),
+    findAll(payload, { collection: 'client-quotations', depth: 0, sort: '-createdAt' }),
     // Financial summary only -- excludes the two receipt-image fields,
     // which are never used here but are otherwise fetched in full for
     // every one of up to 1000 orders on every load of this page.
-    payload.find({
+    findAll(payload, {
       collection: 'orders',
-      limit: 1000,
       depth: 0,
       sort: '-createdAt',
       select: { clientPaymentReceipts: false, supplierPaymentReceipts: false },

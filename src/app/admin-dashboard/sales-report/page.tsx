@@ -1,6 +1,7 @@
 import { headers as getHeaders } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { getPayloadClient } from '@/lib/getPayloadClient'
+import { findAll } from '@/lib/findAll'
 import { FULFILLMENT_OPTIONS } from '@/lib/pipelineUtils'
 import SalesReportFilters from '@/components/SalesReportFilters'
 
@@ -116,10 +117,9 @@ export default async function SalesReportPage({
   // Orders has no relationship field to the staff account -- matched the
   // same way the admin Reports page's own "Performance by Sales Person"
   // breakdown does, by the salesPerson text field.
-  const ordersRes = await payload.find({
+  const ordersRes = await findAll(payload, {
     collection: 'orders',
     where: { salesPerson: { equals: myName } },
-    limit: 1000,
     depth: 0,
     sort: '-createdAt',
     // Never displays receipt images here, just the financial breakdown --
