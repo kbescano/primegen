@@ -3,9 +3,13 @@ import CinematicVideoHero, {
   type HeroSlide,
 } from "@/components/CinematicVideoHero";
 import FeaturedCarousel from "@/components/FeaturedCarousel";
-import ScrollReveal from "@/components/ScrollReveal";
 import CustomerStoriesServer from "@/components/CustomerStoriesServer"; 
 import PainPointsResponse from "@/components/PaintPointResponse";
+import SiteFooter from "@/components/SiteFooter";
+import Marquee from "@/components/Marquee";
+import ScrollProgressVar from "@/components/ScrollProgressVar";
+import KineticText from "@/components/KineticText";
+import Link from "next/link";
 
 export const revalidate = 60;
 
@@ -77,6 +81,7 @@ export default async function HomePage() {
     }),
   ]);
 
+
   const featuredVideo = featuredSlideRes.docs[0]?.video as string | undefined;
 
   const slides: HeroSlide[] =
@@ -93,37 +98,55 @@ export default async function HomePage() {
 
   return (
     <>
+      <ScrollProgressVar />
+
       <CinematicVideoHero slides={slides} />
+
+      <Marquee items={(categories.docs as any[]).map((c) => c.label).filter(Boolean)} />
 
       {/* Insert the new tabbed section here */}
       <CustomerStoriesServer />
 
       <PainPointsResponse />
 
-      <section className="py-16 sm:py-20 lg:py-28 bg-[#05100d] border-t border-[#fdfffc]/5">
-        <div className="max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-20">
-          <ScrollReveal>
+      <section className="relative overflow-hidden py-16 sm:py-20 lg:py-28 bg-[#05100d] border-t border-[#fdfffc]/5">
+        {/* Giant outline words that drift sideways as the page scrolls */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute left-0 top-10 select-none whitespace-nowrap text-[clamp(120px,22vw,340px)] font-black uppercase leading-none tracking-tight text-transparent [-webkit-text-stroke:2px_rgba(47,208,43,0.13)]"
+          style={{ transform: "translate3d(calc(var(--page-p, 0) * -55vw + 6vw), 0, 0)", willChange: "transform" }}
+        >
+          Steel &middot; Pipes &middot; Roofing &middot; Fittings &middot; PPE &middot; Fencing &middot;
+        </div>
+
+        <div className="relative max-w-[1360px] mx-auto px-4 sm:px-6 lg:px-20">
           <h2 className="mb-2 normal-case text-[#fdfffc] text-[24px] sm:text-[28px] md:text-[36px] font-medium leading-tight">
-            Featured Products.{" "}
-            <span className="font-normal text-[#fdfffc]/50 block sm:inline mt-1 sm:mt-0">
-              Browse what&apos;s currently in stock.
-            </span>
+            <KineticText
+              segments={[
+                { text: "Featured Products. " },
+                { text: "Browse what's currently in stock.", className: "font-normal text-[#fdfffc]/50" },
+              ]}
+              stagger={22}
+            />
           </h2>
-          </ScrollReveal>
 
           <div className="mt-8 sm:mt-10">
             <FeaturedCarousel categories={categories.docs as any} featuredVideo={featuredVideo} />
           </div>
+
+          <div className="mt-12 md:mt-16 flex justify-center">
+            <Link
+              href="/products"
+              className="group inline-flex items-center gap-3 px-8 py-3.5 rounded-lg border border-[#fdfffc]/25 text-[#fdfffc] text-[13px] md:text-[14px] font-bold tracking-wide hover:bg-[#fdfffc]/10 hover:border-[#149911]/60 transition-all duration-300"
+            >
+              Browse the full catalog
+              <span className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden="true">&rarr;</span>
+            </Link>
+          </div>
         </div>
       </section>
 
-      <footer className="py-4 md:py-2 bg-sage-tint border-t border-[#01172f]/5">
-        <div className="max-w-[1360px] mx-auto px-4 sm:px-6">
-          <p className="text-center text-[10px] sm:text-xs tracking-wide text-[#01172f]">
-            &copy; {new Date().getFullYear()} Primegen Trading Corporation
-          </p>
-        </div>
-      </footer>
+      <SiteFooter categories={categories.docs as any} />
     </>
   );
 }

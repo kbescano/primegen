@@ -42,11 +42,143 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  * {
+  *,
+  *::before,
+  *::after {
     animation: none !important;
     transition: none !important;
   }
 }
+
+/* ===================================================================
+   Homepage motion system -- industrial / fabrication theme: blueprint
+   linework, forged-in type, caution tape, a crane, weld seams. Everything
+   animates transform / opacity (or a single stroke-dashoffset) only, and
+   every keyframe's resting state is the normal visible state -- so with
+   prefers-reduced-motion (animation: none, above) or no JS, content just
+   appears in place.
+   =================================================================== */
+
+@keyframes fx-tape-left {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-100%, 0, 0); }
+}
+@keyframes fx-tape-right {
+  from { transform: translate3d(-100%, 0, 0); }
+  to { transform: translate3d(0, 0, 0); }
+}
+/* Type is "forged in": drops hard, overshoots, and cools from white-hot. */
+@keyframes fx-slam {
+  0% { opacity: 0; transform: translate3d(0, -0.7em, 0) scale(1.55); filter: brightness(2.4); text-shadow: 0 0 22px rgba(255, 170, 70, 0.95); }
+  55% { opacity: 1; transform: translate3d(0, 0.05em, 0) scale(0.96); filter: brightness(1.5); text-shadow: 0 0 14px rgba(255, 170, 70, 0.6); }
+  75% { transform: translate3d(0, -0.012em, 0) scale(1.015); }
+  100% { opacity: 1; transform: none; filter: brightness(1); text-shadow: 0 0 0 rgba(255, 170, 70, 0); }
+}
+@keyframes fx-shake {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  20% { transform: translate3d(-2px, 2px, 0); }
+  40% { transform: translate3d(2px, -2px, 0); }
+  60% { transform: translate3d(-1px, 1px, 0); }
+  80% { transform: translate3d(1px, -1px, 0); }
+}
+/* Slides in on a rail and clamps into place with a small overshoot. */
+@keyframes fx-clamp {
+  0% { opacity: 0; transform: translate3d(110px, 0, 0); }
+  70% { opacity: 1; transform: translate3d(-8px, 0, 0); }
+  100% { opacity: 1; transform: none; }
+}
+@keyframes fx-kenburns {
+  from { transform: scale(1.04) translate3d(0, 0, 0); }
+  to { transform: scale(1.22) translate3d(-1.5%, -1.2%, 0); }
+}
+@keyframes fx-stripes {
+  from { background-position: 0 0; }
+  to { background-position: 64px 0; }
+}
+@keyframes fx-weld-run {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+@keyframes fx-lower {
+  0% { transform: translate3d(0, -115vh, 0); }
+  62% { transform: translate3d(0, 18px, 0); }
+  78% { transform: translate3d(0, -7px, 0); }
+  90% { transform: translate3d(0, 3px, 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+@keyframes fx-sway {
+  0% { rotate: 0deg; }
+  18% { rotate: 1.7deg; }
+  38% { rotate: -1.35deg; }
+  58% { rotate: 0.85deg; }
+  78% { rotate: -0.4deg; }
+  100% { rotate: 0deg; }
+}
+@keyframes fx-spark {
+  0% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  100% { opacity: 0; transform: translate3d(var(--dx, 0), var(--dy, 0), 0) scale(0.2); }
+}
+@keyframes fx-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
+}
+
+.fx-tape-track { animation: fx-tape-left var(--dur, 40s) linear infinite; will-change: transform; }
+.fx-tape-track.fx-reverse { animation-name: fx-tape-right; }
+.fx-tape:hover .fx-tape-track { animation-play-state: paused; }
+
+.fx-kinetic .fx-char::before { content: attr(data-ch); }
+.fx-kinetic .fx-char {
+  display: inline-block;
+  animation: fx-slam 760ms cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  animation-delay: calc(var(--d, 0ms) + var(--i, 0) * var(--stagger, 28ms));
+}
+.fx-kinetic[data-trigger='view'] .fx-char { animation-play-state: paused; }
+.fx-kinetic[data-trigger='view'][data-inview='true'] .fx-char { animation-play-state: running; }
+
+.fx-clamp { animation: fx-clamp 900ms cubic-bezier(0.2, 0.9, 0.3, 1) both; animation-delay: var(--fd, 0ms); }
+.fx-kenburns { animation: fx-kenburns 8s ease-out both; will-change: transform; }
+.fx-shake { animation: fx-shake 300ms linear 1; animation-delay: var(--sd, 1100ms); }
+.fx-blink { animation: fx-blink 1.4s steps(2, jump-none) infinite; }
+.fx-progress { animation: fx-progress 6s linear both; transform-origin: left; }
+@keyframes fx-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+.fx-stripes {
+  background: repeating-linear-gradient(-45deg, #149911 0 16px, #05100d 16px 32px);
+  background-size: 45.25px 100%;
+  animation: fx-stripes 2.2s linear infinite;
+}
+
+/* Pointer / scroll parallax: custom properties are written (rAF-batched) by
+   the hero; --depth is per element. */
+.fx-parallax {
+  transform: translate3d(calc(var(--px, 0) * var(--depth, 10) * 1px), calc(var(--py, 0) * var(--depth, 10) * 1px), 0);
+  transition: transform 0.35s ease-out;
+  will-change: transform;
+}
+
+/* Crane: the whole assembly lowers in, then the load sways on its cable. */
+.fx-crane .fx-lowering { animation: fx-lower 2.1s cubic-bezier(0.3, 0.7, 0.3, 1) both; animation-play-state: paused; }
+.fx-crane .fx-swaying { transform-origin: 50% -80vh; animation: fx-sway 4.2s ease-out both; animation-delay: 1.7s; animation-play-state: paused; }
+.fx-crane .fx-spark { animation: fx-spark 700ms ease-out both; animation-delay: calc(1.45s + var(--sp, 0ms)); animation-play-state: paused; }
+.fx-crane[data-inview='true'] .fx-lowering,
+.fx-crane[data-inview='true'] .fx-swaying,
+.fx-crane[data-inview='true'] .fx-spark { animation-play-state: running; }
+
+/* Weld seam: a torch-bright point runs along the bottom edge on hover. */
+.fx-weld { position: relative; overflow: hidden; }
+.fx-weld::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+  width: 100%;
+  background: linear-gradient(90deg, transparent 0%, #ffb454 38%, #fff6df 50%, #ffb454 62%, transparent 100%);
+  transform: translateX(-100%);
+  pointer-events: none;
+}
+.fx-weld:hover::after { animation: fx-weld-run 700ms ease-in-out both; }
 
 :focus-visible {
   outline: 2px solid #143109;

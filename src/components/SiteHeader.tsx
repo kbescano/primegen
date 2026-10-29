@@ -36,13 +36,17 @@ export default function SiteHeader() {
       const startFade = 50;  // Begin fading after 50px of scroll
       const endFade = 400;   // Fully transparent at 400px of scroll
 
+      // Eases from solid to a frosted bar, but never to fully clear: the
+      // white nav text and logo wordmark used to vanish over the light
+      // "Pain Points" section once the bar faded to 0.
+      const floor = 0.78;
       if (scrollY <= startFade) {
         setBgOpacity(0.95);
       } else if (scrollY >= endFade) {
-        setBgOpacity(0);
+        setBgOpacity(floor);
       } else {
         const progress = (scrollY - startFade) / (endFade - startFade);
-        setBgOpacity(0.95 - (progress * 0.95));
+        setBgOpacity(0.95 - (progress * (0.95 - floor)));
       }
     };
 

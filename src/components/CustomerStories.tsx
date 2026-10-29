@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { cloudinaryOptimized } from "@/lib/cloudinaryUrl";
+import KineticText from "@/components/KineticText";
 import ScrollReveal from "./ScrollReveal";
 
 interface Story {
@@ -87,7 +89,10 @@ export default function CustomerStories({ stories }: { stories: Story[] }) {
               </span>
             </div>
             <h2 className="text-[28px] md:text-[36px] font-medium tracking-tight text-[#fdfffc] leading-none">
-              Our customer <span className="text-[#149911]">stories</span>
+              <KineticText
+                segments={[{ text: "Our customer " }, { text: "stories", className: "text-[#149911]" }]}
+                stagger={40}
+              />
             </h2>
           </div>
 
@@ -155,7 +160,7 @@ export default function CustomerStories({ stories }: { stories: Story[] }) {
                   `}
                 >
                   <Image
-                    src={activeTab.image}
+                    src={cloudinaryOptimized(activeTab.image, 1000) || activeTab.image}
                     alt={activeTab.title}
                     fill
                     sizes="(max-width: 1024px) 100vw, 600px"

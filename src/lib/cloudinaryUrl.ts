@@ -6,7 +6,9 @@
 // touches Vercel's (separately metered, previously-capped) Image
 // Optimization. Next's own <Image> optimizer is already off site-wide
 // (see next.config.js), so this is the only place that lever exists.
-export function cloudinaryOptimized(url: string | null | undefined): string | undefined {
+// `width` additionally caps the delivered pixel width (c_limit never upscales),
+// so a card that displays at ~500px doesn't download a multi-megapixel original.
+export function cloudinaryOptimized(url: string | null | undefined, width?: number): string | undefined {
   if (!url) return undefined
   const marker = '/upload/'
   const i = url.indexOf(marker)
@@ -15,5 +17,6 @@ export function cloudinaryOptimized(url: string | null | undefined): string | un
   // don't stack a second one.
   const afterUpload = url.slice(i + marker.length)
   if (/^[a-z]_[^/]+\//.test(afterUpload)) return url
-  return `${url.slice(0, i + marker.length)}f_auto,q_auto/${afterUpload}`
+  const params = width ? `f_auto,q_auto,w_${width},c_limit` : 'f_auto,q_auto'
+  return `${url.slice(0, i + marker.length)}${params}/${afterUpload}`
 }

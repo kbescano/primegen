@@ -1,7 +1,11 @@
-// src/app/loading.tsx
+// Branded full-screen loader shown while a public page loads. Used via small
+// loading.tsx files on pages that can never be a 404 -- NOT on routes that call
+// notFound() (unknown URLs, missing products/categories), because a loading
+// boundary sends the response before notFound() runs and turns the 404 into a
+// 200 (a "soft 404").
 import Image from "next/image";
 
-export default function GlobalLoading() {
+export default function SiteLoading() {
   return (
     <div className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#05100d] px-6">
       <div className="flex flex-col items-center justify-center animate-[riseIn_0.7s_cubic-bezier(0.16,1,0.3,1)_both]">

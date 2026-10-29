@@ -72,6 +72,14 @@ export default function PainPointsResponse() {
       }
     };
 
+    // Reduced motion: show everything fully revealed, no scroll-linked effect.
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      setHeaderProgress(1);
+      setCardsProgress(1);
+      setTextProgress(1);
+      return;
+    }
+
     window.addEventListener("scroll", handleScroll, { passive: true });
     update();
 
@@ -161,8 +169,8 @@ export default function PainPointsResponse() {
   const typedDesc = remaining > 0 ? DESC.substring(0, remaining) : "";
 
   return (
-    <section className="py-20 md:py-32 bg-[#fdfffc] overflow-hidden min-h-screen flex flex-col justify-center">
-      <div className="max-w-[1100px] mx-auto px-6 lg:px-20 w-full">
+    <section className="relative py-20 md:py-28 bg-[#fdfffc] overflow-hidden flex flex-col justify-center">
+      <div className="relative z-10 max-w-[1100px] mx-auto px-6 lg:px-20 w-full">
         
         {/* 1. Pain Points Header (Scroll-driven Typewriter) */}
         <div 
@@ -196,7 +204,7 @@ export default function PainPointsResponse() {
         </div>
 
         {/* 2. Pain Points Grid */}
-        <div ref={cardsRef} className="grid gap-6 md:gap-8 sm:grid-cols-3 mb-32 md:mb-48 relative z-10">
+        <div ref={cardsRef} className="grid gap-6 md:gap-8 sm:grid-cols-3 mb-20 md:mb-28 relative z-10">
           {VALUE_PROPS.map((v) => (
             // STATIC WRAPPER: Centers the animated card within the grid cell coordinate space
             <div key={v.num} className="flex items-center justify-center w-full h-full">
