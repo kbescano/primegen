@@ -73,6 +73,30 @@ export default async function PipelinePage({ params }: { params: Promise<{ id: s
     linkedPOs = posRes.docs
   }
 
+  // The order's delivery routes (several are allowed), oldest first -- used to
+  // show which items have been picked up from their suppliers.
+  let routes: any[] = []
+  if (order) {
+    const routesRes = await payload.find({
+      collection: 'delivery-itineraries',
+      where: { sourceOrderId: { equals: order.id } },
+      sort: 'createdAt',
+      limit: 50,
+      depth: 0,
+    })
+    routes = routesRes.docs.map((r: any) => ({
+      id: r.id,
+      trackingNumber: r.trackingNumber,
+      status: r.status,
+      stops: (r.stops || []).map((s: any) => ({
+        type: s.type,
+        address: s.address,
+        contactName: s.contactName,
+        status: s.status,
+      })),
+    }))
+  }
+
   // Gate for unlocking Step 3 and beyond is purely: did the Step 2
   // "Confirm Quotation Sent" modal actually fire? Quotation approval
   // status (quotation_approved) no longer factors into this gate on its
@@ -191,6 +215,7 @@ export default async function PipelinePage({ params }: { params: Promise<{ id: s
             quotation={displayQuotation}
             order={displayOrder}
             linkedPOs={displayPOs}
+            routes={routes}
             completedSteps={completedSteps}
             currentStep={currentStep}
             isAdmin={isAdmin}

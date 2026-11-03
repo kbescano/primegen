@@ -13,6 +13,37 @@ const FULFILLMENT_LABELS: Record<string, string> = {
   cancelled: 'Cancelled',
 };
 
+// All of an order's routes (tracking number, status, driver) plus how many of
+// its items have been picked up from their suppliers so far.
+function RouteSummary({ order }: { order: any }) {
+  const allPickedUp = order.totalItems > 0 && order.pickedUpItems === order.totalItems;
+  return (
+    <div className="flex flex-col items-start gap-1.5">
+      {order.routes.map((r: any, i: number) => (
+        <div key={r.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+          {order.routes.length > 1 && (
+            <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400">Route {i + 1}</span>
+          )}
+          <span className="text-[11px] font-mono font-semibold text-gray-700">{r.trackingNumber}</span>
+          <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
+            r.status === 'delivered' ? 'bg-[#149911]/10 text-[#149911]' : 'bg-amber-50 text-amber-600 border border-amber-100'
+          }`}>
+            {r.status.replace('-', ' ')}
+          </span>
+          {r.driverName && <span className="text-[10px] text-gray-500">{r.driverName}</span>}
+        </div>
+      ))}
+      {order.totalItems > 0 && (
+        <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+          allPickedUp ? 'bg-[#149911]/10 text-[#149911] border-[#149911]/20' : 'bg-gray-50 text-gray-500 border-gray-200'
+        }`}>
+          {order.pickedUpItems}/{order.totalItems} items picked up
+        </span>
+      )}
+    </div>
+  );
+}
+
 export default function DeliveriesClient({
   enrichedOrders,
   filterStatus,
@@ -243,14 +274,7 @@ export default function DeliveriesClient({
                   <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                     <div>
                       {o.hasItinerary ? (
-                        <div className="flex flex-col items-start gap-0.5">
-                          <span className="text-[11px] font-mono font-semibold text-gray-700">{o.itin.trackingNumber}</span>
-                          <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded mt-0.5 ${
-                            o.itin.status === 'delivered' ? 'bg-[#149911]/10 text-[#149911]' : 'bg-amber-50 text-amber-600 border border-amber-100'
-                          }`}>
-                            {o.itin.status.replace('-', ' ')}
-                          </span>
-                        </div>
+                        <RouteSummary order={o} />
                       ) : (
                         <span className="text-[11px] text-gray-400 italic">No route planned</span>
                       )}
@@ -263,7 +287,7 @@ export default function DeliveriesClient({
                           : 'bg-[#149911] text-white hover:bg-[#103900]'
                       }`}
                     >
-                      {o.hasItinerary ? 'Track Route' : 'Plan Route'}
+                      {o.hasItinerary ? (o.routes.length > 1 ? `Track Routes (${o.routes.length})` : 'Track Route') : 'Plan Route'}
                     </button>
                   </div>
                 </div>
@@ -352,15 +376,7 @@ export default function DeliveriesClient({
 
                         <td className="px-5 py-4 align-top">
                           {o.hasItinerary ? (
-                            <div className="flex flex-col items-start gap-1">
-                              <span className="text-[11px] font-mono font-semibold text-gray-700">{o.itin.trackingNumber}</span>
-                              <span className={`text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded ${
-                                o.itin.status === 'delivered' ? 'bg-[#149911]/10 text-[#149911]' : 'bg-amber-50 text-amber-600 border border-amber-100'
-                              }`}>
-                                {o.itin.status.replace('-', ' ')}
-                              </span>
-                              {o.itin.driverName && <span className="text-[10px] text-gray-500 mt-0.5">{o.itin.driverName}</span>}
-                            </div>
+                            <RouteSummary order={o} />
                           ) : (
                             <span className="text-[11px] text-gray-400 italic">No route planned yet</span>
                           )}
@@ -375,7 +391,7 @@ export default function DeliveriesClient({
                                 : 'bg-[#149911] text-white hover:bg-[#103900]'
                             }`}
                           >
-                            {o.hasItinerary ? 'Track Route' : 'Plan Route'}
+                            {o.hasItinerary ? (o.routes.length > 1 ? `Track Routes (${o.routes.length})` : 'Track Route') : 'Plan Route'}
                           </button>
                         </td>
                       </tr>

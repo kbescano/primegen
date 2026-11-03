@@ -4,6 +4,18 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { baseDescription } from "@/lib/pipelineUtils";
+import {
+  isWarehouseStop,
+  orderStatusFromRoutes,
+  PICKUP_LABEL,
+  PICKUP_STYLE,
+  poPickupInfo,
+  posForStop,
+  routeIsComplete,
+  toPoRef,
+  warehousePickupInfo,
+  type PickupInfo,
+} from "@/lib/logistics";
 
 type RouteStop = {
   id?: string;
@@ -63,7 +75,21 @@ export default function DeliveryItineraryTracker({
 }) {
   const router = useRouter();
 
-  const [itinerary, setItinerary] = useState<Itinerary | null>(null);
+  // An order can have several routes (e.g. one pickup run per supplier plus
+  // the delivery). `activeRouteId` is the one on screen; null means a new
+  // route is being planned.
+  const [routes, setRoutes] = useState<Itinerary[]>([]);
+  const [activeRouteId, setActiveRouteId] = useState<string | null>(null);
+  const itinerary: Itinerary | null =
+    routes.find((r) => String(r.id) === activeRouteId) ?? null;
+
+  function upsertRoute(doc: Itinerary) {
+    setRoutes((prev) =>
+      prev.some((r) => String(r.id) === String(doc.id))
+        ? prev.map((r) => (String(r.id) === String(doc.id) ? doc : r))
+        : [...prev, doc],
+    );
+  }
   const [linkedPOs, setLinkedPOs] = useState<SupplierPOData[]>([]);
   const [cargoItems, setCargoItems] = useState<CargoItem[]>([]);
   const [primegenItems, setPrimegenItems] = useState<CargoItem[]>([]);
@@ -111,7 +137,7 @@ export default function DeliveryItineraryTracker({
 
   useEffect(() => {
     const fetchItin = fetch(
-      `/api/delivery-itineraries?where[sourceOrderId][equals]=${orderId}&depth=0`,
+      `/api/delivery-itineraries?where[sourceOrderId][equals]=${orderId}&sort=createdAt&limit=50&depth=0`,
       { credentials: "include" },
     ).then((res) => res.json());
     const fetchPOs = fetch(
@@ -236,7 +262,8 @@ export default function DeliveryItineraryTracker({
         });
 
         if (itinData.docs && itinData.docs.length > 0) {
-          setItinerary(itinData.docs[0]);
+          setRoutes(itinData.docs);
+          setActiveRouteId(String(itinData.docs[0].id));
           setDriverName(itinData.docs[0].driverName || "");
           setVehicleDetails(itinData.docs[0].vehicleDetails || "");
         } else {
@@ -315,6 +342,94 @@ export default function DeliveryItineraryTracker({
     );
   }
 
+  // The order follows its routes: first route planned -> shipped; every
+  // drop-off on every route completed -> delivered; a new pending drop-off on
+  // a delivered order -> back to shipped.
+  async function syncOrderStatus(nextRoutes: Itinerary[]) {
+    if (orderStatus === "cancelled") return;
+    const desired = orderStatusFromRoutes(nextRoutes);
+    if (desired === orderStatus) return;
+    const res = await fetch(`/api/orders/${orderId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ fulfillmentStatus: desired }),
+    });
+    if (res.ok) setOrderStatus(desired);
+  }
+
+  // Pickups for suppliers (and the warehouse) that no route covers yet, then
+  // the client drop-off -- so each additional route starts with what's left.
+  function buildNewRouteStops(): RouteStop[] {
+    const poRefs = linkedPOs.map(toPoRef);
+    const covered = new Set<string>();
+    let warehouseCovered = false;
+    routes.forEach((r) =>
+      (r.stops || []).forEach((st) => {
+        if (st.type !== "pickup") return;
+        if (isWarehouseStop(st)) warehouseCovered = true;
+        posForStop(st, poRefs).forEach((p) => covered.add(String(p.id)));
+      }),
+    );
+
+    const stops: RouteStop[] = [];
+    if (primegenItems.length > 0 && !warehouseCovered) {
+      stops.push({
+        type: "pickup",
+        address: PRIMEGEN_ADDRESS,
+        contactName: "Primegen Trading (Warehouse)",
+        contactPhone: PRIMEGEN_PHONE,
+        scheduledDate: null,
+        status: "pending",
+      });
+    }
+    linkedPOs
+      .filter((po) => !covered.has(po.poId))
+      .forEach((po) =>
+        stops.push({
+          type: "pickup",
+          address: po.address || "",
+          contactName: `${po.name || po.company || "Supplier"} (${po.poNumber})`,
+          contactPhone: po.phone || "",
+          scheduledDate: null,
+          status: "pending",
+        }),
+      );
+    if (stops.length === 0) {
+      stops.push({ type: "pickup", address: "", contactName: "", contactPhone: "", scheduledDate: null, status: "pending" });
+    }
+    stops.push({
+      type: "dropoff",
+      address: clientData?.address || "",
+      contactName: clientData?.name || "",
+      contactPhone: clientData?.phone || "",
+      scheduledDate: null,
+      status: "pending",
+    });
+    return stops;
+  }
+
+  function startNewRoute() {
+    setSaveError("");
+    setRouteStops(buildNewRouteStops());
+    setDriverName("");
+    setVehicleDetails("");
+    setActiveRouteId(null);
+    setSetupMode(true);
+  }
+
+  function cancelPlanning() {
+    setSaveError("");
+    setSetupMode(false);
+    if (!itinerary && routes.length > 0) setActiveRouteId(String(routes[0].id));
+  }
+
+  function selectRoute(id: string | number) {
+    setSaveError("");
+    setSetupMode(false);
+    setActiveRouteId(String(id));
+  }
+
   async function handleSaveRoute(e: React.FormEvent) {
     e.preventDefault();
     setUpdating(true);
@@ -347,8 +462,8 @@ export default function DeliveryItineraryTracker({
       });
       const data = await res.json().catch(() => null);
 
-      // Previously the response was never checked, so a rejected save looked
-      // like nothing happened (and the order was still marked shipped).
+      // The response used to go unchecked, so a rejected save looked like
+      // nothing happened (and the order was still marked shipped).
       if (!res.ok || !data?.doc) {
         const detail =
           data?.errors?.[0]?.data?.errors?.[0]?.message ||
@@ -358,22 +473,15 @@ export default function DeliveryItineraryTracker({
         return;
       }
 
-      // Planning a route is what marks a not-yet-moving order as shipped --
-      // only on the first save, and never for an order that's already
-      // shipped, delivered or cancelled (editing a route must not change
-      // its order's status).
-      if (!itinerary && !["shipped", "delivered", "cancelled"].includes(orderStatus)) {
-        const statusRes = await fetch(`/api/orders/${orderId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ fulfillmentStatus: "shipped" }),
-        });
-        if (statusRes.ok) setOrderStatus("shipped");
-      }
+      const saved: Itinerary = data.doc;
+      const nextRoutes = routes.some((r) => String(r.id) === String(saved.id))
+        ? routes.map((r) => (String(r.id) === String(saved.id) ? saved : r))
+        : [...routes, saved];
 
-      setItinerary(data.doc);
+      upsertRoute(saved);
+      setActiveRouteId(String(saved.id));
       setSetupMode(false);
+      await syncOrderStatus(nextRoutes);
       router.refresh();
     } catch (err) {
       console.error(err);
@@ -389,48 +497,45 @@ export default function DeliveryItineraryTracker({
   ) {
     if (!itinerary || !stopId) return;
     setUpdating(true);
+    setSaveError("");
 
     const updatedStops = itinerary.stops.map((s) =>
       s.id === stopId ? { ...s, status: newStatus as any } : s,
     );
-    const allCompleted = updatedStops
-      .filter((s) => s.type === "dropoff")
-      .every((s) => s.status === "completed");
-
-    const newItineraryStatus = allCompleted ? "delivered" : "in-transit";
-    const newOrderFulfillmentStatus = allCompleted ? "delivered" : "shipped";
+    // A route is done when its drop-offs are (or, for a pickup-only route,
+    // when all its stops are).
+    const newItineraryStatus = routeIsComplete(updatedStops) ? "delivered" : "in-transit";
 
     try {
-      const [res] = await Promise.all([
-        fetch(`/api/delivery-itineraries/${itinerary.id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            stops: updatedStops.map(stop => ({
-              ...stop,
-              scheduledDate: stop.scheduledDate || null
-            })),
-            status: newItineraryStatus,
-          }),
+      const res = await fetch(`/api/delivery-itineraries/${itinerary.id}?depth=0`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          stops: updatedStops.map((stop) => ({
+            ...stop,
+            scheduledDate: stop.scheduledDate || null,
+          })),
+          status: newItineraryStatus,
         }),
-        fetch(`/api/orders/${orderId}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            fulfillmentStatus: newOrderFulfillmentStatus,
-          }),
-        }),
-      ]);
+      });
+      const data = await res.json().catch(() => null);
 
-      if (res.ok) {
-        const data = await res.json();
-        setItinerary(data.doc);
-        router.refresh();
+      if (!res.ok || !data?.doc) {
+        setSaveError(
+          `Could not update the stop: ${data?.errors?.[0]?.message || `Server returned ${res.status}`}`,
+        );
+        return;
       }
+
+      const saved: Itinerary = data.doc;
+      const nextRoutes = routes.map((r) => (String(r.id) === String(saved.id) ? saved : r));
+      upsertRoute(saved);
+      await syncOrderStatus(nextRoutes);
+      router.refresh();
     } catch (e) {
       console.error(e);
+      setSaveError("Could not update the stop: network error. Please try again.");
     } finally {
       setUpdating(false);
     }
@@ -479,7 +584,17 @@ export default function DeliveryItineraryTracker({
 
   const isFormValid = routeStops.every((s) => s.address.trim() !== "");
 
+  // Pickup state of a cargo line: its supplier PO's pickup stop(s) across all
+  // routes (or the warehouse's, for Primegen stock).
+  const poRefsForPickup = linkedPOs.map(toPoRef);
+  function pickupInfoForCargo(item: CargoItem): PickupInfo {
+    if (item.sourceName === "Primegen Trading (Warehouse)") return warehousePickupInfo(routes);
+    const po = poRefsForPickup.find((p) => p.poNumber === item.sourcePO);
+    return po ? poPickupInfo(po, poRefsForPickup, routes) : { state: "unscheduled" };
+  }
+
   const WebCargoSummary = () => {
+    const pickedUpCount = cargoItems.filter((c) => pickupInfoForCargo(c).state === "picked_up").length;
     const uniqueSourceKeys = Array.from(
       new Set(cargoItems.map((c) => `${c.sourceName}-${c.sourcePO}`)),
     );
@@ -492,8 +607,19 @@ export default function DeliveryItineraryTracker({
           <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#01172f]">
             Master Cargo Summary
           </h4>
-          <span className="text-[10px] font-bold text-gray-500 bg-white border border-gray-200 px-2 py-0.5 rounded">
-            {cargoItems.length} Items
+          <span className="flex items-center gap-2">
+            <span
+              className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                pickedUpCount === cargoItems.length && cargoItems.length > 0
+                  ? PICKUP_STYLE.picked_up
+                  : "bg-white text-gray-500 border-gray-200"
+              }`}
+            >
+              {pickedUpCount}/{cargoItems.length} picked up
+            </span>
+            <span className="text-[10px] font-bold text-gray-500 bg-white border border-gray-200 px-2 py-0.5 rounded">
+              {cargoItems.length} Items
+            </span>
           </span>
         </div>
 
@@ -532,6 +658,18 @@ export default function DeliveryItineraryTracker({
             <div className="text-[12px] font-bold uppercase text-[#01172f] leading-tight break-words">
               {item.description}
             </div>
+            {(() => {
+              const info = pickupInfoForCargo(item);
+              return (
+                <div
+                  className={`mt-1.5 text-[9px] font-bold uppercase tracking-widest inline-block px-1.5 py-0.5 rounded border mr-1.5 ${PICKUP_STYLE[info.state]}`}
+                >
+                  {info.state === "picked_up" ? "✓ " : ""}
+                  {PICKUP_LABEL[info.state]}
+                  {info.routeNumber && info.state !== "unscheduled" ? ` • Route ${info.routeNumber}` : ""}
+                </div>
+              );
+            })()}
             {!isSingleSource && (
               <div
                 className={`mt-1.5 text-[9px] font-bold uppercase tracking-widest inline-block px-1.5 py-0.5 rounded border break-words ${
@@ -576,8 +714,10 @@ export default function DeliveryItineraryTracker({
       <div className="mt-4 flex flex-col gap-3">
         {primegenStop && primegenItems.length > 0 && (
           <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-3">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-blue-800 mb-2">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-blue-800 mb-2 flex items-center gap-2">
               Primegen Inventory to Load:
+              {stop.status === "completed" && <span className="text-[#149911]">✓ Picked up</span>}
+              {stop.status === "arrived" && <span className="text-amber-600">Driver arrived</span>}
             </p>
             <ul className="space-y-1 pl-1">
               {primegenItems.map((item, idx) => {
@@ -609,8 +749,10 @@ export default function DeliveryItineraryTracker({
 
         {matchedPOs.length > 0 && (
           <div className="bg-[#149911]/5 border border-[#149911]/20 rounded-lg p-3">
-            <p className="text-[9px] font-bold uppercase tracking-widest text-[#149911] mb-2">
+            <p className="text-[9px] font-bold uppercase tracking-widest text-[#149911] mb-2 flex items-center gap-2">
               Supplier Items to Load:
+              {stop.status === "completed" && <span>✓ Picked up</span>}
+              {stop.status === "arrived" && <span className="text-amber-600">Driver arrived</span>}
             </p>
             <div className="flex flex-col gap-3">
               {matchedPOs.map((po, poIdx) => (
@@ -672,6 +814,52 @@ export default function DeliveryItineraryTracker({
   }
 `}</style>
 
+      {routes.length > 0 && (
+        <div className="print:hidden flex flex-wrap items-center gap-2 mb-4">
+          {routes.map((r, i) => {
+            const active = itinerary && String(r.id) === String(itinerary.id) && !setupMode;
+            return (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => selectRoute(r.id)}
+                className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider px-3.5 py-2 rounded-lg border transition-colors focus:outline-none ${
+                  active
+                    ? "bg-[#01172f] text-white border-[#01172f] shadow-sm"
+                    : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                }`}
+              >
+                Route {i + 1}
+                <span className={`font-mono normal-case tracking-normal ${active ? "text-white/70" : "text-gray-400"}`}>
+                  {r.trackingNumber}
+                </span>
+                <span
+                  className={`px-1.5 py-0.5 rounded text-[8px] ${
+                    r.status === "delivered"
+                      ? active ? "bg-white/20 text-white" : "bg-[#149911]/10 text-[#149911]"
+                      : active ? "bg-white/20 text-white" : "bg-amber-50 text-amber-600"
+                  }`}
+                >
+                  {r.status.replace("-", " ")}
+                </span>
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={startNewRoute}
+            disabled={updating}
+            className={`text-[10px] font-bold uppercase tracking-wider px-3.5 py-2 rounded-lg border border-dashed transition-colors focus:outline-none disabled:opacity-50 ${
+              !itinerary
+                ? "border-[#149911] text-[#149911] bg-[#149911]/5"
+                : "border-gray-300 text-gray-600 hover:border-[#149911] hover:text-[#149911]"
+            }`}
+          >
+            + Plan another route
+          </button>
+        </div>
+      )}
+
       {!itinerary || setupMode ? (
         // ==========================================
         // VIEW 1: ROUTE BUILDER (SETUP MODE)
@@ -680,16 +868,22 @@ export default function DeliveryItineraryTracker({
           <div className="p-5 md:p-6 border-b border-gray-200 bg-white flex justify-between items-center mb-6">
             <div>
               <h3 className="text-[18px] font-semibold tracking-tight text-gray-900">
-                Plan Delivery Route
+                {itinerary
+                  ? "Edit Delivery Route"
+                  : routes.length > 0
+                    ? `Plan Route ${routes.length + 1}`
+                    : "Plan Delivery Route"}
               </h3>
               <p className="text-[13px] text-gray-500 mt-1">
-                Set up the multi-stop delivery itinerary.
+                {routes.length > 0 && !itinerary
+                  ? "Pickups still to schedule are pre-filled. Remove any you don't need on this route."
+                  : "Set up the multi-stop delivery itinerary."}
               </p>
             </div>
-            {itinerary && (
+            {routes.length > 0 && (
               <button
                 type="button"
-                onClick={() => setSetupMode(false)}
+                onClick={cancelPlanning}
                 className="text-[11px] font-bold uppercase tracking-widest text-gray-500 hover:text-gray-900 focus:outline-none"
               >
                 Cancel
@@ -970,6 +1164,9 @@ export default function DeliveryItineraryTracker({
               <div className="flex items-center gap-3 mb-1">
                 <h3 className="text-[16px] font-semibold tracking-tight text-gray-900 leading-none">
                   Live Delivery Route
+                  {routes.length > 1
+                    ? ` — Route ${routes.findIndex((r) => String(r.id) === String(itinerary.id)) + 1} of ${routes.length}`
+                    : ""}
                 </h3>
                 <span
                   className={`px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider rounded ${itinerary.status === "delivered" ? "bg-[#149911]/10 text-[#149911]" : "bg-amber-50 text-amber-600"}`}
@@ -1002,6 +1199,15 @@ export default function DeliveryItineraryTracker({
               </button>
             </div>
           </div>
+
+          {saveError && (
+            <p
+              role="alert"
+              className="mx-5 md:mx-8 mb-4 text-[12px] font-medium text-red-600 bg-red-50 border border-red-100 rounded-lg px-4 py-3"
+            >
+              {saveError}
+            </p>
+          )}
 
           <WebCargoSummary />
 

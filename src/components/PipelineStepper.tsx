@@ -17,6 +17,7 @@ export default function PipelineStepper({
   quotation,
   order,
   linkedPOs,
+  routes = [],
   completedSteps,
   currentStep,
   isAdmin,
@@ -26,6 +27,7 @@ export default function PipelineStepper({
   quotation: any | null;
   order: any | null;
   linkedPOs: any[];
+  routes?: any[];
   completedSteps: Record<StepKey, boolean>;
   currentStep: StepKey;
   isAdmin: boolean;
@@ -238,6 +240,7 @@ export default function PipelineStepper({
             <StepFulfilled
               localOrder={localOrder}
               linkedPOs={linkedPOs}
+              routes={routes}
               handleUpdateOrderField={handleUpdateOrderField}
               handleTabChange={handleTabChange}
               isUpdating={isUpdating}

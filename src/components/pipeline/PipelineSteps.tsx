@@ -5,6 +5,7 @@ import OrderOpexSection from "@/components/OrderOpexSection";
 import QuotationPrintPreview from "@/components/pipeline/QuotationPrintPreview";
 import { TabSection, SummaryRow, EmptyStep, InstantSelect, FinancialSummary } from "@/components/pipeline/PipelineSharedUI";
 import { quotationTotal, peso, FULFILLMENT_OPTIONS, FULFILLMENT_COLORS, PAYMENT_OPTIONS, PAYMENT_COLORS } from "@/lib/pipelineUtils";
+import { itemPickupInfos, PICKUP_LABEL, PICKUP_STYLE } from "@/lib/logistics";
 
 const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
 
@@ -472,7 +473,7 @@ function ReceiptGroup({
   );
 }
 
-export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, handleTabChange, isUpdating }: any) {
+export function StepFulfilled({ localOrder, linkedPOs, routes, handleUpdateOrderField, handleTabChange, isUpdating }: any) {
   const [tempAmount, setTempAmount] = useState<string | number>(localOrder?.amountPaid || '');
   const [uploadingClientReceipt, setUploadingClientReceipt] = useState(false);
   const [uploadingSupplierReceipt, setUploadingSupplierReceipt] = useState(false);
@@ -531,6 +532,7 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
 
   const poById: Record<string, any> = {};
   linkedPOs.forEach((po: any) => { poById[String(po.id)] = po; });
+  const pickupInfos = itemPickupInfos(localOrder.items || [], linkedPOs || [], routes || []);
 
   async function handleReceiptUpload(
     e: React.ChangeEvent<HTMLInputElement>,
@@ -616,6 +618,8 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
           <div className="flex flex-col gap-2.5">
             {(localOrder.items || []).map((item: any, i: number) => {
               const po = item.assignedPOId ? poById[item.assignedPOId] : null;
+              // Updates as each supplier pickup is marked on the order's routes.
+              const pickup = pickupInfos[i];
               return (
                 <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-gray-50 pb-2.5 last:border-0 last:pb-0">
                   <div>
@@ -628,6 +632,12 @@ export function StepFulfilled({ localOrder, linkedPOs, handleUpdateOrderField, h
                       <p className="text-[10px] text-[#149911] font-medium mt-1">
                         {po.poNumber ? `${po.poNumber} -- ` : ''}{po.supplierName || 'Unnamed supplier'}
                       </p>
+                    )}
+                    {pickup && (
+                      <span className={`mt-1.5 inline-block text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${PICKUP_STYLE[pickup.state as keyof typeof PICKUP_STYLE]}`}>
+                        {pickup.state === 'picked_up' ? '✓ ' : ''}{PICKUP_LABEL[pickup.state as keyof typeof PICKUP_LABEL]}
+                        {pickup.routeNumber && pickup.state !== 'unscheduled' ? ` • Route ${pickup.routeNumber}` : ''}
+                      </span>
                     )}
                   </div>
                   <p className="text-[12px] font-medium font-mono text-gray-900 sm:text-right flex-shrink-0">

@@ -1,5 +1,6 @@
 import { getPayloadClient } from "@/lib/getPayloadClient";
 import { findAll } from "@/lib/findAll";
+import { pickupProgress } from "@/lib/logistics";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import DeliveriesClient from "./DeliveriesClient";
@@ -144,7 +145,10 @@ export default async function DeliveriesPage({
       : Promise.resolve({ docs: [] }),
   ]);
 
-  const itineraryByOrderId: Record<string, any> = {};
+  // An order can have several routes (e.g. a pickup run per supplier plus
+  // the delivery) -- keep them all, oldest first, so "Route 1, 2, ..." means
+  // the same thing here as in the route screen.
+  const routesByOrderId: Record<string, any[]> = {};
   itinerariesRes.docs.forEach((itin: any) => {
     // Safely extract the ID and map it
     const sourceId =
@@ -152,14 +156,18 @@ export default async function DeliveriesPage({
         ? itin.sourceOrderId?.id
         : itin.sourceOrderId;
     if (sourceId) {
-      itineraryByOrderId[String(sourceId)] = itin;
+      (routesByOrderId[String(sourceId)] ||= []).push(itin);
     }
   });
+  Object.values(routesByOrderId).forEach((list) =>
+    list.sort((a: any, b: any) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()),
+  );
 
   // Pre-calculate properties so the Client gets ready-to-use data
   const enrichedOrders = orders.map((o: any) => {
-    const hasItinerary = !!itineraryByOrderId[String(o.id)];
-    const itin = itineraryByOrderId[String(o.id)];
+    const routes = routesByOrderId[String(o.id)] || [];
+    const hasItinerary = routes.length > 0;
+    const itin = routes[0];
     const address =
       o.shippingAddress ||
       o.deliveryAddress ||
@@ -219,10 +227,20 @@ export default async function DeliveriesPage({
       return String(sourceId) === String(o.id);
     });
 
+    const pickups = pickupProgress(o.items || [], orderPOs, routes);
+
     return {
       ...o,
       hasItinerary,
       itin,
+      routes: routes.map((r: any) => ({
+        id: r.id,
+        trackingNumber: r.trackingNumber,
+        status: r.status,
+        driverName: r.driverName,
+      })),
+      pickedUpItems: pickups.pickedUp,
+      totalItems: pickups.total,
       address,
       targetDateStr,
       deadlineColor,
