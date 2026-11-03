@@ -166,11 +166,24 @@ export default function AssignSuppliersModal({
         selected.has(i) ? { ...item, assignedPOId: String(targetPOId) } : item
       )
 
+      // Save against the order's stored items, not the on-screen copies:
+      // those carry a display-only "name - size" description, and writing it
+      // back (with the size field kept) appended the size again on every save.
+      const rawRes = await fetch(`/api/orders/${orderId}?depth=0`, { credentials: 'include', cache: 'no-store' })
+      if (!rawRes.ok) throw new Error('Failed to read order items')
+      const rawItems: any[] = (await rawRes.json()).items || []
+      if (rawItems.length !== localItems.length) {
+        throw new Error('This order changed while you were working -- close and reopen it, then try again.')
+      }
+      const rawUpdated = rawItems.map((item, i) =>
+        selected.has(i) ? { ...item, assignedPOId: String(targetPOId) } : item
+      )
+
       const orderRes = await fetch(`/api/orders/${orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ items: updatedItems }),
+        body: JSON.stringify({ items: rawUpdated }),
       })
       if (!orderRes.ok) throw new Error('Failed to update order items')
 

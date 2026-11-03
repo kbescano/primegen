@@ -145,3 +145,63 @@ export function orderTrueNetProfit(o: any): number {
   );
   return markup - liquidatedOpex;
 }
+// "Name - size" for display. Tolerates a description that already carries the
+// size (older saves appended it repeatedly), so it always shows exactly once.
+export function displayDescription(item: { description?: string; sizeDescription?: string } | null | undefined): string {
+  const base = String(item?.description ?? "");
+  const size = String(item?.sizeDescription ?? "").trim();
+  if (!size) return base;
+  const suffix = ` - ${size}`;
+  let stripped = base;
+  while (stripped.endsWith(suffix)) stripped = stripped.slice(0, -suffix.length);
+  return `${stripped}${suffix}`;
+}
+
+// The item's own name, without any "- size" text appended to it -- for places
+// that show the size separately.
+export function baseDescription(item: { description?: string; sizeDescription?: string } | null | undefined): string {
+  const base = String(item?.description ?? "");
+  const size = String(item?.sizeDescription ?? "").trim();
+  if (!size) return base;
+  const suffix = ` - ${size}`;
+  let stripped = base;
+  while (stripped.endsWith(suffix)) stripped = stripped.slice(0, -suffix.length);
+  return stripped;
+}
+
+const wordSet = (s: string) =>
+  new Set(String(s || "").toLowerCase().split(/[^a-z0-9.]+/).filter(Boolean));
+
+function similarity(a: string, b: string): number {
+  const A = wordSet(a);
+  const B = wordSet(b);
+  if (A.size === 0 || B.size === 0) return 0;
+  let shared = 0;
+  A.forEach((w) => {
+    if (B.has(w)) shared++;
+  });
+  return shared / (A.size + B.size - shared);
+}
+
+// Pairs each PO line with the order line it describes (best word overlap
+// first; equal scores fall back to position). Returns, for every PO line, the
+// index of its order line, or -1 if the PO has more lines than the order has
+// candidates. Replaces position-only matching, which swapped quantities and
+// prices whenever a PO listed its lines in a different order than the order.
+export function matchPoItemsToOrderItems(poDescriptions: string[], orderDescriptions: string[]): number[] {
+  const pairs: { i: number; j: number; score: number }[] = [];
+  poDescriptions.forEach((p, i) =>
+    orderDescriptions.forEach((o, j) => pairs.push({ i, j, score: similarity(p, o) + (i === j ? 1e-4 : 0) })),
+  );
+  pairs.sort((x, y) => y.score - x.score);
+  const result: number[] = new Array(poDescriptions.length).fill(-1);
+  const poTaken = new Set<number>();
+  const orderTaken = new Set<number>();
+  for (const { i, j } of pairs) {
+    if (poTaken.has(i) || orderTaken.has(j)) continue;
+    poTaken.add(i);
+    orderTaken.add(j);
+    result[i] = j;
+  }
+  return result;
+}

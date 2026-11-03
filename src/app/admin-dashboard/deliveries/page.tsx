@@ -9,9 +9,10 @@ export const dynamic = "force-dynamic"; // ✨ Guarantees the page instantly ref
 export default async function DeliveriesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; trackOrderId?: string; q?: string }>;
 }) {
-  const { status: activeStatus } = await searchParams;
+  const { status: activeStatus, trackOrderId, q } = await searchParams;
+  const searchTerm = (q || "").trim();
   const payload = await getPayloadClient();
 
   const reqHeaders = await headers();
@@ -19,14 +20,91 @@ export default async function DeliveriesPage({
 
   if (!user) redirect("/admin-login");
 
+  // Sales staff (role "user") only get their own orders here: orders carry
+  // no link to the staff account, so "theirs" is matched on the salesPerson
+  // name -- the same rule their own Sales Report uses. Admin and marketing
+  // still see every order.
+  const isStaff = (user as any).role === "user";
+  const rawName = String((user as any).name || user.email || "");
+  const myName = rawName.trim();
+  // Some saved names carry stray trailing spaces (on the account and on the
+  // orders alike), so match both the exact and the trimmed spelling.
+  const myNames = Array.from(new Set([rawName, myName])).filter(Boolean);
+
   // 1. Determine Filtering
   const filterStatus = activeStatus || "active";
-  let where: any = undefined;
+  const conditions: any[] = [];
 
-  if (filterStatus === "active") {
-    where = { fulfillmentStatus: { in: ["preparing", "shipped"] } };
+  if (searchTerm) {
+    // A search looks through every order, whatever the status filter says
+    // (otherwise a delivered order could never be found from the default
+    // "Active" view). Linked POs and itineraries live on other collections,
+    // so resolve their matches to order ids first.
+    const [poHits, itinHits] = await Promise.all([
+      findAll(payload, {
+        collection: "supplier-purchase-orders",
+        where: { or: [{ poNumber: { contains: searchTerm } }, { supplierName: { contains: searchTerm } }] },
+        depth: 0,
+        select: { sourceOrderId: true },
+      }),
+      findAll(payload, {
+        collection: "delivery-itineraries",
+        where: {
+          or: [
+            { trackingNumber: { contains: searchTerm } },
+            { driverName: { contains: searchTerm } },
+            { vehicleDetails: { contains: searchTerm } },
+            { "stops.address": { contains: searchTerm } },
+            { "stops.contactName": { contains: searchTerm } },
+            { "stops.contactPhone": { contains: searchTerm } },
+          ],
+        },
+        depth: 0,
+        select: { sourceOrderId: true },
+      }),
+    ]);
+    const hitIds = Array.from(
+      new Set(
+        [...poHits.docs, ...itinHits.docs]
+          .map((d: any) => (typeof d.sourceOrderId === "object" ? d.sourceOrderId?.id : d.sourceOrderId))
+          .filter((v: any) => v !== null && v !== undefined && v !== ""),
+      ),
+    );
+    conditions.push({
+      or: [
+        { orderNumber: { contains: searchTerm } },
+        { customerName: { contains: searchTerm } },
+        { company: { contains: searchTerm } },
+        { address: { contains: searchTerm } },
+        { contactNumber: { contains: searchTerm } },
+        { salesPerson: { contains: searchTerm } },
+        { "items.description": { contains: searchTerm } },
+        ...(hitIds.length > 0 ? [{ id: { in: hitIds } }] : []),
+      ],
+    });
+  } else if (filterStatus === "active") {
+    conditions.push({ fulfillmentStatus: { in: ["preparing", "shipped"] } });
   } else if (filterStatus !== "all") {
-    where = { fulfillmentStatus: { equals: filterStatus } };
+    conditions.push({ fulfillmentStatus: { equals: filterStatus } });
+  }
+  if (isStaff) conditions.push({ salesPerson: { in: myNames } });
+
+  const where: any = conditions.length > 0 ? { and: conditions } : undefined;
+
+  // A ?trackOrderId= link auto-opens that order's tracker. For staff, only do
+  // that when the order is one of theirs (whatever the status filter is).
+  let allowedTrackOrderId: string | null | undefined = undefined;
+  if (isStaff) {
+    allowedTrackOrderId = null;
+    if (trackOrderId) {
+      const own = await payload.find({
+        collection: "orders",
+        where: { and: [{ id: { equals: trackOrderId } }, { salesPerson: { in: myNames } }] },
+        limit: 1,
+        depth: 0,
+      });
+      if (own.docs.length > 0) allowedTrackOrderId = String(trackOrderId);
+    }
   }
 
   // 2. Fetch Orders
@@ -158,6 +236,9 @@ export default async function DeliveriesPage({
     <DeliveriesClient
       enrichedOrders={enrichedOrders}
       filterStatus={filterStatus}
+      searchTerm={searchTerm}
+      scopedTo={isStaff ? myName : undefined}
+      allowedTrackOrderId={allowedTrackOrderId}
     />
   );
 }

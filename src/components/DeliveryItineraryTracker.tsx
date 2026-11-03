@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { baseDescription } from "@/lib/pipelineUtils";
 
 type RouteStop = {
   id?: string;
@@ -75,6 +76,17 @@ export default function DeliveryItineraryTracker({
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [setupMode, setSetupMode] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [orderStatus, setOrderStatus] = useState("");
+
+  // The order id arrives as a number when the tracker is opened by clicking
+  // a row, but as text when it's opened from a link (?trackOrderId=...,
+  // notifications, reload). Payload rejects a text id for the relationship
+  // field, which made "Save Route" fail from those entry points -- so always
+  // send a number when the id is numeric.
+  const orderIdForApi: number | string = /^\d+$/.test(String(orderId))
+    ? Number(orderId)
+    : orderId;
 
   const [driverName, setDriverName] = useState("");
   const [vehicleDetails, setVehicleDetails] = useState("");
@@ -99,7 +111,7 @@ export default function DeliveryItineraryTracker({
 
   useEffect(() => {
     const fetchItin = fetch(
-      `/api/delivery-itineraries?where[sourceOrderId][equals]=${orderId}`,
+      `/api/delivery-itineraries?where[sourceOrderId][equals]=${orderId}&depth=0`,
       { credentials: "include" },
     ).then((res) => res.json());
     const fetchPOs = fetch(
@@ -114,6 +126,7 @@ export default function DeliveryItineraryTracker({
       .then(([itinData, poData, orderData]) => {
         const pos = poData.docs || [];
         const masterItems = orderData.items || [];
+        setOrderStatus(orderData.fulfillmentStatus || "");
 
         const itemsByPoId: Record<string, CargoItem[]> = {};
         const unassignedPrimegen: CargoItem[] = [];
@@ -121,7 +134,7 @@ export default function DeliveryItineraryTracker({
 
         masterItems.forEach((item: any) => {
           const itemDesc =
-            item.material?.name || item.description || "Custom Item";
+            item.material?.name || baseDescription(item) || "Custom Item";
           const itemQty = item.quantity || item.qty || 1;
           const itemUnit = item.material?.unit || item.unit || "pcs";
           const itemSize = item.sizeDescription || "";
@@ -305,18 +318,19 @@ export default function DeliveryItineraryTracker({
   async function handleSaveRoute(e: React.FormEvent) {
     e.preventDefault();
     setUpdating(true);
+    setSaveError("");
     try {
       const payload = {
         trackingNumber: itinerary
           ? itinerary.trackingNumber
           : `TRK-${Math.random().toString(36).substr(2, 6).toUpperCase()}`,
-        sourceOrderId: orderId,
+        sourceOrderId: orderIdForApi,
         status: itinerary ? itinerary.status : "scheduled",
         driverName,
         vehicleDetails,
         stops: routeStops.map((stop) => ({
           ...stop,
-          scheduledDate: stop.scheduledDate || null, 
+          scheduledDate: stop.scheduledDate || null,
         })),
       };
 
@@ -325,27 +339,45 @@ export default function DeliveryItineraryTracker({
         : "/api/delivery-itineraries";
       const method = itinerary ? "PATCH" : "POST";
 
-      const [res] = await Promise.all([
-        fetch(url, {
-          method,
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify(payload),
-        }),
-        fetch(`/api/orders/${orderId}`, {
+      const res = await fetch(`${url}?depth=0`, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => null);
+
+      // Previously the response was never checked, so a rejected save looked
+      // like nothing happened (and the order was still marked shipped).
+      if (!res.ok || !data?.doc) {
+        const detail =
+          data?.errors?.[0]?.data?.errors?.[0]?.message ||
+          data?.errors?.[0]?.message ||
+          `Server returned ${res.status}`;
+        setSaveError(`Could not save the route: ${detail}`);
+        return;
+      }
+
+      // Planning a route is what marks a not-yet-moving order as shipped --
+      // only on the first save, and never for an order that's already
+      // shipped, delivered or cancelled (editing a route must not change
+      // its order's status).
+      if (!itinerary && !["shipped", "delivered", "cancelled"].includes(orderStatus)) {
+        const statusRes = await fetch(`/api/orders/${orderId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({ fulfillmentStatus: "shipped" }),
-        }),
-      ]);
+        });
+        if (statusRes.ok) setOrderStatus("shipped");
+      }
 
-      const data = await res.json();
       setItinerary(data.doc);
       setSetupMode(false);
       router.refresh();
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      console.error(err);
+      setSaveError("Could not save the route: network error. Please try again.");
     } finally {
       setUpdating(false);
     }
@@ -879,6 +911,15 @@ export default function DeliveryItineraryTracker({
                 + Add Drop Off
               </button>
             </div>
+
+            {saveError && (
+              <p
+                role="alert"
+                className="mt-4 text-[12px] font-medium text-red-600 bg-red-50 border border-red-100 rounded-lg px-4 py-3"
+              >
+                {saveError}
+              </p>
+            )}
 
             <div className="mt-4 flex flex-col sm:flex-row gap-3">
               <button

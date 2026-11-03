@@ -3,6 +3,7 @@ import SupplierPOGenerator, { type SupplierPOInitial } from '@/components/Suppli
 import SupplierPOListClient from '@/components/SupplierPOListClient'
 import { fetchPOsPage } from '@/lib/supplierPOList'
 import { getPayloadClient } from '@/lib/getPayloadClient'
+import { displayDescription } from '@/lib/pipelineUtils'
 
 const STATUSES = ['draft', 'issued', 'fulfilled', 'cancelled'] as const
 const STATUS_LABELS: Record<string, string> = {
@@ -96,7 +97,7 @@ export default async function SupplierPOPage({
             sourceRequestId: resolvedRequestId,
             items: Array.isArray(po.items)
               ? po.items.map((i: any) => ({ 
-                  description: i.sizeDescription ? `${i.description} - ${i.sizeDescription}` : i.description, 
+                  description: displayDescription(i), 
                   qty: i.qty, 
                   unit: i.unit, 
                   unitPrice: i.unitPrice 
@@ -130,7 +131,7 @@ export default async function SupplierPOPage({
             sourceRequestId: resolvedRequestId,
             items: Array.isArray(o.items)
               ? o.items.map((item: any) => ({
-                  description: item.sizeDescription ? `${item.description} - ${item.sizeDescription}` : item.description,
+                  description: displayDescription(item),
                   qty: item.qty,
                   unit: item.unit,
                   unitPrice: item.unitCost || 0,

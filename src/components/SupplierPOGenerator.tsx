@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import SupplierPickerModal from "@/components/SupplierPickerModal";
 import { useRouter, useSearchParams } from "next/navigation";
+import { displayDescription, matchPoItemsToOrderItems } from "@/lib/pipelineUtils";
 
 type LineItem = {
   description: string;
@@ -372,17 +373,24 @@ export default function SupplierPOGenerator({
             }));
           } else {
             // Editing an existing PO: push qty/price changes back to
-            // whichever order items are already assigned to it, matched
-            // positionally within that subset.
+            // whichever order items are already assigned to it. Lines are
+            // paired by description (falling back to position), because a PO
+            // can list its lines in a different order than the order does --
+            // pairing by position alone swapped quantities and prices
+            // between similar lines (e.g. two sizes of the same item).
             const assignedPositions = orderItems
               .map((item, i) => ({ item, i }))
               .filter(({ item }) => String(item.assignedPOId) === String(saved.doc.id));
+            const pairing = matchPoItemsToOrderItems(
+              items.map((it: any) => String(it.description || "")),
+              assignedPositions.map(({ item }) => displayDescription(item)),
+            );
             updatedItems = [...orderItems];
-            assignedPositions.forEach(({ i }, matchIdx) => {
-              const poItem = items[matchIdx];
-              if (poItem) {
-                updatedItems[i] = {
-                  ...updatedItems[i],
+            items.forEach((poItem: any, poIdx: number) => {
+              const target = assignedPositions[pairing[poIdx]];
+              if (target) {
+                updatedItems[target.i] = {
+                  ...updatedItems[target.i],
                   qty: poItem.qty,
                   unitCost: poItem.unitPrice,
                 };

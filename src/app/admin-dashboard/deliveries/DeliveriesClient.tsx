@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import DeliveryItineraryTracker from '@/components/DeliveryItineraryTracker';
+import { baseDescription } from '@/lib/pipelineUtils'
 
 const FULFILLMENT_LABELS: Record<string, string> = {
   preparing: 'Preparing',
@@ -15,9 +16,18 @@ const FULFILLMENT_LABELS: Record<string, string> = {
 export default function DeliveriesClient({
   enrichedOrders,
   filterStatus,
+  searchTerm,
+  scopedTo,
+  allowedTrackOrderId,
 }: {
   enrichedOrders: any[];
   filterStatus: string;
+  searchTerm: string;
+  // Set for sales staff, whose list is limited to their own orders.
+  scopedTo?: string;
+  // undefined: no restriction. string/null: a ?trackOrderId= link may only
+  // auto-open that one order (null = none).
+  allowedTrackOrderId?: string | null;
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -25,13 +35,33 @@ export default function DeliveriesClient({
 
   const [trackOrderId, setTrackOrderId] = useState<string | null>(null);
 
+  // The search runs on the server (over every order, not just the ones
+  // already on screen): typing updates ?q= after a short pause and the page
+  // re-renders with the matches.
+  const [searchText, setSearchText] = useState(searchTerm);
+  useEffect(() => {
+    const term = searchText.trim();
+    if (term === searchTerm) return;
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (term) params.set('q', term);
+      else params.delete('q');
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchText]);
+
   // Honor a ?trackOrderId= URL param (from a notification link, or the
   // "Track Route" link on the Inquiry Overview page) by auto-opening the
   // tracking modal for that order. Previously this param was never read --
   // those links navigated here but nothing actually opened.
   useEffect(() => {
     const paramId = searchParams.get('trackOrderId');
-    if (paramId) setTrackOrderId(paramId);
+    if (paramId && (allowedTrackOrderId === undefined || paramId === allowedTrackOrderId)) {
+      setTrackOrderId(paramId);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -67,14 +97,56 @@ export default function DeliveriesClient({
             Delivery Master List
           </h1>
           <p className="text-xs text-gray-500 font-medium">
-            Logistics command center. Monitor target deadlines, plan routes, and track active deliveries.
+            {scopedTo
+              ? `Showing only the orders under your name (${scopedTo}). Monitor target deadlines, plan routes, and track your deliveries.`
+              : 'Logistics command center. Monitor target deadlines, plan routes, and track active deliveries.'}
           </p>
         </div>
+
+        {/* Search */}
+        <div className="relative mb-4">
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none"
+          >
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+          <input
+            type="text"
+            value={searchText}
+            onChange={(e) => setSearchText(e.target.value)}
+            placeholder="Search by order #, customer, company, address, phone, item, supplier PO, driver, or tracking #..."
+            className="w-full pl-9 pr-8 py-2 text-[12px] text-gray-700 placeholder:text-gray-300 bg-gray-50/70 border border-gray-100 rounded-lg focus:outline-none focus:border-[#149911] focus:bg-white transition-colors"
+          />
+          {searchText && (
+            <button
+              type="button"
+              onClick={() => setSearchText('')}
+              aria-label="Clear search"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+        {searchTerm && (
+          <p className="text-[11px] text-gray-400 font-medium mb-4">
+            {enrichedOrders.length} order{enrichedOrders.length === 1 ? '' : 's'} matching &quot;{searchTerm}&quot; across all statuses. Clear the search to use the filters below.
+          </p>
+        )}
 
         {/* Filters */}
         <div className="flex flex-wrap gap-2 mb-6">
           {filterPills.map((pill) => {
-            const isActive = filterStatus === pill.value;
+            const isActive = !searchTerm && filterStatus === pill.value;
             const href = `/admin-dashboard/deliveries?status=${pill.value}`;
             return (
               <Link
@@ -94,7 +166,9 @@ export default function DeliveriesClient({
 
         {enrichedOrders.length === 0 ? (
           <div className="py-16 text-center bg-white border border-gray-200 rounded-2xl shadow-sm">
-            <p className="text-sm text-gray-400 font-medium">No deliveries found for this view.</p>
+            <p className="text-sm text-gray-400 font-medium">
+              {searchTerm ? `No orders match "${searchTerm}".` : 'No deliveries found for this view.'}
+            </p>
           </div>
         ) : (
           <>
@@ -143,7 +217,7 @@ export default function DeliveriesClient({
                         {o.items.map((item: any, idx: number) => (
                           <li key={idx} className="text-[11px] text-gray-700 leading-snug break-words">
                             <span className="font-bold text-[#01172f] mr-1.5">{Number(item.qty) || 0} {item.unit || 'x'}</span>
-                            <span className="uppercase font-medium text-gray-800">{item.description || 'Unnamed item'}</span>
+                            <span className="uppercase font-medium text-gray-800">{baseDescription(item) || 'Unnamed item'}</span>
                             {item.sizeDescription && <span className="text-gray-400 capitalize"> ({item.sizeDescription})</span>}
                           </li>
                         ))}
@@ -247,7 +321,7 @@ export default function DeliveriesClient({
                                     <span className="font-bold text-[#01172f] mr-1.5">
                                       {Number(item.qty) || 0} {item.unit || 'x'}
                                     </span>
-                                    <span className="uppercase font-medium text-gray-800">{item.description || 'Unnamed item'}</span>
+                                    <span className="uppercase font-medium text-gray-800">{baseDescription(item) || 'Unnamed item'}</span>
                                     {item.sizeDescription && <span className="text-gray-400 capitalize"> ({item.sizeDescription})</span>}
                                   </li>
                                 ))}

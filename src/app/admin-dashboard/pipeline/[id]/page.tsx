@@ -3,6 +3,7 @@ import { headers as getHeaders } from 'next/headers'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import PipelineStepper from '@/components/PipelineStepper'
 import { StepKey } from '@/lib/pipelineUtils'
+import { displayDescription } from '@/lib/pipelineUtils'
 
 // Unlike admin-dashboard/page.tsx or client-quotation/page.tsx, this page
 // never calls headers()/cookies() itself -- with only `params` (no dynamic
@@ -140,7 +141,7 @@ export default async function PipelinePage({ params }: { params: Promise<{ id: s
     ...quotation,
     items: Array.isArray(quotation.items) ? quotation.items.map((item: any) => ({
       ...item,
-      description: item.sizeDescription ? `${item.description} - ${item.sizeDescription}` : item.description
+      description: displayDescription(item)
     })) : []
   } : null;
 
@@ -148,7 +149,7 @@ export default async function PipelinePage({ params }: { params: Promise<{ id: s
     ...order,
     items: Array.isArray(order.items) ? order.items.map((item: any) => ({
       ...item,
-      description: item.sizeDescription ? `${item.description} - ${item.sizeDescription}` : item.description
+      description: displayDescription(item)
     })) : []
   } : null;
 
@@ -156,7 +157,7 @@ export default async function PipelinePage({ params }: { params: Promise<{ id: s
     ...po,
     items: Array.isArray(po.items) ? po.items.map((item: any) => ({
       ...item,
-      description: item.sizeDescription ? `${item.description} - ${item.sizeDescription}` : item.description
+      description: displayDescription(item)
     })) : []
   }));
   // ----------------------------------------------

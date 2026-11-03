@@ -12,6 +12,7 @@ import OrderOpexSection from '@/components/OrderOpexSection'
 import ReceiptsPreview from '@/components/ReceiptsPreview'
 import InfiniteScrollSentinel from '@/components/InfiniteScrollSentinel'
 import { loadMoreOrders } from '@/app/admin-dashboard/orders/actions'
+import { displayDescription } from '@/lib/pipelineUtils'
 
 const FULFILLMENT_STAGES = ['preparing', 'shipped', 'delivered'] as const
 
@@ -280,8 +281,7 @@ function OrderCardBody({ o, orderPOs }: { o: any; orderPOs: any[] }) {
                     {Number(item.qty) || 0} {item.unit || 'x'}
                   </span>
                   <span className="leading-snug break-words">
-                    {item.description || '--'}
-                    {item.sizeDescription ? ` - ${item.sizeDescription}` : ''}
+                    {displayDescription(item) || '--'}
                   </span>
                 </div>
                 <span className="font-mono font-bold text-[#01172f] shrink-0 text-right">

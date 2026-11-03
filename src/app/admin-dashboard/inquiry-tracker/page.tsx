@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getPayloadClient } from "@/lib/getPayloadClient";
 import { findAll } from "@/lib/findAll";
+import { displayDescription } from "@/lib/pipelineUtils";
 import StaffPerformanceClient from "@/components/StaffPerformanceClient";
 
 export const dynamic = "force-dynamic"; 
@@ -187,7 +188,7 @@ const staffList = staffRes.docs as any[];
       ...po,
       items: Array.isArray(po.items) ? po.items.map((item: any) => ({
         ...item,
-        description: item.sizeDescription ? `${item.description} - ${item.sizeDescription}` : item.description
+        description: displayDescription(item)
       })) : []
     }));
   }
