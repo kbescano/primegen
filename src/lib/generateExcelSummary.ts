@@ -85,8 +85,21 @@ function computeOrder(o: any) {
   return { gross, cogs, liquidatedOpex, pendingOpex, profit, amountPaid, receivable }
 }
 
-export async function generateExcelSummary(orders: any[], periodLabel?: string): Promise<ExcelJS.Workbook> {
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+
+export async function generateExcelSummary(
+  orders: any[],
+  periodLabel?: string,
+  expenses: any[] = [],
+  expensesNote?: string,
+): Promise<ExcelJS.Workbook> {
   const safeOrders = orders || []
+  const safeExpenses = (expenses || []).slice().sort(
+    (a, b) => a.year - b.year || a.month - b.month || String(a.createdAt || '').localeCompare(String(b.createdAt || '')),
+  )
   const processedOrders = safeOrders.map((o) => ({ ...o, computed: computeOrder(o) }))
 
   const sumGross = processedOrders.reduce((s, o) => s + o.computed.gross, 0)
@@ -96,9 +109,13 @@ export async function generateExcelSummary(orders: any[], periodLabel?: string):
   const sumOpexLiquidated = processedOrders.reduce((s, o) => s + o.computed.liquidatedOpex, 0)
   const sumPendingOpex = processedOrders.reduce((s, o) => s + o.computed.pendingOpex, 0)
   const sumProfit = processedOrders.reduce((s, o) => s + o.computed.profit, 0)
+  // Company expenses that aren't tied to an order come off the orders' profit.
+  // Commission stays on the orders' own profit -- overhead isn't an agent's.
+  const sumExpenses = safeExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0)
+  const netProfit = sumProfit - sumExpenses
   const totalCommission = sumProfit * COMMISSION_RATE
   const collectionRate = sumGross > 0 ? (sumPaid / sumGross) * 100 : 0
-  const marginPct = sumGross > 0 ? (sumProfit / sumGross) * 100 : 0
+  const marginPct = sumGross > 0 ? (netProfit / sumGross) * 100 : 0
 
   const workbook = new ExcelJS.Workbook()
   workbook.creator = 'Primegen Trading Corporation'
@@ -169,14 +186,17 @@ const costsEnd = kpiBlock(r, 4, 'COSTS', [
   ['Total COGS', sumCogs, false, 'currency'],
   ['Liquidated OPEX', sumOpexLiquidated, false, 'currency'],
   ...(sumPendingOpex > 0 ? [['Pending OPEX', sumPendingOpex, false, 'currency'] as [string, number, boolean, 'currency']] : []),
+  ['Additional Expenses', sumExpenses, false, 'currency'],
 ])
 
 const nextRow = Math.max(revenueEnd, costsEnd) + 1
 
 const profitEnd = kpiBlock(nextRow, 1, 'PROFITABILITY', [
-  ['Net Profit', sumProfit, false, 'currency'],
+  ['Order Profit', sumProfit, false, 'currency'],
+  ['Less: Additional Expenses', -sumExpenses, false, 'currency'],
+  ['Net Profit', netProfit, true, 'currency'],
   ['Profit Margin (%)', Number(marginPct.toFixed(1)), false, 'percent'],
-  ['Total Commission (20%)', totalCommission, true, 'currency'],
+  ['Total Commission (20%)*', totalCommission, false, 'currency'],
 ])
 
 kpiBlock(nextRow, 4, 'RECEIVABLES', [
@@ -186,6 +206,14 @@ kpiBlock(nextRow, 4, 'RECEIVABLES', [
   const noteRow = exec.getRow(profitEnd + 2)
   noteRow.getCell(1).value = 'Figures reflect the selected reporting period only.'
   noteRow.getCell(1).font = { italic: true, size: 8, color: { argb: 'FF999999' } }
+  const commissionNote = exec.getRow(profitEnd + 3)
+  commissionNote.getCell(1).value = '* Commission is based on order profit, before additional expenses.'
+  commissionNote.getCell(1).font = { italic: true, size: 8, color: { argb: 'FF999999' } }
+  if (expensesNote) {
+    const expNote = exec.getRow(profitEnd + 4)
+    expNote.getCell(1).value = expensesNote
+    expNote.getCell(1).font = { italic: true, size: 8, color: { argb: 'FF999999' } }
+  }
 
   // ============ SHEET 2: SALES PERFORMANCE ============
   const salesSheet = workbook.addWorksheet('Sales Performance', {
@@ -238,6 +266,10 @@ kpiBlock(nextRow, 4, 'RECEIVABLES', [
     styleDataRow(row, i % 2 === 1)
     sr++
   })
+
+  const salesNoteRow = salesSheet.getRow(sr + 2)
+  salesNoteRow.getCell(1).value = 'Net Profit here is from orders only, before company-wide additional expenses.'
+  salesNoteRow.getCell(1).font = { italic: true, size: 8, color: { argb: 'FF999999' } }
 
   const salesTotalRow = salesSheet.getRow(sr)
   salesTotalRow.values = ['GRAND TOTAL', processedOrders.length, sumGross, sumPaid, sumReceivables, sumOpexLiquidated, sumProfit, totalCommission]
@@ -305,11 +337,87 @@ kpiBlock(nextRow, 4, 'RECEIVABLES', [
     cell.border = { top: { style: 'medium', color: { argb: DARK } } }
   })
 
+  // ============ SHEET 4: ADDITIONAL EXPENSES ============
+  const expSheet = workbook.addWorksheet('Additional Expenses', {
+    pageSetup: {
+      orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+      margins: { left: 0.5, right: 0.5, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 },
+    },
+  })
+  expSheet.columns = [
+    { header: 'Month', key: 'period', width: 18 },
+    { header: 'Label', key: 'label', width: 34 },
+    { header: 'Amount', key: 'amount', width: 16 },
+    { header: 'Added By', key: 'by', width: 18 },
+    { header: 'Notes', key: 'notes', width: 36 },
+  ]
+
+  let er = addReportHeader(expSheet, 'Additional Expenses', periodLabel, 'E')
+  expSheet.getRow(er).values = expSheet.columns.map((c) => c.header as string)
+  styleHeaderRow(expSheet.getRow(er), GREEN)
+  expSheet.views = [{ state: 'frozen', ySplit: er }]
+  er++
+
+  if (safeExpenses.length === 0) {
+    const emptyRow = expSheet.getRow(er)
+    emptyRow.getCell(1).value = expensesNote || 'No additional expenses recorded for this period.'
+    emptyRow.getCell(1).font = { italic: true, size: 10, color: { argb: 'FF999999' } }
+    er++
+  } else {
+    safeExpenses.forEach((e, i) => {
+      const row = expSheet.getRow(er)
+      row.values = [
+        `${MONTH_NAMES[(Number(e.month) || 1) - 1]} ${e.year}`,
+        e.label || '--',
+        Number(e.amount) || 0,
+        e.createdByName || '',
+        e.notes || '',
+      ]
+      row.getCell(3).numFmt = CURRENCY_FMT
+      styleDataRow(row, i % 2 === 1)
+      er++
+    })
+
+    const totalRow = expSheet.getRow(er)
+    totalRow.values = ['TOTAL', '', sumExpenses, '', '']
+    totalRow.getCell(3).numFmt = CURRENCY_FMT
+    totalRow.eachCell((cell) => {
+      cell.font = { bold: true, size: 10 }
+      cell.border = { top: { style: 'medium', color: { argb: DARK } } }
+    })
+    er += 2
+
+    // Month-by-month totals when the export spans more than one month
+    const byMonth = new Map<string, number>()
+    safeExpenses.forEach((e) => {
+      const key = `${MONTH_NAMES[(Number(e.month) || 1) - 1]} ${e.year}`
+      byMonth.set(key, (byMonth.get(key) || 0) + (Number(e.amount) || 0))
+    })
+    if (byMonth.size > 1) {
+      const head = expSheet.getRow(er)
+      head.values = ['Monthly totals', '', 'Amount']
+      styleHeaderRow(head, DARK)
+      er++
+      Array.from(byMonth.entries()).forEach(([period, amount], i) => {
+        const row = expSheet.getRow(er)
+        row.values = [period, '', amount]
+        row.getCell(3).numFmt = CURRENCY_FMT
+        styleDataRow(row, i % 2 === 1)
+        er++
+      })
+    }
+  }
+
   return workbook
 }
 
-export async function downloadExcelSummary(orders: any[], periodLabel?: string) {
-  const workbook = await generateExcelSummary(orders, periodLabel)
+export async function downloadExcelSummary(
+  orders: any[],
+  periodLabel?: string,
+  expenses: any[] = [],
+  expensesNote?: string,
+) {
+  const workbook = await generateExcelSummary(orders, periodLabel, expenses, expensesNote)
   const buffer = await workbook.xlsx.writeBuffer()
   const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
   const url = URL.createObjectURL(blob)

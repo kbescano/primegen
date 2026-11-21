@@ -9,17 +9,23 @@ const peso = (n: number) =>
 export default function ExportCenterClient({
   orders,
   periodLabel,
+  expenses,
+  expensesNote,
 }: {
   orders: any[]
   periodLabel?: string
+  expenses?: any[]
+  expensesNote?: string
 }) {
   const [downloading, setDownloading] = useState(false)
   const safeOrders = orders || []
+  const safeExpenses = expenses || []
+  const expensesTotal = safeExpenses.reduce((s, e) => s + (Number(e.amount) || 0), 0)
 
   async function handleDownload() {
     setDownloading(true)
     try {
-      await downloadExcelSummary(safeOrders, periodLabel)
+      await downloadExcelSummary(safeOrders, periodLabel, safeExpenses, expensesNote)
     } catch (e) {
       console.error('Failed to generate export:', e)
     } finally {
@@ -53,11 +59,11 @@ export default function ExportCenterClient({
       <div className="mb-8">
         <h1 className="text-2xl font-black uppercase tracking-tight text-[#01172f] mb-1">Export Center</h1>
         <p className="text-xs text-gray-500 font-medium">
-          Download a formatted Excel report covering executive summary, sales performance, and per-order detail.
+          Download a formatted Excel report covering executive summary, sales performance, per-order detail, and additional expenses.
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <div className="bg-white border border-gray-200 rounded-2xl p-5">
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Orders in Range</p>
           <p className="text-2xl font-black text-[#01172f]">{safeOrders.length}</p>
@@ -66,11 +72,18 @@ export default function ExportCenterClient({
           <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Gross Revenue</p>
           <p className="text-2xl font-black text-[#01172f] font-mono">{peso(totals.gross)}</p>
         </div>
+        <div className="bg-white border border-gray-200 rounded-2xl p-5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-2">Additional Expenses</p>
+          <p className="text-2xl font-black text-red-500 font-mono">-{peso(expensesTotal)}</p>
+          <p className="text-[10px] text-gray-400 font-medium mt-1">
+            {expensesNote || `${safeExpenses.length} entr${safeExpenses.length === 1 ? 'y' : 'ies'} in range`}
+          </p>
+        </div>
       </div>
 
       <button
         onClick={handleDownload}
-        disabled={downloading || safeOrders.length === 0}
+        disabled={downloading || (safeOrders.length === 0 && safeExpenses.length === 0)}
         className="w-full sm:w-auto px-8 py-3.5 bg-[#149911] text-white text-[12px] font-bold uppercase tracking-widest rounded-xl hover:bg-[#103900] transition-colors disabled:opacity-50 shadow-sm"
       >
         {downloading ? 'Generating...' : 'Download Excel Report'}

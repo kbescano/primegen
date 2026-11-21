@@ -14,6 +14,7 @@ import { AdSnapshots } from './collections/AdSnapshots'
 import { HeroSlides } from './collections/HeroSlides'
 import { WeightCalcProducts } from './collections/WeightCalcProducts'
 import { Suppliers } from './collections/Suppliers'
+import { AdditionalExpenses } from './collections/AdditionalExpenses'
 import { Categories } from './collections/Categories'
 import { Deliveries } from './collections/Deliveries'
 import { Clients } from './collections/Clients'
@@ -77,6 +78,7 @@ export default buildConfig({
     HeroSlides,
     WeightCalcProducts,
     Suppliers,
+    AdditionalExpenses,
     Categories,
     Deliveries,
     Clients,

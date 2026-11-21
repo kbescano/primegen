@@ -1,4 +1,6 @@
 import Link from 'next/link'
+import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
 import { getPayloadClient } from '@/lib/getPayloadClient'
 import { findAll } from '@/lib/findAll'
 
@@ -185,7 +187,12 @@ export default async function ReportsPage({
 
   const payload = await getPayloadClient()
 
-  const [requestsRes, quotationsRes, ordersRes, staffRes] = await Promise.all([
+  // Company-wide financials (now including the additional expenses) -- admin
+  // only, same as the sidebar entry.
+  const { user: currentUser } = await payload.auth({ headers: await headers() })
+  if (currentUser?.role !== 'admin') redirect('/admin-dashboard')
+
+  const [requestsRes, quotationsRes, ordersRes, staffRes, expensesRes] = await Promise.all([
     // Only the date (period count) and assignedTo (sales-person lookup) are read.
     findAll(payload, { collection: 'quotation-requests', depth: 0, sort: '-createdAt', select: { createdAt: true, assignedTo: true } }),
     findAll(payload, { collection: 'client-quotations', depth: 0, sort: '-createdAt' }),
@@ -206,7 +213,16 @@ export default async function ReportsPage({
       where: { or: [{ role: { equals: 'user' } }, { email: { equals: 'nica@primegen.admin' } }] },
       limit: 200,
     }),
+    // Company expenses that aren't tied to an order (entered on the
+    // Additional Expenses page) -- deducted from net profit below.
+    // If this lookup ever fails, the rest of the report must still load --
+    // flagged below so a missing deduction isn't mistaken for "no expenses".
+    findAll(payload, { collection: 'additional-expenses', depth: 0 }).catch((err) => {
+      console.error('Reports: could not load additional expenses', err)
+      return { docs: [] as any[], totalDocs: 0, failed: true as const }
+    }),
   ])
+  const expensesFailed = Boolean((expensesRes as any).failed)
 
   // Filtering Logic
   const inPeriod = (dateStr?: string) => {
@@ -252,6 +268,16 @@ export default async function ReportsPage({
   const totalVat = activeOrders.reduce((sum, o) => sum + docVat(o), 0)
   const totalCosts = activeOrders.reduce((sum, o) => sum + docTotalCosts(o), 0)
   const totalNetProfit = activeOrders.reduce((sum, o) => sum + docTrueNetProfit(o), 0)
+
+  // Additional expenses for the selected period (each is recorded against a
+  // month + year), deducted from the orders' net profit.
+  const periodExpenses = (expensesRes.docs as any[]).filter(
+    (e) =>
+      (activeYear === 'all' || String(e.year) === activeYear) &&
+      (activeMonth === 'all' || String(e.month).padStart(2, '0') === activeMonth)
+  )
+  const totalAdditionalExpenses = periodExpenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0)
+  const finalNetProfit = totalNetProfit - totalAdditionalExpenses
 
   const actualMarkupPercent = totalCosts > 0 ? (totalNetProfit / totalCosts) * 100 : 0
   const receivablesCount = activeOrders.filter(o => docReceivable(o) > 0).length
@@ -376,16 +402,34 @@ export default async function ReportsPage({
           </p>
         </div>
         
-        <Link
-          href="/admin-dashboard/reports/export"
-          className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[13px] font-medium shadow-sm w-full sm:w-auto flex-shrink-0"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
-          Export Center
-        </Link>
+        <div className="flex flex-col gap-2.5 w-full sm:w-auto flex-shrink-0">
+          <Link
+            href="/admin-dashboard/reports/export"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-[#1d1d1f] text-white hover:bg-gray-800 transition-all text-[13px] font-medium shadow-sm w-full"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Export Center
+          </Link>
+          <Link
+            href="/admin-dashboard/reports/expenses"
+            className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-white border border-gray-200 text-gray-800 hover:bg-gray-50 transition-all text-[13px] font-medium shadow-sm w-full"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+            Additional Expenses
+          </Link>
+        </div>
       </div>
+
+      {expensesFailed && (
+        <p role="alert" className="mb-6 text-[12px] font-medium text-amber-700 bg-amber-50 border border-amber-100 rounded-2xl px-4 py-3">
+          Additional expenses could not be loaded, so the figures below do not include them. Refresh the page; if this
+          keeps happening, check the expenses page.
+        </p>
+      )}
 
       {/* Auto-Submitting Filter Form */}
       <form id="filter-form" method="GET" className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 mb-8 w-full">
@@ -431,7 +475,7 @@ export default async function ReportsPage({
             True Net Profit (All Confirmed Orders)
           </p>
           <p className="text-[32px] sm:text-[36px] md:text-[48px] font-semibold tracking-tight leading-none text-[#149911] break-words">
-            {peso(totalNetProfit)}
+            {peso(finalNetProfit)}
           </p>
           <p className="text-[12px] sm:text-[13px] text-gray-400 font-medium mt-3 truncate">
             {orderCount} total confirmed order{orderCount === 1 ? '' : 's'} &middot; {actualMarkupPercent.toFixed(1)}% avg. markup
@@ -442,8 +486,9 @@ export default async function ReportsPage({
            <p className="flex justify-between md:justify-end gap-4 sm:gap-6"><span>Gross Revenue:</span> <span className="truncate">{peso(totalGrossRevenue)}</span></p>
            <p className="flex justify-between md:justify-end gap-4 sm:gap-6 text-amber-500/80"><span>Less VAT:</span> <span className="truncate">-{peso(totalVat)}</span></p>
            <p className="flex justify-between md:justify-end gap-4 sm:gap-6 text-red-400/80"><span>Less Costs:</span> <span className="truncate">-{peso(totalCosts)}</span></p>
+           <p className="flex justify-between md:justify-end gap-4 sm:gap-6 text-red-400/80"><span className="min-w-0">Less Additional Expenses:</span> <span className="shrink-0 whitespace-nowrap">-{peso(totalAdditionalExpenses)}</span></p>
            <div className="w-full h-[1px] bg-gray-800 my-1" />
-           <p className="flex justify-between md:justify-end gap-4 sm:gap-6 text-[#149911] font-semibold"><span>Net Profit:</span> <span className="truncate">{peso(totalNetProfit)}</span></p>
+           <p className="flex justify-between md:justify-end gap-4 sm:gap-6 text-[#149911] font-semibold"><span>Net Profit:</span> <span className="truncate">{peso(finalNetProfit)}</span></p>
         </div>
       </div>
 
@@ -482,6 +527,19 @@ export default async function ReportsPage({
           </div>
         </div>
 
+        <Link
+          href="/admin-dashboard/reports/expenses"
+          className="bg-white border border-gray-100 rounded-[1.5rem] p-5 shadow-sm flex flex-col overflow-hidden w-full hover:border-gray-300 transition-colors"
+        >
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1 truncate">Additional Expenses</p>
+          <p className="text-[20px] sm:text-[24px] font-semibold tracking-tight text-red-500 mb-3 truncate">-{peso(totalAdditionalExpenses)}</p>
+          <div className="mt-auto">
+            <p className="text-[11px] text-gray-500 font-medium truncate">
+              {periodExpenses.length} entr{periodExpenses.length === 1 ? 'y' : 'ies'} &middot; Manage &rarr;
+            </p>
+          </div>
+        </Link>
+
         <div className="bg-white border border-gray-100 rounded-[1.5rem] p-5 shadow-sm flex flex-col overflow-hidden w-full">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1 truncate">VAT Payable</p>
           <p className="text-[20px] sm:text-[24px] font-semibold tracking-tight text-gray-600 mb-3 truncate">-{peso(totalVat)}</p>
@@ -490,11 +548,11 @@ export default async function ReportsPage({
           </div>
         </div>
 
-        <div className="bg-[#1d1d1f] rounded-[1.5rem] p-5 shadow-lg flex flex-col text-white overflow-hidden w-full">
+        <div className="bg-[#1d1d1f] rounded-[1.5rem] p-5 shadow-lg flex flex-col text-white overflow-hidden w-full sm:col-span-2 lg:col-span-3">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1 truncate">Net Profit</p>
-          <p className="text-[20px] sm:text-[24px] font-semibold tracking-tight text-[#149911] mb-3 truncate">{peso(totalNetProfit)}</p>
+          <p className="text-[20px] sm:text-[24px] font-semibold tracking-tight text-[#149911] mb-3 truncate">{peso(finalNetProfit)}</p>
           <div className="mt-auto">
-            <p className="text-[11px] text-gray-400 font-medium truncate">Accrual Tally</p>
+            <p className="text-[11px] text-gray-400 font-medium truncate">Accrual tally, after additional expenses</p>
           </div>
         </div>
 
@@ -582,6 +640,9 @@ export default async function ReportsPage({
         {/* Performance by Sales Person */}
         <div className={card}>
           <h2 className={sectionTitle}>Performance by Sales Person</h2>
+          <p className="text-[11px] text-gray-400 font-medium -mt-3 mb-4">
+            Per-agent profit is from their orders only, before company-wide additional expenses.
+          </p>
           {salesPersonRows.length === 0 ? (
             <p className="text-[13px] text-gray-400 font-medium py-4">
               No orders in this period yet.

@@ -60,7 +60,7 @@ export default async function ExportCenterPage({
     conditions.push({ orderDate: { less_than: end.toISOString() } })
   }
 
-  const [{ docs }, quotationsRes, requestsRes, staffRes] = await Promise.all([
+  const [{ docs }, quotationsRes, requestsRes, staffRes, expensesRes] = await Promise.all([
     findAll(payload, {
       collection: 'orders',
       where: conditions.length > 0 ? { and: conditions } : undefined,
@@ -81,7 +81,39 @@ export default async function ExportCenterPage({
       where: { or: [{ role: { equals: 'user' } }, { email: { equals: 'nica@primegen.admin' } }] },
       limit: 200,
     }),
+    findAll(payload, { collection: 'additional-expenses', depth: 0, sort: ['year', 'month', 'createdAt'] }).catch((err) => {
+      console.error('Export: could not load additional expenses', err)
+      return { docs: [] as any[], totalDocs: 0, failed: true as const }
+    }),
   ])
+
+  // Additional expenses are recorded per month, so they follow the export's
+  // period at month granularity: a month export gets that month, a year
+  // export that year, all-time everything. A weekly export can't be split
+  // out of a monthly figure, so it carries none.
+  const allExpenses = (expensesRes.docs as any[]).map((e) => ({
+    label: e.label as string,
+    amount: Number(e.amount) || 0,
+    month: Number(e.month),
+    year: Number(e.year),
+    notes: (e.notes as string) || '',
+    createdByName: (e.createdByName as string) || '',
+    createdAt: e.createdAt as string,
+  }))
+  let expenses = allExpenses
+  let expensesNote: string | undefined
+  if ((expensesRes as any).failed) {
+    expensesNote = 'Additional expenses could not be loaded when this export was prepared, so they are not included.'
+  }
+  if (granularity === 'month' && periodValue) {
+    const [y, m] = periodValue.split('-').map(Number)
+    expenses = allExpenses.filter((e) => e.year === y && e.month === m)
+  } else if (granularity === 'year' && periodValue) {
+    expenses = allExpenses.filter((e) => e.year === Number(periodValue))
+  } else if (granularity === 'week') {
+    expenses = []
+    expensesNote = expensesNote || 'Additional expenses are recorded per month, so they are not included in weekly exports.'
+  }
 
   // orders.salesPerson is free text, typed once at quotation-creation time
   // and never revisited -- a staff rename would otherwise split their
@@ -127,7 +159,12 @@ export default async function ExportCenterPage({
       <div className="mb-6">
         <DateGranularityFilter granularity={granularity || ''} periodValue={periodValue || ''} />
       </div>
-      <ExportCenterClient orders={docsWithResolvedSalesPerson} periodLabel={periodLabel} />
+      <ExportCenterClient
+        orders={docsWithResolvedSalesPerson}
+        periodLabel={periodLabel}
+        expenses={expenses}
+        expensesNote={expensesNote}
+      />
     </div>
   )
 }
