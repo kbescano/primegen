@@ -186,7 +186,10 @@ export const ClientQuotations: CollectionConfig = {
                 address: doc.address || "",
                 contactNumber: doc.contactNumber || "",
                 salesPerson: doc.salesPerson || "",
-                vatRate: doc.vatRate || 12,
+                // "No VAT" is stored on the quotation as 0, and `0 || 12`
+                // silently turned that into 12% on every order created from
+                // it. Only fall back to 12 when the quotation has no value.
+                vatRate: doc.vatRate ?? 12,
                 discountAmount: doc.discountAmount || 0,
                 deliveryFee: doc.deliveryFee || 0,
                 items: mappedItems,
