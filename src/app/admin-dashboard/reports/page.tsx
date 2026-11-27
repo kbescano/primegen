@@ -173,10 +173,12 @@ function BarRow({
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; year?: string }>
+  searchParams: Promise<{ month?: string; year?: string; view?: string }>
 }) {
   const searchParamsResolved = await searchParams
-  
+  // "fulfilled" = the Shipped & delivered tab; anything else is the default.
+  const view: 'all' | 'fulfilled' = searchParamsResolved.view === 'fulfilled' ? 'fulfilled' : 'all'
+
   // Set Defaults to Current Month & Year
   const now = new Date()
   const defaultMonth = String(now.getMonth() + 1).padStart(2, '0')
@@ -262,12 +264,25 @@ export default async function ReportsPage({
   const orderToPaidRate = orderCount > 0 ? Math.round((payingOrdersCount / orderCount) * 100) : 0
 
   // ===== ACCOUNTING SUMMARY (Accrual Basis - All Confirmed, non-Cancelled Orders) =====
-  const totalGrossRevenue = activeOrders.reduce((sum, o) => sum + docTotal(o), 0)
-  const totalAmountPaid = activeOrders.reduce((sum, o) => sum + docAmountPaid(o), 0)
-  const totalReceivables = activeOrders.reduce((sum, o) => sum + docReceivable(o), 0)
-  const totalVat = activeOrders.reduce((sum, o) => sum + docVat(o), 0)
-  const totalCosts = activeOrders.reduce((sum, o) => sum + docTotalCosts(o), 0)
-  const totalNetProfit = activeOrders.reduce((sum, o) => sum + docTrueNetProfit(o), 0)
+  // The summary follows the selected tab: every confirmed order, or only the
+  // ones already shipped or delivered. Everything else on the page (funnel,
+  // pipelines, sales-person table) keeps using the full set.
+  const isFulfilled = (o: any) => o.fulfillmentStatus === 'shipped' || o.fulfillmentStatus === 'delivered'
+  const fulfilledOrders = activeOrders.filter(isFulfilled)
+  const deliveredProfit = activeOrders
+    .filter((o) => o.fulfillmentStatus === 'delivered')
+    .reduce((sum, o) => sum + docTrueNetProfit(o), 0)
+  const shippedProfit = activeOrders
+    .filter((o) => o.fulfillmentStatus === 'shipped')
+    .reduce((sum, o) => sum + docTrueNetProfit(o), 0)
+  const summaryOrders = view === 'fulfilled' ? fulfilledOrders : activeOrders
+
+  const totalGrossRevenue = summaryOrders.reduce((sum, o) => sum + docTotal(o), 0)
+  const totalAmountPaid = summaryOrders.reduce((sum, o) => sum + docAmountPaid(o), 0)
+  const totalReceivables = summaryOrders.reduce((sum, o) => sum + docReceivable(o), 0)
+  const totalVat = summaryOrders.reduce((sum, o) => sum + docVat(o), 0)
+  const totalCosts = summaryOrders.reduce((sum, o) => sum + docTotalCosts(o), 0)
+  const totalNetProfit = summaryOrders.reduce((sum, o) => sum + docTrueNetProfit(o), 0)
 
   // Additional expenses for the selected period (each is recorded against a
   // month + year), deducted from the orders' net profit.
@@ -280,7 +295,9 @@ export default async function ReportsPage({
   const finalNetProfit = totalNetProfit - totalAdditionalExpenses
 
   const actualMarkupPercent = totalCosts > 0 ? (totalNetProfit / totalCosts) * 100 : 0
-  const receivablesCount = activeOrders.filter(o => docReceivable(o) > 0).length
+  const receivablesCount = summaryOrders.filter(o => docReceivable(o) > 0).length
+  const summaryOrderCount = summaryOrders.length
+  const summaryScope = view === 'fulfilled' ? 'Shipped & delivered' : 'All confirmed'
 
   // ===== Quotation pipeline by status =====
   const quotationPipeline: Record<string, { count: number; value: number }> = {
@@ -433,6 +450,8 @@ export default async function ReportsPage({
 
       {/* Auto-Submitting Filter Form */}
       <form id="filter-form" method="GET" className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 mb-8 w-full">
+        {/* Keep the selected tab when the month or year changes */}
+        {view === 'fulfilled' && <input type="hidden" name="view" value="fulfilled" />}
         <div className="relative w-full sm:w-auto">
           <select 
             name="month" 
@@ -468,18 +487,48 @@ export default async function ReportsPage({
         `}} />
       </form>
 
-      {/* True Profit Card -- All confirmed orders */}
+      {/* Which orders the accounting summary below covers */}
+      <div role="tablist" aria-label="Orders included in the summary" className="flex w-full sm:w-auto sm:inline-flex gap-1 p-1 mb-4 bg-gray-100 rounded-full">
+        {([
+          { key: 'all', label: 'All confirmed', count: activeOrders.length, href: `/admin-dashboard/reports?month=${activeMonth}&year=${activeYear}` },
+          { key: 'fulfilled', label: 'Shipped & delivered', count: fulfilledOrders.length, href: `/admin-dashboard/reports?month=${activeMonth}&year=${activeYear}&view=fulfilled` },
+        ] as const).map((tab) => (
+          <Link
+            key={tab.key}
+            href={tab.href}
+            role="tab"
+            aria-selected={view === tab.key}
+            className={`flex-1 sm:flex-none text-center whitespace-nowrap px-4 sm:px-5 py-2 rounded-full text-[12px] sm:text-[13px] font-medium transition-all ${
+              view === tab.key ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-800'
+            }`}
+          >
+            {tab.label}
+            <span className={`ml-1.5 text-[11px] ${view === tab.key ? 'text-gray-400' : 'text-gray-400/80'}`}>{tab.count}</span>
+          </Link>
+        ))}
+      </div>
+
+      {/* True Profit Card -- follows the selected tab */}
       <div className="bg-[#1d1d1f] text-white rounded-[1.5rem] sm:rounded-[2rem] p-5 sm:p-6 md:p-8 mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 md:gap-8 shadow-lg w-full overflow-hidden">
         <div className="w-full min-w-0 md:w-auto">
-          <p className="text-[11px] sm:text-[12px] font-semibold uppercase tracking-wider text-gray-400 mb-3 truncate">
-            True Net Profit (All Confirmed Orders)
+          <p className="text-[11px] sm:text-[12px] font-semibold uppercase tracking-wider text-gray-400 mb-3">
+            {view === 'fulfilled' ? 'Net Profit (Shipped & Delivered Orders)' : 'True Net Profit (All Confirmed Orders)'}
           </p>
           <p className="text-[32px] sm:text-[36px] md:text-[48px] font-semibold tracking-tight leading-none text-[#149911] break-words">
             {peso(finalNetProfit)}
           </p>
-          <p className="text-[12px] sm:text-[13px] text-gray-400 font-medium mt-3 truncate">
-            {orderCount} total confirmed order{orderCount === 1 ? '' : 's'} &middot; {actualMarkupPercent.toFixed(1)}% avg. markup
+          <p className="text-[12px] sm:text-[13px] text-gray-400 font-medium mt-3">
+            {view === 'fulfilled'
+              ? `${summaryOrderCount} shipped or delivered order${summaryOrderCount === 1 ? '' : 's'}`
+              : `${summaryOrderCount} confirmed order${summaryOrderCount === 1 ? '' : 's'}`}{' '}
+            &middot; {actualMarkupPercent.toFixed(1)}% avg. markup
           </p>
+          {view === 'fulfilled' && (
+            <p className="text-[12px] sm:text-[13px] text-gray-400 font-medium mt-1.5">
+              Delivered {peso(deliveredProfit)} &middot; Shipped {peso(shippedProfit)}
+              <span className="block text-[11px] text-gray-500 mt-0.5">order profit, before additional expenses</span>
+            </p>
+          )}
         </div>
         
         <div className="flex flex-col gap-1.5 text-[12px] sm:text-[13px] text-gray-400 font-medium w-full md:w-auto min-w-0 md:text-right">
@@ -499,7 +548,7 @@ export default async function ReportsPage({
           <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1 truncate">Gross Revenue</p>
           <p className="text-[20px] sm:text-[24px] font-semibold tracking-tight text-gray-900 mb-3 truncate">{peso(totalGrossRevenue)}</p>
           <div className="mt-auto">
-            <p className="text-[11px] text-gray-500 font-medium truncate">All confirmed</p>
+            <p className="text-[11px] text-gray-500 font-medium truncate">{summaryScope}</p>
           </div>
         </div>
 
@@ -552,7 +601,9 @@ export default async function ReportsPage({
           <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1 truncate">Net Profit</p>
           <p className="text-[20px] sm:text-[24px] font-semibold tracking-tight text-[#149911] mb-3 truncate">{peso(finalNetProfit)}</p>
           <div className="mt-auto">
-            <p className="text-[11px] text-gray-400 font-medium truncate">Accrual tally, after additional expenses</p>
+            <p className="text-[11px] text-gray-400 font-medium truncate">
+              {view === 'fulfilled' ? 'Shipped & delivered orders, after additional expenses' : 'Accrual tally, after additional expenses'}
+            </p>
           </div>
         </div>
 

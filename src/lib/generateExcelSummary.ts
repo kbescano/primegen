@@ -117,6 +117,21 @@ export async function generateExcelSummary(
   const collectionRate = sumGross > 0 ? (sumPaid / sumGross) * 100 : 0
   const marginPct = sumGross > 0 ? (netProfit / sumGross) * 100 : 0
 
+  // Orders already shipped or delivered, kept apart from the ones still being
+  // prepared. Net profit here is the same figure the Reports page's
+  // "Shipped & delivered" tab shows: their order profit, less the period's
+  // additional expenses.
+  const byDate = (a: any, b: any) =>
+    new Date(a.orderDate || a.createdAt).getTime() - new Date(b.orderDate || b.createdAt).getTime()
+  const deliveredOrders = processedOrders.filter((o) => o.fulfillmentStatus === 'delivered').sort(byDate)
+  const shippedOrders = processedOrders.filter((o) => o.fulfillmentStatus === 'shipped').sort(byDate)
+  const sumOf = (list: any[], pick: (c: ReturnType<typeof computeOrder>) => number) =>
+    list.reduce((s, o) => s + pick(o.computed), 0)
+  const deliveredProfit = sumOf(deliveredOrders, (c) => c.profit)
+  const shippedProfit = sumOf(shippedOrders, (c) => c.profit)
+  const fulfilledOrderProfit = deliveredProfit + shippedProfit
+  const fulfilledNetProfit = fulfilledOrderProfit - sumExpenses
+
   const workbook = new ExcelJS.Workbook()
   workbook.creator = 'Primegen Trading Corporation'
   workbook.created = new Date()
@@ -199,18 +214,29 @@ const profitEnd = kpiBlock(nextRow, 1, 'PROFITABILITY', [
   ['Total Commission (20%)*', totalCommission, false, 'currency'],
 ])
 
-kpiBlock(nextRow, 4, 'RECEIVABLES', [
+const receivablesEnd = kpiBlock(nextRow, 4, 'RECEIVABLES', [
   ['Outstanding Receivables', sumReceivables, false, 'currency'],
 ])
 
-  const noteRow = exec.getRow(profitEnd + 2)
+  // Orders that have left the warehouse, on their own. Full detail is on the
+  // "Shipped & Delivered" sheet.
+  const fulfilledEnd = kpiBlock(Math.max(profitEnd, receivablesEnd) + 1, 1, 'SHIPPED & DELIVERED', [
+    ['Delivered Orders', deliveredOrders.length, false, 'count'],
+    ['Shipped Orders', shippedOrders.length, false, 'count'],
+    ['Delivered Net Profit', deliveredProfit, false, 'currency'],
+    ['Shipped Net Profit', shippedProfit, false, 'currency'],
+    ['Less: Additional Expenses', -sumExpenses, false, 'currency'],
+    ['Net Profit (Shipped & Delivered)', fulfilledNetProfit, true, 'currency'],
+  ])
+
+  const noteRow = exec.getRow(fulfilledEnd + 1)
   noteRow.getCell(1).value = 'Figures reflect the selected reporting period only.'
   noteRow.getCell(1).font = { italic: true, size: 8, color: { argb: 'FF999999' } }
-  const commissionNote = exec.getRow(profitEnd + 3)
+  const commissionNote = exec.getRow(fulfilledEnd + 2)
   commissionNote.getCell(1).value = '* Commission is based on order profit, before additional expenses.'
   commissionNote.getCell(1).font = { italic: true, size: 8, color: { argb: 'FF999999' } }
   if (expensesNote) {
-    const expNote = exec.getRow(profitEnd + 4)
+    const expNote = exec.getRow(fulfilledEnd + 3)
     expNote.getCell(1).value = expensesNote
     expNote.getCell(1).font = { italic: true, size: 8, color: { argb: 'FF999999' } }
   }
@@ -337,7 +363,112 @@ kpiBlock(nextRow, 4, 'RECEIVABLES', [
     cell.border = { top: { style: 'medium', color: { argb: DARK } } }
   })
 
-  // ============ SHEET 4: ADDITIONAL EXPENSES ============
+  // ============ SHEET 4: SHIPPED & DELIVERED ============
+  // Orders that have shipped or been delivered, split into their own groups
+  // so they can be read apart from orders still being prepared.
+  const fulfilledSheet = workbook.addWorksheet('Shipped & Delivered', {
+    pageSetup: {
+      orientation: 'landscape', fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+      margins: { left: 0.4, right: 0.4, top: 0.6, bottom: 0.6, header: 0.3, footer: 0.3 },
+    },
+  })
+  fulfilledSheet.columns = [
+    { width: 14 }, { width: 12 }, { width: 24 }, { width: 18 }, { width: 12 },
+    { width: 15 }, { width: 15 }, { width: 14 }, { width: 14 }, { width: 15 }, { width: 14 },
+  ]
+  const FULFILLED_HEADERS = [
+    'Order #', 'Date', 'Customer', 'Sales Agent', 'Payment',
+    'Gross Revenue', 'Amount Paid', 'Receivables', 'COGS', 'Liquidated OPEX', 'Net Profit',
+  ]
+  const FULFILLED_MONEY_COLS = [6, 7, 8, 9, 10, 11]
+
+  let fr = addReportHeader(fulfilledSheet, 'Shipped & Delivered Orders', periodLabel, 'K')
+
+  // Net profit summary, first thing on the sheet.
+  const summaryRows: [string, number, boolean][] = [
+    ['Delivered Net Profit', deliveredProfit, false],
+    ['Shipped Net Profit', shippedProfit, false],
+    ['Order Profit (Shipped & Delivered)', fulfilledOrderProfit, false],
+    ['Less: Additional Expenses', -sumExpenses, false],
+    ['NET PROFIT (SHIPPED & DELIVERED)', fulfilledNetProfit, true],
+  ]
+  summaryRows.forEach(([label, value, isTotal], i) => {
+    fulfilledSheet.mergeCells(`A${fr}:C${fr}`)
+    const labelCell = fulfilledSheet.getCell(`A${fr}`)
+    const valueCell = fulfilledSheet.getCell(`D${fr}`)
+    labelCell.value = label
+    valueCell.value = value
+    valueCell.numFmt = CURRENCY_FMT
+    valueCell.alignment = { horizontal: 'right' }
+    labelCell.font = { size: 10, bold: isTotal }
+    valueCell.font = { size: 10, bold: isTotal, color: isTotal ? { argb: GREEN } : undefined }
+    if (i % 2 === 1) {
+      ;[labelCell, valueCell].forEach((c) => (c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: LIGHT_BAND } }))
+    }
+    if (isTotal) {
+      ;[labelCell, valueCell].forEach((c) => (c.border = { top: { style: 'medium', color: { argb: DARK } } }))
+    }
+    fr++
+  })
+  const summaryNote = fulfilledSheet.getRow(fr)
+  summaryNote.getCell(1).value = expensesNote || 'Additional expenses are company-wide for the period, so they are deducted once, from the combined total.'
+  summaryNote.getCell(1).font = { italic: true, size: 8, color: { argb: 'FF999999' } }
+  fr += 2
+
+  const writeFulfilledGroup = (title: string, list: any[], emptyText: string) => {
+    fulfilledSheet.mergeCells(`A${fr}:K${fr}`)
+    const groupCell = fulfilledSheet.getCell(`A${fr}`)
+    groupCell.value = `${title.toUpperCase()}  (${list.length} order${list.length === 1 ? '' : 's'})`
+    groupCell.font = { bold: true, size: 11, color: { argb: 'FFFFFFFF' } }
+    groupCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: GREEN } }
+    groupCell.alignment = { vertical: 'middle' }
+    fulfilledSheet.getRow(fr).height = 20
+    fr++
+
+    fulfilledSheet.getRow(fr).values = FULFILLED_HEADERS
+    styleHeaderRow(fulfilledSheet.getRow(fr), DARK)
+    fr++
+
+    if (list.length === 0) {
+      const emptyRow = fulfilledSheet.getRow(fr)
+      emptyRow.getCell(1).value = emptyText
+      emptyRow.getCell(1).font = { italic: true, size: 10, color: { argb: 'FF999999' } }
+      fr += 2
+      return
+    }
+
+    list.forEach((o, i) => {
+      const c = o.computed
+      const dateStr = new Date(o.orderDate || o.createdAt).toLocaleDateString('en-PH')
+      const row = fulfilledSheet.getRow(fr)
+      row.values = [
+        o.orderNumber || '--', dateStr, o.customerName || '--', o.resolvedSalesPerson || o.salesPerson || 'Unassigned',
+        o.paymentStatus || '--',
+        c.gross, c.amountPaid, c.receivable, c.cogs, c.liquidatedOpex, c.profit,
+      ]
+      FULFILLED_MONEY_COLS.forEach((col) => (row.getCell(col).numFmt = CURRENCY_FMT))
+      styleDataRow(row, i % 2 === 1)
+      fr++
+    })
+
+    const totalRow = fulfilledSheet.getRow(fr)
+    totalRow.values = [
+      `${title.toUpperCase()} TOTAL`, '', '', '', '',
+      sumOf(list, (c) => c.gross), sumOf(list, (c) => c.amountPaid), sumOf(list, (c) => c.receivable),
+      sumOf(list, (c) => c.cogs), sumOf(list, (c) => c.liquidatedOpex), sumOf(list, (c) => c.profit),
+    ]
+    FULFILLED_MONEY_COLS.forEach((col) => (totalRow.getCell(col).numFmt = CURRENCY_FMT))
+    totalRow.eachCell((cell) => {
+      cell.font = { bold: true, size: 10 }
+      cell.border = { top: { style: 'medium', color: { argb: DARK } } }
+    })
+    fr += 2
+  }
+
+  writeFulfilledGroup('Delivered', deliveredOrders, 'No delivered orders in this period.')
+  writeFulfilledGroup('Shipped', shippedOrders, 'No shipped orders in this period.')
+
+  // ============ SHEET 5: ADDITIONAL EXPENSES ============
   const expSheet = workbook.addWorksheet('Additional Expenses', {
     pageSetup: {
       orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0,
