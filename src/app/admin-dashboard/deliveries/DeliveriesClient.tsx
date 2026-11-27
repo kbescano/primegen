@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import DeliveryItineraryTracker from '@/components/DeliveryItineraryTracker';
+import OpenDealLink from '@/components/OpenDealLink';
 import { baseDescription } from '@/lib/pipelineUtils'
 
 const FULFILLMENT_LABELS: Record<string, string> = {
@@ -278,6 +279,9 @@ export default function DeliveriesClient({
                       ) : (
                         <span className="text-[11px] text-gray-400 italic">No route planned</span>
                       )}
+                      <div className="mt-2">
+                        <OpenDealLink order={o.id} variant="text" />
+                      </div>
                     </div>
                     <button
                       onClick={() => openTracker(o.id)}
@@ -380,6 +384,9 @@ export default function DeliveriesClient({
                           ) : (
                             <span className="text-[11px] text-gray-400 italic">No route planned yet</span>
                           )}
+                          <div className="mt-2">
+                            <OpenDealLink order={o.id} variant="text" />
+                          </div>
                         </td>
 
                         <td className="px-5 py-4 align-top text-right">

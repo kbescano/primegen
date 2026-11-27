@@ -7,9 +7,11 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useListSearchParams } from '@/lib/useListSearchParams'
 import OrderOpexSection from '@/components/OrderOpexSection'
 import ReceiptsPreview from '@/components/ReceiptsPreview'
+import OpenDealLink from '@/components/OpenDealLink'
 import InfiniteScrollSentinel from '@/components/InfiniteScrollSentinel'
 import { loadMoreOrders } from '@/app/admin-dashboard/orders/actions'
 import { displayDescription } from '@/lib/pipelineUtils'
@@ -416,13 +418,14 @@ function OrderCardBody({ o, orderPOs }: { o: any; orderPOs: any[] }) {
 
       {/* Subtle Link footer */}
       {o.sourceQuotationId && (
-        <div className="mt-5 pt-3 flex justify-end" onClick={(e) => e.stopPropagation()}>
+        <div className="mt-5 pt-3 flex items-center justify-end gap-4" onClick={(e) => e.stopPropagation()}>
           <Link
             href={`/admin-dashboard/client-quotation?id=${o.sourceQuotationId}`}
             className="text-[9px] font-bold uppercase tracking-wider text-blue-600 hover:text-blue-800 transition-colors"
           >
             View Source Quotation &rarr;
           </Link>
+          <OpenDealLink quotation={o.sourceQuotationId} />
         </div>
       )}
     </>
@@ -450,7 +453,7 @@ export default function OrdersListClient({
 }) {
   const router = useRouter()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
+  const searchParams = useListSearchParams()
 
   const activeStatus = normalizeStatus(initialStatus)
   const [searchQuery, setSearchQuery] = useState<string>(initialQuery)

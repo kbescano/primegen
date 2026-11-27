@@ -91,7 +91,10 @@ export default function PipelineStepper({
       if (typeof window !== "undefined") {
         const url = new URL(window.location.href);
         url.searchParams.set("step", newStep);
-        window.history.pushState({}, "", url.toString());
+        // replaceState, not pushState: switching tabs shouldn't add history
+        // entries, or the modal's close (router.back()) would just step back
+        // through the tabs instead of closing.
+        window.history.replaceState({}, "", url.toString());
       }
     }
   }

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import CollectionStatusSelect from '@/components/CollectionStatusSelect'
+import OpenDealLink from '@/components/OpenDealLink'
 import InfiniteScrollSentinel from '@/components/InfiniteScrollSentinel'
 import { loadMoreSupplierPOs } from '@/app/admin-dashboard/supplier-po/actions'
 
@@ -129,11 +130,12 @@ export default function SupplierPOListClient({
                     })
                   : ''}
               </p>
-              <div className="flex items-center justify-between sm:justify-end gap-6 w-full sm:w-auto">
+              <div className="flex flex-wrap items-center justify-between sm:justify-end gap-x-6 gap-y-3 w-full sm:w-auto">
                 <p className="text-[16px] font-semibold text-gray-900 font-mono tracking-tight">{peso(total)}</p>
+                <OpenDealLink order={po.sourceOrderId} variant="text" />
                 <Link
                   href={`/admin-dashboard/supplier-po?id=${po.id}`}
-                  className="text-[12px] font-medium text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-full"
+                  className="whitespace-nowrap text-[12px] font-medium text-blue-600 hover:text-blue-800 transition-colors bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-full"
                 >
                   View / Edit &rarr;
                 </Link>

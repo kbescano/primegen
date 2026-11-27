@@ -7,7 +7,15 @@ import AdminSidebar from '@/components/AdminSidebar'
 import '../(frontend)/globals.css';
 import './admin-fonts.css';
 
-export default async function AdminDashboardLayout({ children }: { children: ReactNode }) {
+export default async function AdminDashboardLayout({
+  children,
+  modal,
+}: {
+  children: ReactNode
+  // Parallel slot (@modal): the deal workflow opens here as an overlay on top
+  // of whatever page is showing, so that page is never reloaded or scrolled.
+  modal: ReactNode
+}) {
   const payload = await getPayloadClient()
   const headers = await getHeaders()
   const { user } = await payload.auth({ headers })
@@ -19,6 +27,7 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
     <html lang="en">
       <body style={{ margin: 0, fontFamily: 'Inter, sans-serif', background: '#ffffff' }}>
         <AdminSidebar user={{ name: (user as any).name, email: user.email || '', role: (user as any).role }}>{children}</AdminSidebar>
+        {modal}
       </body>
     </html>
   )

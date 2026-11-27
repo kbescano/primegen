@@ -2,9 +2,11 @@
 
 import { useState, useMemo, useEffect, useTransition } from "react";
 import Link from "next/link";
-import { usePathname, useSearchParams, useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useListSearchParams } from "@/lib/useListSearchParams";
 import DateGranularityFilter from "@/components/DateGranularityFilter";
 import CreateRFQModal from "@/components/CreateRFQModal";
+import OpenDealLink from "@/components/OpenDealLink";
 
 // "PO" sits between Quote Sent and Completed, matching where staff move a
 // request once it reaches the purchase-order stage.
@@ -377,7 +379,7 @@ export default function StaffPerformanceClient({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const searchParams = useListSearchParams();
   const [isPending, startTransition] = useTransition();
 
   const [localRequests, setLocalRequests] = useState(requests);
@@ -1103,6 +1105,10 @@ export default function StaffPerformanceClient({
                           {row.contact || "\u2014"}
                         </div>
 
+                        <div className="mb-2">
+                          <OpenDealLink requestId={row.reqId} />
+                        </div>
+
                         {row.facebookLink && (
                           <a
                             href={row.facebookLink}
@@ -1371,6 +1377,9 @@ export default function StaffPerformanceClient({
                                   {row.company}
                                 </div>
                               )}
+                              <div className="mt-1.5">
+                                <OpenDealLink requestId={row.reqId} variant="text" />
+                              </div>
                             </td>
 
                             <td

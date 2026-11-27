@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import QuotationInboxClient from "@/components/QuotationInboxClient";
 import { findAll } from "@/lib/findAll";
+import { computeDealStage, isDealStageKey } from "@/lib/dealStage";
 
 // Generous cap on how many requests can exist within one date window --
 // mirrors /products fetching its whole catalog (up to 500) in one query
@@ -94,47 +95,6 @@ function getGranularityRange(
   return {};
 }
 
-const STEP_ORDER = [
-  "quotation",
-  "confirmation",
-  "supplierPO",
-  "fulfilled",
-  "delivery",
-  "closed",
-] as const;
-const STEP_LABELS: Record<string, string> = {
-  quotation: "Create Quotation",
-  confirmation: "Quotation Approval",
-  supplierPO: "Create PO",
-  fulfilled: "Confirm Fulfilled",
-  delivery: "Track Delivery & Payment",
-  closed: "Confirm Completed",
-};
-
-function computeStepState(
-  q: any,
-  orderByQuotationId: Record<string, any>,
-  posByOrderId: Record<string, any[]>,
-) {
-  const order = q ? orderByQuotationId[String(q.id)] : null;
-  const pos = order ? posByOrderId[String(order.id)] || [] : [];
-  const completedSteps = {
-    quotation: Boolean(q),
-    confirmation: Boolean(order),
-    supplierPO: pos.length > 0,
-    fulfilled:
-      pos.length > 0 && pos.every((po: any) => po.status === "fulfilled"),
-    delivery: Boolean(
-      order &&
-      order.fulfillmentStatus === "delivered" &&
-      order.paymentStatus === "paid",
-    ),
-    closed: false,
-  };
-  const currentStep = STEP_ORDER.find((s) => !completedSteps[s]) || "closed";
-  return { currentStep };
-}
-
 export default async function QuotationInboxPage({
   searchParams,
 }: {
@@ -144,12 +104,13 @@ export default async function QuotationInboxPage({
     granularity?: string;
     periodValue?: string;
     q?: string;
+    stage?: string;
   }>;
 }) {
   // status/staff are only used to seed the client component's initial
   // filter state (for a shared/bookmarked URL) -- they no longer affect
   // the server query, since filtering on them now happens client-side.
-  const { status, staff, q } = await searchParams;
+  const { status, staff, q, stage } = await searchParams;
   let { granularity, periodValue } = await searchParams;
 
   if (!granularity) {
@@ -357,22 +318,18 @@ export default async function QuotationInboxPage({
     posByOrderId[po.sourceOrderId].push(po);
   }
 
-  // Precompute each row's pipeline stage server-side, since it needs the
-  // linked-quotations/orders/POs lookups above -- the client component
-  // just renders `.stageLabel`, it doesn't need any of this wiring.
+  // Precompute each row's deal stage server-side, since it needs the
+  // linked-quotations/orders/POs lookups above -- the client component just
+  // renders `.stage` (label + what's next) and filters on `.stage.key`. The
+  // stage rules are shared with the workflow page (lib/dealStage.ts).
   const linkedQuotationById = new Map(
     (linkedQuotations.docs as any[]).map((cq: any) => [String(cq.id), cq]),
   );
   const requestsWithStage = docs.map((q: any) => {
-    const linkedQuotationId = quotationIdByRequestId[q.id];
-    const linkedQuotation = linkedQuotationById.get(String(linkedQuotationId));
-    const { currentStep } = computeStepState(
-      linkedQuotation,
-      orderByQuotationId,
-      posByOrderId,
-    );
-    const closed = q.status === "completed";
-    return { ...q, stageLabel: closed ? "Completed" : STEP_LABELS[currentStep] };
+    const linkedQuotation = linkedQuotationById.get(String(quotationIdByRequestId[q.id]));
+    const order = linkedQuotation ? orderByQuotationId[String(linkedQuotation.id)] : null;
+    const pos = order ? posByOrderId[String(order.id)] || [] : [];
+    return { ...q, stage: computeDealStage({ request: q, quotation: linkedQuotation, order, pos }) };
   });
 
   const weekOverview = countByStatus(weekOverviewRes.docs);
@@ -388,6 +345,7 @@ export default async function QuotationInboxPage({
       isAdmin={isAdmin}
       currentUserName={currentUser?.name || currentUser?.email || "Staff"}
       initialStatus={status}
+      initialStage={isDealStageKey(stage) ? stage : undefined}
       initialStaff={isAdmin ? staff : undefined}
       granularity={granularity || ""}
       periodValue={periodValue || ""}

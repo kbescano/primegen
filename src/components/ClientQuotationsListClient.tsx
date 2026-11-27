@@ -7,8 +7,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useListSearchParams } from '@/lib/useListSearchParams'
 import CollectionStatusSelect from '@/components/CollectionStatusSelect'
+import OpenDealLink from '@/components/OpenDealLink'
 import InfiniteScrollSentinel from '@/components/InfiniteScrollSentinel'
 import { loadMoreQuotations } from '@/app/admin-dashboard/client-quotation/actions'
 
@@ -188,7 +190,7 @@ function QuotationCardBody({
       </div>
 
       {/* Bottom Action Footer */}
-      <div className="mt-5 pt-3 border-t border-gray-50 flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
+      <div className="mt-5 pt-3 border-t border-gray-50 flex flex-wrap items-center justify-between gap-3" onClick={(e) => e.stopPropagation()}>
         <Link
           href={`/admin-dashboard/client-quotation?id=${q.id}`}
           className="text-[9px] font-bold uppercase tracking-wider text-blue-600 hover:text-blue-800 transition-colors"
@@ -196,14 +198,17 @@ function QuotationCardBody({
           View Quotation &rarr;
         </Link>
 
-        {existingOrderId && (
-          <Link
-            href={`/admin-dashboard/orders?id=${existingOrderId}`}
-            className="text-[9px] font-bold uppercase tracking-wider px-3 py-1 bg-[#01172f] text-white rounded hover:bg-[#149911] transition-colors"
-          >
-            View Converted Order &rarr;
-          </Link>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {existingOrderId && (
+            <Link
+              href={`/admin-dashboard/orders?id=${existingOrderId}`}
+              className="whitespace-nowrap text-[9px] font-bold uppercase tracking-wider px-3 py-1.5 bg-[#01172f] text-white rounded hover:bg-[#149911] transition-colors"
+            >
+              View Converted Order &rarr;
+            </Link>
+          )}
+          <OpenDealLink requestId={q.sourceRequestId} />
+        </div>
       </div>
     </>
   )
@@ -228,7 +233,7 @@ export default function ClientQuotationsListClient({
 }) {
   const router = useRouter()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
+  const searchParams = useListSearchParams()
 
   const activeStatus = normalizeStatus(initialStatus)
   const [searchQuery, setSearchQuery] = useState<string>(initialQuery)

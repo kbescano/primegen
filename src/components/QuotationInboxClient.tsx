@@ -9,9 +9,10 @@
 // window does (see DateGranularityFilter), because that's what actually
 // changes which rows need to be fetched in the first place.
 
-import { useState, useMemo, useEffect, useRef } from 'react'
+import { memo, useCallback, useState, useMemo, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { useListSearchParams } from '@/lib/useListSearchParams'
 import StatusSelect from '@/components/StatusSelect'
 import AssignStaffSelect from '@/components/AssignStaffSelect'
 import AddUpdateNote from '@/components/AddUpdateNotes'
@@ -19,6 +20,7 @@ import DateGranularityFilter from '@/components/DateGranularityFilter'
 import ActionItemsPanel from '@/components/ActionItemsPanel'
 import CreateRFQModal from '@/components/CreateRFQModal'
 import { isWithinPhBusinessHours } from '@/lib/phBusinessHours'
+import { DEAL_STAGES, isDealStageKey, stageTone, type DealStageKey } from "@/lib/dealStage";
 
 const STATUS_OPTIONS = [
   { value: 'pending', label: 'Pending' },
@@ -218,15 +220,25 @@ function RequestCardBody({
 
       {/* Pipeline Stage Bar */}
       <div className="flex flex-wrap items-center justify-between gap-2 bg-gray-50/70 rounded px-3 py-2 mb-3 text-[10.5px]">
-        <span className="text-gray-500">
-          Stage: <span className="text-emerald-600 font-medium">{q.stageLabel}</span>
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-gray-500 min-w-0">
+          <span
+            className={`text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full ${stageTone(q.stage?.key)}`}
+          >
+            {q.stage?.label ?? "—"}
+          </span>
+          {q.stage?.next && (
+            <span className="text-[11px]">
+              Next: <span className="text-gray-700 font-medium">{q.stage.next}</span>
+            </span>
+          )}
         </span>
         <Link
           href={`/admin-dashboard/pipeline/${q.id}`}
+          scroll={false}
           onClick={(e) => e.stopPropagation()}
-          className="text-[10px] font-medium text-gray-500 hover:text-[#01172f] transition-colors"
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded bg-[#01172f] text-white text-[11px] font-bold uppercase tracking-wider hover:bg-[#149911] transition-colors"
         >
-          View Order Workflow →
+          Open inquiry →
         </Link>
       </div>
 
@@ -306,6 +318,40 @@ function RequestCardBody({
   )
 }
 
+// One row of the list. Memoized, so a change elsewhere on the page (a filter
+// chip, the deal workflow opening over the list) doesn't redraw every card --
+// this list can be over a thousand deep. `content-visibility: auto` also lets
+// the browser skip layout and paint for rows that are off screen; it keeps each
+// row's real height once seen, so the scrollbar and scroll position stay put.
+const RequestRow = memo(function RequestRow({
+  q,
+  isAdmin,
+  staffOptions,
+  currentUserName,
+  onOpen,
+}: {
+  q: any
+  isAdmin: boolean
+  staffOptions: StaffOption[]
+  currentUserName: string
+  onOpen: (id: string | number) => void
+}) {
+  return (
+    <div
+      onClick={() => onOpen(q.id)}
+      style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 300px' }}
+      className="bg-white border border-gray-100 rounded-lg p-3.5 sm:p-4 transition-colors hover:border-gray-200 hover:shadow-sm cursor-pointer overflow-hidden"
+    >
+      <RequestCardBody
+        q={q}
+        isAdmin={isAdmin}
+        staffOptions={staffOptions}
+        currentUserName={currentUserName}
+      />
+    </div>
+  )
+})
+
 export default function QuotationInboxClient({
   requests,
   searchQuery: serverSearchQuery,
@@ -315,6 +361,7 @@ export default function QuotationInboxClient({
   isAdmin,
   currentUserName,
   initialStatus,
+  initialStage,
   initialStaff,
   granularity,
   periodValue,
@@ -323,7 +370,7 @@ export default function QuotationInboxClient({
   monthOverview,
   products,
 }: {
-  requests: any[] // each pre-annotated server-side with `.stageLabel`
+  requests: any[] // each pre-annotated server-side with `.stage` (see lib/dealStage)
   searchQuery: string // the term the server already searched with (all dates)
   searchCapped: boolean
   searchTotal: number
@@ -331,6 +378,7 @@ export default function QuotationInboxClient({
   isAdmin: boolean
   currentUserName: string
   initialStatus?: string
+  initialStage?: string
   initialStaff?: string
   granularity: string
   periodValue: string
@@ -340,7 +388,7 @@ export default function QuotationInboxClient({
   products: { id: string; name: string; unit: string }[]
 }) {
   const pathname = usePathname()
-  const searchParams = useSearchParams()
+  const searchParams = useListSearchParams()
   const router = useRouter()
 
   // No cron for the stale-request alerts (see checkStaleRequestAlerts) --
@@ -375,6 +423,7 @@ export default function QuotationInboxClient({
 
   const [activeStatus, setActiveStatus] = useState<string | undefined>(normalizeStatus(initialStatus))
   const [activeStaff, setActiveStaff] = useState<string | undefined>(initialStaff)
+  const [activeStage, setActiveStage] = useState<DealStageKey | undefined>(isDealStageKey(initialStage) ? initialStage : undefined)
   // Which request's modal is open, driven by `?id=` -- this is what lets an
   // Action Item's link, or any other shared URL, open straight to one
   // specific request (see the stale-request cron, which links here).
@@ -386,6 +435,8 @@ export default function QuotationInboxClient({
   useEffect(() => {
     setActiveStatus(normalizeStatus(searchParams.get('status')))
     setActiveStaff(searchParams.get('staff') || undefined)
+    const urlStage = searchParams.get('stage')
+    setActiveStage(isDealStageKey(urlStage) ? urlStage : undefined)
     setOpenId(searchParams.get('id') || undefined)
     const urlQ = (searchParams.get('q') || '').trim()
     if (urlQ !== lastPushedQ.current) {
@@ -397,16 +448,19 @@ export default function QuotationInboxClient({
   // Silently update the URL so links remain shareable, without triggering a
   // Next.js navigation or server re-render (same as ProductCatalog's
   // toggleCategory / SearchBar).
-  function syncUrl(next: { status?: string; staff?: string; id?: string; q?: string }) {
+  function syncUrl(next: { status?: string; staff?: string; stage?: string; id?: string; q?: string }) {
     const params = new URLSearchParams(searchParams.toString())
     const nextStatus = 'status' in next ? next.status : activeStatus
     const nextStaff = 'staff' in next ? next.staff : activeStaff
+    const nextStage = 'stage' in next ? next.stage : activeStage
     const nextId = 'id' in next ? next.id : openId
     const nextQuery = 'q' in next ? next.q : searchQuery
     if (nextStatus) params.set('status', nextStatus)
     else params.delete('status')
     if (nextStaff) params.set('staff', nextStaff)
     else params.delete('staff')
+    if (nextStage) params.set('stage', nextStage)
+    else params.delete('stage')
     if (nextId) params.set('id', nextId)
     else params.delete('id')
     if (nextQuery) params.set('q', nextQuery)
@@ -438,6 +492,12 @@ export default function QuotationInboxClient({
     syncUrl({ status: next })
   }
 
+  function handleStageClick(value: DealStageKey | '') {
+    const next = value || undefined
+    setActiveStage(next)
+    syncUrl({ stage: next })
+  }
+
   function handleStaffChange(value: string) {
     const next = value || undefined
     setActiveStaff(next)
@@ -455,18 +515,40 @@ export default function QuotationInboxClient({
     syncUrl({ id: undefined })
   }
 
+  // A stable handle for the memoized rows: always calls the latest openRequest
+  // without being a new function (and so a re-render of every row) each render.
+  const openRequestRef = useRef(openRequest)
+  openRequestRef.current = openRequest
+  const handleOpen = useCallback((id: string | number) => openRequestRef.current(id), [])
+
   // Matched against the full `requests` list, not `filteredRequests` -- a
   // deep link should open the card even if the current Status/Staff pills
   // would otherwise hide it.
   const openRequestDoc = openId ? requests.find((r) => String(r.id) === openId) : undefined
 
-  const filteredRequests = useMemo(() => {
+  // Requests that pass the Status and Staff filters; the Stage chips count
+  // within these, so each chip's number is what you'd get by clicking it.
+  const beforeStage = useMemo(() => {
     return requests.filter((q) => {
       const matchesStatus = !activeStatus || q.status === activeStatus
       const matchesStaff = !activeStaff || assignedToId(q.assignedTo) === activeStaff
       return matchesStatus && matchesStaff
     })
   }, [requests, activeStatus, activeStaff])
+
+  const stageCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const q of beforeStage) {
+      const key = q.stage?.key
+      if (key) counts[key] = (counts[key] || 0) + 1
+    }
+    return counts
+  }, [beforeStage])
+
+  const filteredRequests = useMemo(
+    () => (activeStage ? beforeStage.filter((q) => q.stage?.key === activeStage) : beforeStage),
+    [beforeStage, activeStage],
+  )
 
   return (
     <div className="w-full max-w-[900px] mx-auto py-6 overflow-x-hidden text-gray-700">
@@ -480,7 +562,7 @@ export default function QuotationInboxClient({
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
         <div className="w-full">
           <h1 className="text-lg font-semibold text-gray-900 mb-0.5 truncate">
-            Quotation Requests
+            Inquiries
           </h1>
           <p className="text-[11px] text-gray-400 w-full max-w-[600px] leading-relaxed">
             Requests submitted from the website. Follow up by phone or email,
@@ -539,6 +621,41 @@ export default function QuotationInboxClient({
           {searchCapped ? ` -- showing the newest ${requests.length} of ${searchTotal} matches; narrow your search to see the rest.` : '.'}
         </p>
       )}
+
+      {/* Stage: where each deal stands. Chips with no deals are hidden (the
+          selected one always shows, so it can be turned off). */}
+      <div
+        role="group"
+        aria-label="Filter by inquiry stage"
+        className="mb-4 flex items-center gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        <button
+          type="button"
+          onClick={() => handleStageClick('')}
+          aria-pressed={!activeStage}
+          className={`shrink-0 whitespace-nowrap text-[12px] font-semibold px-3 py-1.5 rounded-full transition-colors ${
+            !activeStage ? 'bg-[#01172f] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          All inquiries <span className="opacity-60 ml-1">{beforeStage.length}</span>
+        </button>
+        {DEAL_STAGES.filter((s) => (stageCounts[s.key] || 0) > 0 || s.key === activeStage).map((s) => {
+          const isActive = activeStage === s.key
+          return (
+            <button
+              key={s.key}
+              type="button"
+              onClick={() => handleStageClick(isActive ? '' : s.key)}
+              aria-pressed={isActive}
+              className={`shrink-0 whitespace-nowrap text-[12px] font-semibold px-3 py-1.5 rounded-full transition-colors ${
+                isActive ? 'bg-[#01172f] text-white' : `${s.tone} hover:brightness-95`
+              }`}
+            >
+              {s.label} <span className="opacity-60 ml-1">{stageCounts[s.key] || 0}</span>
+            </button>
+          )
+        })}
+      </div>
 
       {/* Filter Section */}
       <div className="mb-5 flex flex-wrap items-center gap-x-6 gap-y-3 pb-4 border-b border-gray-100">
@@ -601,6 +718,9 @@ export default function QuotationInboxClient({
         <div className="border border-dashed border-gray-200 py-10 text-center rounded-lg">
           <p className="text-[11px] text-gray-400">
             No quotation requests
+            {activeStage
+              ? ` at stage "${DEAL_STAGES.find((s) => s.key === activeStage)?.label}"`
+              : ""}
             {activeStatus
               ? ` with status "${STATUS_LABELS[activeStatus]}"`
               : ""}
@@ -618,18 +738,14 @@ export default function QuotationInboxClient({
       ) : (
         <div className="flex flex-col gap-3">
           {filteredRequests.map((q: any) => (
-            <div
+            <RequestRow
               key={q.id}
-              onClick={() => openRequest(q.id)}
-              className="bg-white border border-gray-100 rounded-lg p-3.5 sm:p-4 transition-colors hover:border-gray-200 hover:shadow-sm cursor-pointer overflow-hidden"
-            >
-              <RequestCardBody
-                q={q}
-                isAdmin={isAdmin}
-                staffOptions={staffOptions}
-                currentUserName={currentUserName}
-              />
-            </div>
+              q={q}
+              isAdmin={isAdmin}
+              staffOptions={staffOptions}
+              currentUserName={currentUserName}
+              onOpen={handleOpen}
+            />
           ))}
         </div>
       )}

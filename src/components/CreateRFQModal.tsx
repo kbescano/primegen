@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useListSearchParams } from "@/lib/useListSearchParams";
 import { useClientSearch, type ClientOption } from "@/lib/useClientSearch";
 
 type Product = { id: string; name: string; unit: string };
@@ -32,7 +33,7 @@ export default function CreateRFQModal({
   assignToSelf?: boolean;
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
+  const searchParams = useListSearchParams();
   const preselected = searchParams.get("product");
   const preselectedMaterial = products.find(
     (m) => String(m.id) === String(preselected),

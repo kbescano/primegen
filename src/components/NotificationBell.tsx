@@ -192,6 +192,9 @@ export default function NotificationBell({ role }: { role: 'admin' | 'marketing'
                 <Link
                   key={item.id}
                   href={item.link || '/admin-dashboard'}
+                  // A deal link opens as a modal over the current page, which
+                  // shouldn't jump to the top when it does.
+                  scroll={!(item.link || '').includes('/pipeline/')}
                   onClick={() => {
                     setOpen(false)
                     if (!item.read) markAsRead(item.id)
